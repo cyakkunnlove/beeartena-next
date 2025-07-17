@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
-import { Reservation } from '@/types';
+import { Reservation } from '@/lib/types';
 
 export default function AdminReservations() {
   const router = useRouter();

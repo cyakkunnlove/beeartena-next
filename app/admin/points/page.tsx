@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
-import { Customer, PointHistory } from '@/types';
+import { Customer, PointTransaction } from '@/lib/types';
 
 export default function AdminPoints() {
   const router = useRouter();
@@ -174,11 +174,11 @@ export default function AdminPoints() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {customers.slice(0, 10).map((customer) => {
-                  const history = JSON.parse(localStorage.getItem(`pointHistory_${customer.id}`) || '[]') as PointHistory[];
+                  const history = storageService.getPointTransactions(customer.id);
                   return history.slice(0, 1).map((entry) => (
-                    <tr key={`${customer.id}-${entry.date}`}>
+                    <tr key={`${customer.id}-${entry.createdAt}`}>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
-                        {new Date(entry.date).toLocaleString('ja-JP')}
+                        {new Date(entry.createdAt).toLocaleString('ja-JP')}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm">
                         {customer.name}
@@ -195,7 +195,7 @@ export default function AdminPoints() {
                         </span>
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-medium">
-                        {entry.type === 'used' ? '-' : '+'}{entry.points}pt
+                        {entry.type === 'used' ? '-' : '+'}{entry.amount}pt
                       </td>
                       <td className="px-4 py-3 text-sm">
                         {entry.description}

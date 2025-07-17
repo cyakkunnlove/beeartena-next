@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
-import { Inquiry } from '@/types';
+import { Inquiry } from '@/lib/types';
 
 export default function AdminInquiries() {
   const router = useRouter();

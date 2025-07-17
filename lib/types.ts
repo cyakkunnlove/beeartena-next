@@ -20,6 +20,10 @@ export interface Customer extends User {
   };
   notes?: string;
   tags?: string[];
+  // For admin views
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum';
+  points?: number;
+  totalSpent?: number;
 }
 
 // Points types
@@ -34,7 +38,7 @@ export interface Points {
 export interface PointTransaction {
   id: string;
   userId: string;
-  type: 'earned' | 'redeemed' | 'expired' | 'adjusted';
+  type: 'earned' | 'used' | 'manual' | 'expired' | 'adjusted';
   amount: number;
   balance: number;
   description: string;

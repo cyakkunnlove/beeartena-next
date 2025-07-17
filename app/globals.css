@@ -169,7 +169,7 @@
 }
 
 .instagram-post {
-  @apply relative overflow-hidden rounded-lg aspect-square group cursor-pointer;
+  @apply relative overflow-hidden rounded-lg aspect-square cursor-pointer;
 }
 
 .instagram-overlay {

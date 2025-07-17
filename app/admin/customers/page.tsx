@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
-import { Customer } from '@/types';
+import { Customer } from '@/lib/types';
 
 export default function AdminCustomers() {
   const router = useRouter();
@@ -94,7 +94,7 @@ export default function AdminCustomers() {
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
             <p className="text-sm text-gray-600">ブロンズ会員</p>
-            <p className="text-2xl font-bold">{customers.filter(c => c.tier === 'bronze').length}</p>
+            <p className="text-2xl font-bold">{customers.filter(c => (c.tier || 'bronze') === 'bronze').length}</p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
             <p className="text-sm text-gray-600">シルバー会員</p>
@@ -160,15 +160,15 @@ export default function AdminCustomers() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTierColor(customer.tier)}`}>
-                          {getTierName(customer.tier)}
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTierColor(customer.tier || 'bronze')}`}>
+                          {getTierName(customer.tier || 'bronze')}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="font-medium">{customer.points.toLocaleString()}pt</p>
+                        <p className="font-medium">{(customer.points || 0).toLocaleString()}pt</p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="font-medium">¥{customer.totalSpent.toLocaleString()}</p>
+                        <p className="font-medium">¥{(customer.totalSpent || 0).toLocaleString()}</p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <p className="text-sm">

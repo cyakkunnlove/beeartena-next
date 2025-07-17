@@ -216,7 +216,7 @@ class StorageService {
     // Update user points
     const points = this.getPoints(transaction.userId);
     if (points) {
-      const pointsUpdate = {
+      const pointsUpdate: Partial<Points> = {
         currentPoints: transaction.balance,
         lifetimePoints: transaction.type === 'earned' 
           ? points.lifetimePoints + transaction.amount 
@@ -224,12 +224,14 @@ class StorageService {
       };
       
       // Update tier based on lifetime points
-      if (pointsUpdate.lifetimePoints >= 100000) {
-        pointsUpdate.tier = 'platinum' as const;
-      } else if (pointsUpdate.lifetimePoints >= 50000) {
-        pointsUpdate.tier = 'gold' as const;
-      } else if (pointsUpdate.lifetimePoints >= 20000) {
-        pointsUpdate.tier = 'silver' as const;
+      if (pointsUpdate.lifetimePoints! >= 100000) {
+        pointsUpdate.tier = 'platinum';
+      } else if (pointsUpdate.lifetimePoints! >= 50000) {
+        pointsUpdate.tier = 'gold';
+      } else if (pointsUpdate.lifetimePoints! >= 20000) {
+        pointsUpdate.tier = 'silver';
+      } else {
+        pointsUpdate.tier = 'bronze';
       }
 
       this.updatePoints(transaction.userId, pointsUpdate);
@@ -339,7 +341,25 @@ class StorageService {
     const users = this.getUsers();
     return users
       .filter(user => user.role === 'customer')
-      .map(user => this.getCustomer(user.id))
+      .map(user => {
+        const customer = this.getCustomer(user.id);
+        if (customer) {
+          // Add points and tier information
+          const points = this.getPoints(user.id);
+          const reservations = this.getReservations(user.id);
+          const totalSpent = reservations
+            .filter(r => r.status === 'completed')
+            .reduce((sum, r) => sum + r.price, 0);
+          
+          return {
+            ...customer,
+            tier: points?.tier || 'bronze',
+            points: points?.currentPoints || 0,
+            totalSpent
+          };
+        }
+        return null;
+      })
       .filter(Boolean) as Customer[];
   }
 
