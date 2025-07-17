@@ -1,0 +1,272 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Playfair+Display:wght@400;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --primary-color: #B8860B;
+    --secondary-color: #2C3E50;
+    --accent-color: #E8D5B5;
+    --light-accent: #F6F1E8;
+    --text-color: #333;
+    --gold-gradient: linear-gradient(135deg, #B8860B 0%, #E8D5B5 100%);
+  }
+
+  * {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply font-noto text-gray-800 bg-white;
+    line-height: 1.6;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-playfair;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-block px-8 py-3 rounded-full font-medium text-center transition-all duration-300 cursor-pointer;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-dark-gold hover:shadow-lg transform hover:-translate-y-0.5;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white hover:bg-gray-700 hover:shadow-lg;
+  }
+
+  .btn-outline {
+    @apply border-2 border-primary text-primary hover:bg-primary hover:text-white;
+  }
+
+  .btn-large {
+    @apply px-10 py-4 text-lg;
+  }
+
+  .section-title {
+    @apply text-3xl md:text-4xl font-bold text-center mb-8 font-playfair;
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .section-subtitle {
+    @apply text-center text-gray-600 mb-12 text-lg;
+  }
+
+  .container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  .card {
+    @apply bg-white rounded-2xl shadow-lg p-6 transition-all duration-300 hover:shadow-xl;
+  }
+
+  .input-group {
+    @apply mb-4;
+  }
+
+  .input-label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300;
+  }
+
+  .error-message {
+    @apply text-red-500 text-sm mt-1;
+  }
+
+  .success-message {
+    @apply text-green-500 text-sm mt-1;
+  }
+
+  /* Loading spinner */
+  .loading-spinner {
+    @apply inline-block w-8 h-8 border-4 border-gray-200 border-t-primary rounded-full animate-spin;
+  }
+
+  /* FAQ Accordion */
+  .faq-item {
+    @apply mb-4 bg-white rounded-lg shadow-md overflow-hidden transition-all duration-300;
+  }
+
+  .faq-question {
+    @apply w-full p-4 text-left flex justify-between items-center hover:bg-gray-50 transition-colors duration-300;
+  }
+
+  .faq-answer {
+    @apply px-4 pb-4 text-gray-600;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease-out;
+  }
+
+  .faq-item.active .faq-answer {
+    max-height: 500px;
+  }
+
+  /* Animation classes */
+  .fade-in {
+    animation: fadeIn 0.5s ease-in-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.5s ease-out;
+  }
+}
+
+@layer utilities {
+  .text-gradient {
+    background: var(--gold-gradient);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .shadow-gold {
+    box-shadow: 0 4px 14px 0 rgba(184, 134, 11, 0.3);
+  }
+
+  .backdrop-blur-light {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--dark-gold);
+}
+
+/* Instagram grid */
+.instagram-grid {
+  @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4;
+}
+
+.instagram-post {
+  @apply relative overflow-hidden rounded-lg aspect-square group cursor-pointer;
+}
+
+.instagram-overlay {
+  @apply absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-70 transition-all duration-300 flex items-center justify-center;
+}
+
+.instagram-info {
+  @apply text-white opacity-0 group-hover:opacity-100 transition-opacity duration-300 p-4 text-center;
+}
+
+/* Before/After effect */
+.before-after {
+  @apply flex items-center justify-center gap-4 md:gap-8;
+}
+
+.before-after-item {
+  @apply relative;
+}
+
+.before-after-arrow {
+  @apply text-3xl md:text-4xl text-primary animate-pulse;
+}
+
+/* Navigation menu */
+.nav-menu {
+  @apply hidden md:flex items-center gap-6;
+}
+
+.nav-menu a {
+  @apply text-gray-700 hover:text-primary transition-colors duration-300 font-medium;
+}
+
+/* Mobile menu */
+@media (max-width: 768px) {
+  .nav-menu {
+    @apply absolute top-full left-0 right-0 bg-white shadow-lg flex-col py-4 px-6 gap-4;
+    display: none;
+  }
+
+  .nav-menu.active {
+    display: flex;
+  }
+}
+
+/* Hero section */
+.hero {
+  @apply min-h-[80vh] flex items-center justify-center bg-gradient-to-br from-light-accent to-white py-20;
+}
+
+/* Pricing table */
+.menu-card {
+  @apply bg-white rounded-xl shadow-lg p-6 hover:shadow-xl transition-all duration-300 relative overflow-hidden;
+}
+
+.menu-card.featured {
+  @apply border-2 border-primary transform scale-105;
+}
+
+/* Dashboard stats */
+.stat-card {
+  @apply bg-white rounded-xl p-6 shadow-md hover:shadow-lg transition-shadow duration-300;
+}
+
+/* Reservation calendar */
+.calendar-grid {
+  @apply grid grid-cols-7 gap-1;
+}
+
+.calendar-day {
+  @apply aspect-square flex items-center justify-center rounded-lg text-sm cursor-pointer transition-all duration-200;
+}
+
+.calendar-day:hover:not(.disabled) {
+  @apply bg-primary text-white;
+}
+
+.calendar-day.selected {
+  @apply bg-primary text-white;
+}
+
+.calendar-day.disabled {
+  @apply text-gray-300 cursor-not-allowed;
+}
+
+/* Time slots */
+.time-slot {
+  @apply px-4 py-2 rounded-lg border-2 border-gray-200 cursor-pointer transition-all duration-200;
+}
+
+.time-slot:hover:not(.disabled) {
+  @apply border-primary bg-light-accent;
+}
+
+.time-slot.selected {
+  @apply bg-primary text-white border-primary;
+}
+
+.time-slot.disabled {
+  @apply bg-gray-100 text-gray-400 cursor-not-allowed;
+}
