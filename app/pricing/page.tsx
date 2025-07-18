@@ -1,5 +1,11 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
+import PageTransition from '@/components/layout/PageTransition';
+import SlideTransition from '@/components/layout/SlideTransition';
+import MobileButton from '@/components/ui/MobileButton';
+import { motion } from 'framer-motion';
 
 const services = [
   {
@@ -88,27 +94,34 @@ const additionalServices = [
 
 export default function PricingPage() {
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* ヒーローセクション */}
-      <section className="bg-gradient-to-br from-primary/10 to-white py-16">
-        <div className="container mx-auto px-4">
-          <h1 className="text-4xl md:text-5xl font-bold text-center mb-6 text-gradient">
-            メニュー & 料金
-          </h1>
-          <p className="text-center text-gray-600 text-lg max-w-2xl mx-auto">
-            理容師による安心・安全な施術。
-            お客様の骨格や表情に合わせた、あなただけの美眉をデザインします。
-          </p>
-        </div>
-      </section>
+    <PageTransition>
+      <div className="min-h-screen bg-gray-50">
+        {/* ヒーローセクション */}
+        <section className="bg-gradient-to-br from-primary/10 to-white py-16">
+          <div className="container mx-auto px-4">
+            <SlideTransition direction="up">
+              <h1 className="text-4xl md:text-5xl font-bold text-center mb-6 text-gradient">
+                メニュー & 料金
+              </h1>
+              <p className="text-center text-gray-600 text-lg max-w-2xl mx-auto">
+                理容師による安心・安全な施術。
+                お客様の骨格や表情に合わせた、あなただけの美眉をデザインします。
+              </p>
+            </SlideTransition>
+          </div>
+        </section>
 
       {/* サービス詳細 */}
       <section className="py-16">
         <div className="container mx-auto px-4">
           <div className="space-y-16">
             {services.map((service, index) => (
-              <div
+              <motion.div
                 key={service.id}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
+                viewport={{ once: true }}
                 className={`bg-white rounded-2xl shadow-xl overflow-hidden ${
                   service.featured ? 'ring-2 ring-primary' : ''
                 }`}
@@ -182,14 +195,16 @@ export default function PricingPage() {
                             所要時間: {service.duration}
                           </p>
                         </div>
-                        <Link href="/reservation" className="btn btn-primary">
-                          このメニューで予約する
+                        <Link href="/reservation">
+                          <MobileButton variant="primary" fullWidth className="mt-2">
+                            このメニューで予約する
+                          </MobileButton>
                         </Link>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             ))}
           </div>
         </div>
@@ -270,20 +285,24 @@ export default function PricingPage() {
             カウンセリングのみのご来店も歓迎です。
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/reservation" className="btn bg-white text-primary hover:bg-gray-100">
-              カウンセリング予約
+            <Link href="/reservation">
+              <MobileButton variant="secondary" size="large">
+                カウンセリング予約
+              </MobileButton>
             </Link>
             <a
               href="https://line.me/R/ti/p/@174geemy"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn bg-green-600 text-white hover:bg-green-700"
             >
-              LINEで相談する
+              <MobileButton variant="primary" size="large" className="bg-green-600 hover:bg-green-700">
+                LINEで相談する
+              </MobileButton>
             </a>
           </div>
         </div>
       </section>
-    </div>
+      </div>
+    </PageTransition>
   );
 }
