@@ -79,4 +79,4 @@ beeartena-next/
 
 ## ライセンス
 
-© 2024 Bee Artena. All rights reserved.
+© 2024 Bee Artena. All rights reserved.# SSH setup completed
