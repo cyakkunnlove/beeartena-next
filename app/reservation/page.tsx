@@ -8,6 +8,8 @@ import Calendar from '@/components/reservation/Calendar';
 import TimeSlots from '@/components/reservation/TimeSlots';
 import ServiceSelection from '@/components/reservation/ServiceSelection';
 import ReservationForm from '@/components/reservation/ReservationForm';
+import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ReservationPage() {
   const router = useRouter();
@@ -93,48 +95,106 @@ export default function ReservationPage() {
     }
   };
 
+  const stepVariants = {
+    enter: (direction: number) => ({
+      x: direction > 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.9,
+    }),
+    center: {
+      x: 0,
+      opacity: 1,
+      scale: 1,
+    },
+    exit: (direction: number) => ({
+      x: direction < 0 ? 300 : -300,
+      opacity: 0,
+      scale: 0.9,
+    }),
+  };
+
+  const stepTransition = {
+    type: 'spring' as const,
+    stiffness: 260,
+    damping: 20,
+  };
+
   const renderStep = () => {
     switch (step) {
       case 1:
         return (
-          <div>
+          <motion.div
+            key="step1"
+            custom={1}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={stepTransition}
+          >
             <h2 className="text-2xl font-semibold mb-6">1. メニューを選択</h2>
             <ServiceSelection onSelect={handleServiceSelect} selected={selectedService} />
-          </div>
+          </motion.div>
         );
       case 2:
         return (
-          <div>
+          <motion.div
+            key="step2"
+            custom={1}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={stepTransition}
+          >
             <h2 className="text-2xl font-semibold mb-6">2. 日付を選択</h2>
             <Calendar onSelect={handleDateSelect} selected={selectedDate} />
-            <button
+            <motion.button
               onClick={() => setStep(1)}
               className="mt-4 text-primary hover:text-dark-gold"
+              whileTap={{ scale: 0.95 }}
             >
               ← メニュー選択に戻る
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         );
       case 3:
         return (
-          <div>
+          <motion.div
+            key="step3"
+            custom={1}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={stepTransition}
+          >
             <h2 className="text-2xl font-semibold mb-6">3. 時間を選択</h2>
             <TimeSlots
               date={selectedDate}
               onSelect={handleTimeSelect}
               selected={selectedTime}
             />
-            <button
+            <motion.button
               onClick={() => setStep(2)}
               className="mt-4 text-primary hover:text-dark-gold"
+              whileTap={{ scale: 0.95 }}
             >
               ← 日付選択に戻る
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         );
       case 4:
         return (
-          <div>
+          <motion.div
+            key="step4"
+            custom={1}
+            variants={stepVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={stepTransition}
+          >
             <h2 className="text-2xl font-semibold mb-6">4. お客様情報を入力</h2>
             <ReservationForm
               formData={formData}
@@ -142,13 +202,14 @@ export default function ReservationPage() {
               onSubmit={handleSubmit}
               isLoggedIn={!!user}
             />
-            <button
+            <motion.button
               onClick={() => setStep(3)}
               className="mt-4 text-primary hover:text-dark-gold"
+              whileTap={{ scale: 0.95 }}
             >
               ← 時間選択に戻る
-            </button>
-          </div>
+            </motion.button>
+          </motion.div>
         );
       default:
         return null;
@@ -170,20 +231,28 @@ export default function ReservationPage() {
                 key={num}
                 className={`flex items-center ${num < 4 ? 'flex-1' : ''}`}
               >
-                <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                <motion.div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold transition-colors duration-300 ${
                     step >= num
                       ? 'bg-primary text-white'
                       : 'bg-gray-300 text-gray-600'
                   }`}
+                  animate={{
+                    scale: step === num ? 1.1 : 1,
+                  }}
+                  transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                 >
                   {num}
-                </div>
+                </motion.div>
                 {num < 4 && (
-                  <div
+                  <motion.div
                     className={`flex-1 h-1 mx-2 ${
                       step > num ? 'bg-primary' : 'bg-gray-300'
                     }`}
+                    initial={{ scaleX: 0 }}
+                    animate={{ scaleX: step > num ? 1 : 0 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                    style={{ originX: 0 }}
                   />
                 )}
               </div>
@@ -195,6 +264,11 @@ export default function ReservationPage() {
             <span className="text-xs text-gray-600">時間</span>
             <span className="text-xs text-gray-600">情報入力</span>
           </div>
+        </div>
+
+        {/* Business Hours Info */}
+        <div className="max-w-3xl mx-auto mb-6">
+          <BusinessHoursInfo />
         </div>
 
         {/* Reservation Summary */}
@@ -227,8 +301,10 @@ export default function ReservationPage() {
         )}
 
         {/* Step Content */}
-        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
-          {renderStep()}
+        <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8 overflow-hidden">
+          <AnimatePresence mode="wait">
+            {renderStep()}
+          </AnimatePresence>
         </div>
 
         {/* Info */}

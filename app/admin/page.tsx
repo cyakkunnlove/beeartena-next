@@ -126,6 +126,12 @@ export default function AdminDashboard() {
       href: '/admin/inquiries',
       icon: '💬',
     },
+    {
+      title: '予約設定',
+      description: '営業時間・休業日設定',
+      href: '/admin/settings',
+      icon: '⚙️',
+    },
   ];
 
   return (

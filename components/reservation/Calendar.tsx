@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { reservationService } from '@/lib/reservationService';
 
 interface CalendarProps {
   onSelect: (date: string) => void;
@@ -9,26 +10,16 @@ interface CalendarProps {
 
 export default function Calendar({ onSelect, selected }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [availableDates, setAvailableDates] = useState<string[]>([]);
+  const [monthAvailability, setMonthAvailability] = useState<Map<string, boolean>>(new Map());
 
   useEffect(() => {
-    // Generate available dates (demo: next 30 days, excluding Sundays)
-    const dates: string[] = [];
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    for (let i = 1; i <= 30; i++) {
-      const date = new Date(today);
-      date.setDate(today.getDate() + i);
-      
-      // Exclude Sundays (0) and some random dates for demo
-      if (date.getDay() !== 0 && Math.random() > 0.3) {
-        dates.push(date.toISOString().split('T')[0]);
-      }
-    }
-    
-    setAvailableDates(dates);
-  }, []);
+    // Get actual availability for the current month
+    const availability = reservationService.getMonthAvailability(
+      currentMonth.getFullYear(),
+      currentMonth.getMonth()
+    );
+    setMonthAvailability(availability);
+  }, [currentMonth]);
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear();
@@ -59,7 +50,7 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
 
   const isDateAvailable = (date: Date) => {
     const dateStr = formatDate(date);
-    return availableDates.includes(dateStr);
+    return monthAvailability.get(dateStr) || false;
   };
 
   const isDatePast = (date: Date) => {
@@ -131,7 +122,7 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
               onClick={() => isAvailable && onSelect(dateStr)}
               disabled={!isAvailable || isPast}
               className={`
-                aspect-square rounded-lg text-sm font-medium transition-all
+                aspect-square rounded-lg text-sm font-medium transition-all relative
                 ${isSelected
                   ? 'bg-primary text-white'
                   : isAvailable && !isPast
@@ -140,8 +131,12 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
                 }
                 ${isSunday ? 'text-red-500' : ''}
               `}
+              title={!isAvailable && !isPast && !isSunday ? '満員' : ''}
             >
               {day.getDate()}
+              {!isAvailable && !isPast && !isSunday && (
+                <span className="absolute top-1 right-1 text-xs text-red-500">●</span>
+              )}
             </button>
           );
         })}
@@ -151,6 +146,12 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-white border border-gray-200 rounded"></div>
           <span className="text-gray-600">予約可能</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-4 h-4 bg-gray-100 rounded relative">
+            <span className="absolute -top-1 -right-1 text-xs text-red-500">●</span>
+          </div>
+          <span className="text-gray-600">満員</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-gray-100 rounded"></div>

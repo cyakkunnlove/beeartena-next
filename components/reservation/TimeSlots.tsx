@@ -1,3 +1,7 @@
+'use client';
+
+import { reservationService } from '@/lib/reservationService';
+
 interface TimeSlotsProps {
   date: string;
   onSelect: (time: string) => void;
@@ -6,38 +10,9 @@ interface TimeSlotsProps {
 
 export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) {
   const selectedDate = new Date(date);
-  const dayOfWeek = selectedDate.getDay();
-
-  // Generate time slots based on business hours
-  const getTimeSlots = () => {
-    const slots: { time: string; available: boolean }[] = [];
-
-    if (dayOfWeek === 3) {
-      // Wednesday: 9:00-17:00
-      for (let hour = 9; hour < 17; hour++) {
-        slots.push({
-          time: `${hour}:00`,
-          available: Math.random() > 0.3, // Random availability for demo
-        });
-        if (hour < 16) {
-          slots.push({
-            time: `${hour}:30`,
-            available: Math.random() > 0.3,
-          });
-        }
-      }
-    } else {
-      // Other days: 18:30 or 19:30
-      slots.push(
-        { time: '18:30', available: Math.random() > 0.3 },
-        { time: '19:30', available: Math.random() > 0.3 }
-      );
-    }
-
-    return slots;
-  };
-
-  const timeSlots = getTimeSlots();
+  
+  // Get actual time slots from reservation service
+  const timeSlots = reservationService.getTimeSlotsForDate(date);
 
   return (
     <div>

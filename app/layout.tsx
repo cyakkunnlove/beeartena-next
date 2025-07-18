@@ -3,6 +3,7 @@ import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
 import { AuthProvider } from "@/lib/auth/AuthContext";
+import PageTransition from "@/components/layout/PageTransition";
 
 export const metadata: Metadata = {
   title: "BEE ART ENA - 理容師による安心のタトゥーメイクサロン",
@@ -26,7 +27,9 @@ export default function RootLayout({
         <AuthProvider>
           <Header />
           <main className="flex-grow">
-            {children}
+            <PageTransition>
+              {children}
+            </PageTransition>
           </main>
           <Footer />
         </AuthProvider>

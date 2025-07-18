@@ -113,4 +113,23 @@ export interface DashboardStats {
 export interface TimeSlot {
   time: string;
   available: boolean;
+  date?: string;
+  maxCapacity?: number;
+  currentBookings?: number;
+}
+
+// Business hours and settings
+export interface BusinessHours {
+  dayOfWeek: number; // 0-6 (Sunday-Saturday)
+  open: string; // "09:00"
+  close: string; // "17:00"
+  isOpen: boolean;
+  slots?: TimeSlot[];
+}
+
+export interface ReservationSettings {
+  slotDuration: number; // in minutes
+  maxCapacityPerSlot: number;
+  businessHours: BusinessHours[];
+  blockedDates?: string[]; // ISO date strings
 }
