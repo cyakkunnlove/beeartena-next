@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /mypage/
+Disallow: /api/
+
+Sitemap: https://beeartena.vercel.app/sitemap.xml
