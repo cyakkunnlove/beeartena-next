@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
 import { Customer } from '@/lib/types';
@@ -22,13 +22,7 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    if (user) {
-      loadProfile();
-    }
-  }, [user]);
-
-  const loadProfile = () => {
+  const loadProfile = useCallback(() => {
     const customer = storageService.getCustomer(user!.id);
     setFormData({
       name: user!.name,
@@ -41,7 +35,13 @@ export default function ProfilePage() {
       street: customer?.address?.street || '',
       postalCode: customer?.address?.postalCode || '',
     });
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadProfile();
+    }
+  }, [user, loadProfile]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({

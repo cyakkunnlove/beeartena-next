@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
@@ -12,13 +12,7 @@ export default function MypageDashboard() {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadData();
-    }
-  }, [user]);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const userPoints = storageService.getPoints(user!.id);
       setPoints(userPoints);
@@ -30,7 +24,13 @@ export default function MypageDashboard() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadData();
+    }
+  }, [user, loadData]);
 
   const upcomingReservations = reservations
     .filter(r => r.status === 'confirmed' && new Date(r.date) >= new Date())

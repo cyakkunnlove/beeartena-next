@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
 import { Reservation } from '@/lib/types';
@@ -11,13 +11,7 @@ export default function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
-  useEffect(() => {
-    if (user) {
-      loadReservations();
-    }
-  }, [user]);
-
-  const loadReservations = async () => {
+  const loadReservations = useCallback(async () => {
     try {
       const userReservations = storageService.getReservations(user!.id);
       setReservations(userReservations.sort((a, b) => 
@@ -28,7 +22,13 @@ export default function ReservationsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadReservations();
+    }
+  }, [user, loadReservations]);
 
   const filteredReservations = reservations.filter(reservation => {
     const reservationDate = new Date(reservation.date);

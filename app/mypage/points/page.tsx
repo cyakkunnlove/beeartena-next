@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
 import { Points, PointTransaction } from '@/lib/types';
@@ -11,13 +11,7 @@ export default function PointsPage() {
   const [transactions, setTransactions] = useState<PointTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (user) {
-      loadPointsData();
-    }
-  }, [user]);
-
-  const loadPointsData = async () => {
+  const loadPointsData = useCallback(async () => {
     try {
       const userPoints = storageService.getPoints(user!.id);
       setPoints(userPoints);
@@ -31,7 +25,13 @@ export default function PointsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  useEffect(() => {
+    if (user) {
+      loadPointsData();
+    }
+  }, [user, loadPointsData]);
 
   const getTierInfo = (tier: string) => {
     const tierData = {
