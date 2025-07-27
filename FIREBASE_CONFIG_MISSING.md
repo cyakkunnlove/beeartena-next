@@ -3,7 +3,7 @@
 ## 現在の状況
 Firebase設定が部分的にしか完了していません。以下の値が不足しています：
 
-- ✅ API Key: `AIzaSyBXYa8FeHyHQa0jHRfhZJ4xLYUb4YvFFuA`
+- ✅ API Key: `[REDACTED - See Firebase Console]`
 - ✅ Auth Domain: `beeart-ena.firebaseapp.com` (修正済み)
 - ✅ Project ID: `beeart-ena`
 - ❌ **Storage Bucket**: 未設定
