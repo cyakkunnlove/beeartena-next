@@ -5,6 +5,9 @@ export interface User {
   name: string;
   phone: string;
   role: 'customer' | 'admin';
+  points?: number;
+  birthday?: string; // YYYY-MM-DD format
+  lastBirthdayPointsYear?: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,12 +41,13 @@ export interface Points {
 export interface PointTransaction {
   id: string;
   userId: string;
-  type: 'earned' | 'used' | 'manual' | 'expired' | 'adjusted';
+  type: 'earned' | 'used' | 'manual' | 'expired' | 'adjusted' | 'redeemed';
   amount: number;
-  balance: number;
-  description: string;
+  balance?: number;
+  description?: string;
+  reason?: string;
   referenceId?: string;
-  createdAt: Date;
+  createdAt: string | Date;
 }
 
 // Reservation types
@@ -82,7 +86,7 @@ export interface AuthContextType {
   user: User | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (email: string, password: string, name: string, phone: string) => Promise<User>;
+  register: (email: string, password: string, name: string, phone: string, birthday?: string) => Promise<User>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<User>) => Promise<User>;
 }

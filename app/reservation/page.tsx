@@ -19,6 +19,7 @@ export default function ReservationPage() {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pointsToUse, setPointsToUse] = useState(0);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -57,23 +58,31 @@ export default function ReservationPage() {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
+  const serviceData = {
+    '2D': { name: 'パウダーブロウ', price: 20000 },
+    '3D': { name: 'フェザーブロウ', price: 20000 },
+    '4D': { name: 'パウダー&フェザー', price: 25000 },
+  };
+
+  const getServicePrice = () => {
+    const service = serviceData[selectedService as keyof typeof serviceData];
+    return service?.price || 0;
+  };
+
   const handleSubmit = async () => {
     if (isSubmitting) return;
     
     setIsSubmitting(true);
     try {
-      const serviceData = {
-        '2D': { name: 'パウダーブロウ', price: 20000 },
-        '3D': { name: 'フェザーブロウ', price: 20000 },
-        '4D': { name: 'パウダー&フェザー', price: 25000 },
-      };
-
       const service = serviceData[selectedService as keyof typeof serviceData];
+      const finalPrice = service.price - pointsToUse;
 
       const reservationData = {
         serviceId: selectedService,
         serviceName: service.name,
         price: service.price,
+        finalPrice: finalPrice,
+        pointsUsed: pointsToUse,
         date: selectedDate,
         time: selectedTime,
         customerName: formData.name,
@@ -83,6 +92,29 @@ export default function ReservationPage() {
       };
 
       await apiClient.createReservation(reservationData);
+
+      // ポイント使用の記録
+      if (user && pointsToUse > 0) {
+        const updatedUser = { ...user, points: (user.points || 0) - pointsToUse };
+        localStorage.setItem('users', JSON.stringify(
+          JSON.parse(localStorage.getItem('users') || '[]').map((u: any) =>
+            u.id === user.id ? updatedUser : u
+          )
+        ));
+
+        // ポイント履歴に記録
+        const pointTransaction = {
+          id: Date.now().toString(),
+          userId: user.id,
+          amount: -pointsToUse,
+          type: 'redeemed',
+          reason: `${service.name}の予約に使用`,
+          createdAt: new Date().toISOString(),
+        };
+        const points = JSON.parse(localStorage.getItem('points') || '[]');
+        points.push(pointTransaction);
+        localStorage.setItem('points', JSON.stringify(points));
+      }
 
       // Show success and redirect
       alert('予約が完了しました。確認メールをお送りします。');
@@ -205,6 +237,8 @@ export default function ReservationPage() {
               onChange={handleFormChange}
               onSubmit={handleSubmit}
               isLoggedIn={!!user}
+              servicePrice={getServicePrice()}
+              onPointsUsed={setPointsToUse}
             />
             <motion.button
               onClick={() => setStep(3)}

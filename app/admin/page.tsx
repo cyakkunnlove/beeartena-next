@@ -15,6 +15,8 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     todayReservations: 0,
     monthlyRevenue: 0,
+    unreadInquiries: 0,
+    activeCustomers: 0,
   });
 
   useEffect(() => {
@@ -26,14 +28,25 @@ export default function AdminDashboard() {
     // Calculate stats from localStorage
     const users = JSON.parse(localStorage.getItem('users') || '[]');
     const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
+    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
     
     const today = new Date().toISOString().split('T')[0];
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
 
     const customers = users.filter((u: any) => u.role === 'customer');
     const todayRes = reservations.filter((r: any) => r.date === today);
     const pendingRes = reservations.filter((r: any) => r.status === 'pending');
+    const unreadInq = inquiries.filter((i: any) => i.status === 'unread');
+    
+    // アクティブ顧客（過去30日以内に予約があった顧客）
+    const activeCustomerIds = new Set(
+      reservations
+        .filter((r: any) => new Date(r.date) >= thirtyDaysAgo)
+        .map((r: any) => r.customerId)
+    );
     
     const monthlyRev = reservations
       .filter((r: any) => {
@@ -55,6 +68,8 @@ export default function AdminDashboard() {
       totalRevenue: totalRev,
       todayReservations: todayRes.length,
       monthlyRevenue: monthlyRev,
+      unreadInquiries: unreadInq.length,
+      activeCustomers: activeCustomerIds.size,
     });
   }, [user, router]);
 

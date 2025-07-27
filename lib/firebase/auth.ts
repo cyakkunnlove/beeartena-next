@@ -19,10 +19,10 @@ const isFirebaseConfigured = () => {
 
 export const firebaseAuth = {
   // 新規登録
-  async register(email: string, password: string, name: string, phone: string): Promise<AppUser> {
+  async register(email: string, password: string, name: string, phone: string, birthday?: string): Promise<AppUser> {
     // Firebaseが設定されていない場合はモックを使用
     if (!isFirebaseConfigured()) {
-      return mockAuth.register(email, password, name, phone);
+      return mockAuth.register(email, password, name, phone, birthday);
     }
 
     try {
@@ -40,6 +40,7 @@ export const firebaseAuth = {
         name: name,
         phone: phone,
         role: 'customer',
+        birthday: birthday,
         createdAt: new Date(),
         updatedAt: new Date()
       };

@@ -18,6 +18,7 @@ export async function POST(request: NextRequest) {
     password: string;
     name: string;
     phone: string;
+    birthday?: string;
   }>(request, ['email', 'password', 'name', 'phone']);
   
   if (error) return setCorsHeaders(error);
@@ -32,12 +33,21 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    // 誕生日の検証（オプショナル）
+    if (data.birthday) {
+      const birthdayDate = new Date(data.birthday);
+      if (isNaN(birthdayDate.getTime()) || birthdayDate > new Date()) {
+        return setCorsHeaders(errorResponse('有効な生年月日を入力してください'));
+      }
+    }
+
     // 新規登録処理
     const user = await authService.register(
       data.email,
       data.password,
       data.name,
-      data.phone
+      data.phone,
+      data.birthday
     );
     
     // JWTトークン生成

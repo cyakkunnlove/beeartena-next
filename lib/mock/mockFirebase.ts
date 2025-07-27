@@ -12,6 +12,17 @@ let mockUsers: User[] = [
     role: 'admin',
     createdAt: new Date('2024-01-01'),
     updatedAt: new Date('2024-01-01')
+  },
+  {
+    id: 'test-user-1',
+    email: 'test@example.com',
+    name: 'テストユーザー',
+    phone: '090-1234-5678',
+    role: 'customer',
+    birthday: `1990-${String(new Date().getMonth() + 1).padStart(2, '0')}-${String(new Date().getDate()).padStart(2, '0')}`, // 今日が誕生日
+    points: 0,
+    createdAt: new Date('2024-01-15'),
+    updatedAt: new Date('2024-01-15')
   }
 ];
 
@@ -50,7 +61,7 @@ export const mockAuth = {
     return user;
   },
 
-  async register(email: string, password: string, name: string, phone: string): Promise<User> {
+  async register(email: string, password: string, name: string, phone: string, birthday?: string): Promise<User> {
     await delay(500);
     
     if (mockUsers.find(u => u.email === email)) {
@@ -63,6 +74,7 @@ export const mockAuth = {
       name,
       phone,
       role: 'customer',
+      birthday: birthday,
       createdAt: new Date(),
       updatedAt: new Date()
     };

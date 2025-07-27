@@ -25,7 +25,7 @@ const isFirebaseConfigured = () => {
 
 export const pointService = {
   // ポイント付与
-  async addPoints(userId: string, amount: number, description: string): Promise<Point> {
+  async addPoints(userId: string, amount: number, description: string, type: 'earned' | 'redeemed' | 'manual' = 'earned'): Promise<Point> {
     if (!isFirebaseConfigured()) {
       return mockPointService.addPoints(userId, amount, description);
     }
@@ -49,7 +49,7 @@ export const pointService = {
           id: uuidv4(),
           userId,
           amount,
-          type: 'earned',
+          type: type,
           balance: newBalance,
           description,
           createdAt: new Date()
@@ -64,7 +64,11 @@ export const pointService = {
         const pointRef = doc(db, 'points', pointHistory.id);
         transaction.set(pointRef, {
           ...pointHistory,
-          createdAt: Timestamp.fromDate(pointHistory.createdAt)
+          createdAt: Timestamp.fromDate(
+            typeof pointHistory.createdAt === 'string' 
+              ? new Date(pointHistory.createdAt) 
+              : pointHistory.createdAt
+          )
         });
 
         return pointHistory;
@@ -118,7 +122,11 @@ export const pointService = {
         const pointRef = doc(db, 'points', pointHistory.id);
         transaction.set(pointRef, {
           ...pointHistory,
-          createdAt: Timestamp.fromDate(pointHistory.createdAt)
+          createdAt: Timestamp.fromDate(
+            typeof pointHistory.createdAt === 'string' 
+              ? new Date(pointHistory.createdAt) 
+              : pointHistory.createdAt
+          )
         });
 
         return pointHistory;

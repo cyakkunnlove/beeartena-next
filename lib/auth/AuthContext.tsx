@@ -34,11 +34,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (email: string, password: string): Promise<User> => {
     const user = await apiClient.login(email, password);
     setUser(user);
+    
+    // 誕生日ポイントチェック（非同期で実行）
+    if (user.role === 'customer') {
+      import('@/lib/services/birthdayPoints').then(({ birthdayPointsService }) => {
+        birthdayPointsService.checkAndGrantBirthdayPoints(user.id).then(granted => {
+          if (granted) {
+            console.log('Birthday points granted!');
+          }
+        });
+      });
+    }
+    
     return user;
   };
 
-  const register = async (email: string, password: string, name: string, phone: string): Promise<User> => {
-    const user = await apiClient.register({ email, password, name, phone });
+  const register = async (email: string, password: string, name: string, phone: string, birthday?: string): Promise<User> => {
+    const user = await apiClient.register({ email, password, name, phone, birthday });
     setUser(user);
     return user;
   };

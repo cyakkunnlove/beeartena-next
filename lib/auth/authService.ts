@@ -41,9 +41,9 @@ class AuthService {
     }
   }
 
-  async register(email: string, password: string, name: string, phone: string): Promise<User> {
+  async register(email: string, password: string, name: string, phone: string, birthday?: string): Promise<User> {
     try {
-      const user = await firebaseAuth.register(email, password, name, phone);
+      const user = await firebaseAuth.register(email, password, name, phone, birthday);
       this.currentUser = user;
       return user;
     } catch (error: any) {

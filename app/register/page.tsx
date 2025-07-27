@@ -14,6 +14,7 @@ export default function RegisterPage() {
     confirmPassword: '',
     name: '',
     phone: '',
+    birthday: '',
     agreeToTerms: false,
   });
   const [error, setError] = useState('');
@@ -50,7 +51,7 @@ export default function RegisterPage() {
     setIsLoading(true);
 
     try {
-      await register(formData.email, formData.password, formData.name, formData.phone);
+      await register(formData.email, formData.password, formData.name, formData.phone, formData.birthday);
       router.push('/mypage');
     } catch (err: any) {
       setError(err.message || '登録に失敗しました');
@@ -129,6 +130,25 @@ export default function RegisterPage() {
                 className="input-field"
                 placeholder="090-1234-5678"
               />
+            </div>
+
+            <div className="input-group">
+              <label htmlFor="birthday" className="input-label">
+                生年月日 *
+              </label>
+              <input
+                id="birthday"
+                name="birthday"
+                type="date"
+                required
+                value={formData.birthday}
+                onChange={handleChange}
+                className="input-field"
+                max={new Date().toISOString().split('T')[0]}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                誕生日には1,000ポイントプレゼント！
+              </p>
             </div>
 
             <div className="input-group">
