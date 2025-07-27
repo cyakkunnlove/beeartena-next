@@ -99,7 +99,6 @@ export const mockReservationService = {
       ...reservation,
       id: uuidv4(),
       createdAt: new Date(),
-      userId: reservation.userId || mockAuth.currentUser?.id || 'guest',
       status: 'pending'
     };
     
@@ -114,7 +113,7 @@ export const mockReservationService = {
 
   async getUserReservations(userId: string): Promise<Reservation[]> {
     await delay(300);
-    return mockReservations.filter(r => r.userId === userId);
+    return mockReservations.filter(r => r.customerId === userId);
   },
 
   async getAllReservations(): Promise<Reservation[]> {

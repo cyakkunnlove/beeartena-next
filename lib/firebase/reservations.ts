@@ -79,7 +79,7 @@ export const reservationService = {
     try {
       const q = query(
         collection(db, 'reservations'),
-        where('userId', '==', userId),
+        where('customerId', '==', userId),
         orderBy('date', 'desc')
       );
 

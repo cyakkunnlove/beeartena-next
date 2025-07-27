@@ -39,14 +39,14 @@ export async function POST(request: NextRequest) {
   const { data, error } = await validateRequestBody<{
     serviceId: string;
     serviceName: string;
-    servicePrice: number;
+    price: number;
     date: string;
     time: string;
     customerName: string;
     customerPhone: string;
     customerEmail: string;
     notes?: string;
-  }>(request, ['serviceId', 'serviceName', 'servicePrice', 'date', 'time', 'customerName', 'customerPhone', 'customerEmail']);
+  }>(request, ['serviceId', 'serviceName', 'price', 'date', 'time', 'customerName', 'customerPhone', 'customerEmail']);
 
   if (error) return setCorsHeaders(error);
 
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     // 予約作成
     const reservation = await reservationService.createReservation({
       ...data,
-      userId: authUser.userId,
+      customerId: authUser.userId,
       status: 'pending'
     });
 

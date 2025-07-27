@@ -73,7 +73,7 @@ export default function ReservationPage() {
       const reservationData = {
         serviceId: selectedService,
         serviceName: service.name,
-        servicePrice: service.price,
+        price: service.price,
         date: selectedDate,
         time: selectedTime,
         customerName: formData.name,
