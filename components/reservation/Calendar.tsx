@@ -14,11 +14,14 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
 
   useEffect(() => {
     // Get actual availability for the current month
-    const availability = reservationService.getMonthAvailability(
-      currentMonth.getFullYear(),
-      currentMonth.getMonth()
-    );
-    setMonthAvailability(availability);
+    const fetchAvailability = async () => {
+      const availability = await reservationService.getMonthAvailability(
+        currentMonth.getFullYear(),
+        currentMonth.getMonth()
+      );
+      setMonthAvailability(availability);
+    };
+    fetchAvailability();
   }, [currentMonth]);
 
   const getDaysInMonth = (date: Date) => {

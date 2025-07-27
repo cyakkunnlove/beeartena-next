@@ -124,7 +124,7 @@ export const reservationService = {
   },
 
   // 予約状態更新
-  async updateReservationStatus(id: string, status: 'pending' | 'confirmed' | 'cancelled'): Promise<void> {
+  async updateReservationStatus(id: string, status: 'pending' | 'confirmed' | 'cancelled' | 'completed'): Promise<void> {
     if (!isFirebaseConfigured()) {
       return mockReservationService.updateReservationStatus(id, status);
     }

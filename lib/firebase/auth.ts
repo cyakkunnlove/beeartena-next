@@ -40,8 +40,8 @@ export const firebaseAuth = {
         name: name,
         phone: phone,
         role: 'customer',
-        points: 0,
-        createdAt: new Date()
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       await setDoc(doc(db, 'users', user.uid), userData);

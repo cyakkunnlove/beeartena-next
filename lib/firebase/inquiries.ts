@@ -32,8 +32,9 @@ export const inquiryService = {
       const newInquiry: Inquiry = {
         ...inquiry,
         id: uuidv4(),
-        status: 'pending',
-        createdAt: new Date()
+        status: 'unread',
+        createdAt: new Date(),
+        updatedAt: new Date()
       };
 
       await setDoc(doc(db, 'inquiries', newInquiry.id), {
@@ -94,9 +95,9 @@ export const inquiryService = {
   },
 
   // 問い合わせステータス更新
-  async updateInquiryStatus(id: string, status: 'pending' | 'answered' | 'closed'): Promise<void> {
+  async updateInquiryStatus(id: string, status: 'unread' | 'read' | 'replied'): Promise<void> {
     if (!isFirebaseConfigured()) {
-      return mockInquiryService.updateInquiryStatus(id, status);
+      return mockInquiryService.updateInquiryStatus(id, status as any);
     }
 
     try {

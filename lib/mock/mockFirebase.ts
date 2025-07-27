@@ -1,5 +1,5 @@
 // Mock Firebase implementation for development without Firebase setup
-import { User, Reservation, Point, Inquiry } from '@/lib/types';
+import { User, Reservation, PointTransaction as Point, Inquiry } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
 // Mock data storage
@@ -10,8 +10,8 @@ let mockUsers: User[] = [
     name: '管理者',
     phone: '090-0000-0000',
     role: 'admin',
-    points: 0,
-    createdAt: new Date('2024-01-01')
+    createdAt: new Date('2024-01-01'),
+    updatedAt: new Date('2024-01-01')
   }
 ];
 
@@ -63,8 +63,8 @@ export const mockAuth = {
       name,
       phone,
       role: 'customer',
-      points: 0,
-      createdAt: new Date()
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     mockUsers.push(newUser);
@@ -121,7 +121,7 @@ export const mockReservationService = {
     return mockReservations;
   },
 
-  async updateReservationStatus(id: string, status: 'pending' | 'confirmed' | 'cancelled'): Promise<void> {
+  async updateReservationStatus(id: string, status: 'pending' | 'confirmed' | 'cancelled' | 'completed'): Promise<void> {
     await delay(300);
     const reservation = mockReservations.find(r => r.id === id);
     if (reservation) {
@@ -149,22 +149,24 @@ export const mockPointService = {
   async addPoints(userId: string, amount: number, description: string): Promise<Point> {
     await delay(300);
     
+    // 現在のポイント残高を計算
+    const currentBalance = mockPoints
+      .filter(p => p.userId === userId)
+      .reduce((sum, p) => sum + (p.type === 'earned' ? p.amount : -p.amount), 0);
+    
+    const newBalance = currentBalance + amount;
+    
     const point: Point = {
       id: uuidv4(),
       userId,
       amount,
       type: 'earned',
+      balance: newBalance,
       description,
       createdAt: new Date()
     };
     
     mockPoints.push(point);
-    
-    // Update user points
-    const user = mockUsers.find(u => u.id === userId);
-    if (user) {
-      user.points = (user.points || 0) + amount;
-    }
     
     return point;
   },
@@ -172,22 +174,27 @@ export const mockPointService = {
   async usePoints(userId: string, amount: number, description: string): Promise<Point> {
     await delay(300);
     
-    const user = mockUsers.find(u => u.id === userId);
-    if (!user || (user.points || 0) < amount) {
+    const userPoints = mockPoints
+      .filter(p => p.userId === userId)
+      .reduce((sum, p) => sum + (p.type === 'earned' ? p.amount : -p.amount), 0);
+    
+    if (userPoints < amount) {
       throw new Error('ポイントが不足しています');
     }
+    
+    const newBalance = userPoints - amount;
     
     const point: Point = {
       id: uuidv4(),
       userId,
       amount,
       type: 'used',
+      balance: newBalance,
       description,
       createdAt: new Date()
     };
     
     mockPoints.push(point);
-    user.points = (user.points || 0) - amount;
     
     return point;
   },
@@ -199,8 +206,10 @@ export const mockPointService = {
 
   async getUserPoints(userId: string): Promise<number> {
     await delay(100);
-    const user = mockUsers.find(u => u.id === userId);
-    return user?.points || 0;
+    const points = mockPoints
+      .filter(p => p.userId === userId)
+      .reduce((sum, p) => sum + (p.type === 'earned' ? p.amount : -p.amount), 0);
+    return points;
   },
 
   async addReservationPoints(userId: string, reservationAmount: number): Promise<Point> {
@@ -236,8 +245,9 @@ export const mockInquiryService = {
     const newInquiry: Inquiry = {
       ...inquiry,
       id: uuidv4(),
-      status: 'pending',
-      createdAt: new Date()
+      status: 'unread',
+      createdAt: new Date(),
+      updatedAt: new Date()
     };
     
     mockInquiries.push(newInquiry);
@@ -249,7 +259,7 @@ export const mockInquiryService = {
     return mockInquiries;
   },
 
-  async updateInquiryStatus(id: string, status: 'pending' | 'answered' | 'closed'): Promise<void> {
+  async updateInquiryStatus(id: string, status: 'unread' | 'read' | 'replied'): Promise<void> {
     await delay(300);
     const inquiry = mockInquiries.find(i => i.id === id);
     if (inquiry) {

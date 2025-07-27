@@ -16,7 +16,7 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
 
   // Get available time slots when date changes
-  const handleDateChange = (date: string) => {
+  const handleDateChange = async (date: string) => {
     if (!editedReservation) return;
     
     setEditedReservation({
@@ -25,7 +25,7 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
     });
 
     // Get available slots for the new date
-    const slots = reservationService.getTimeSlotsForDate(date);
+    const slots = await reservationService.getTimeSlotsForDate(date);
     const available = slots
       .filter(slot => slot.available || slot.time === reservation?.time)
       .map(slot => slot.time);

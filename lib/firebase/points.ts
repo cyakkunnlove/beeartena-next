@@ -13,7 +13,7 @@ import {
   increment
 } from 'firebase/firestore';
 import { db } from './config';
-import { Point } from '../types';
+import { PointTransaction as Point } from '../types';
 import { v4 as uuidv4 } from 'uuid';
 import { mockPointService } from '../mock/mockFirebase';
 
@@ -40,12 +40,17 @@ export const pointService = {
           throw new Error('ユーザーが見つかりません');
         }
 
+        // 現在のポイント残高を取得
+        const currentPoints = userDoc.data()?.points || 0;
+        const newBalance = currentPoints + amount;
+        
         // ポイント履歴を作成
         const pointHistory: Point = {
           id: uuidv4(),
           userId,
           amount,
           type: 'earned',
+          balance: newBalance,
           description,
           createdAt: new Date()
         };
@@ -86,9 +91,12 @@ export const pointService = {
         }
 
         const userData = userDoc.data();
-        if (userData.points < amount) {
+        const currentPoints = userData.points || 0;
+        if (currentPoints < amount) {
           throw new Error('ポイントが不足しています');
         }
+        
+        const newBalance = currentPoints - amount;
 
         // ポイント履歴を作成
         const pointHistory: Point = {
@@ -96,6 +104,7 @@ export const pointService = {
           userId,
           amount,
           type: 'used',
+          balance: newBalance,
           description,
           createdAt: new Date()
         };

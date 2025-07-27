@@ -76,8 +76,9 @@ class AuthService {
   }
 
   async updateProfile(userId: string, updates: Partial<User>): Promise<User> {
-    // roleとpointsは直接更新できないようにする
-    const { role, points, ...safeUpdates } = updates;
+    // roleは直接更新できないようにする
+    const safeUpdates = { ...updates };
+    delete safeUpdates.role;
     
     await userService.updateUser(userId, safeUpdates);
     
