@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
+import DatePicker from '@/components/ui/DatePicker';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -136,17 +137,12 @@ export default function RegisterPage() {
               <label htmlFor="birthday" className="input-label">
                 生年月日 *
               </label>
-              <input
-                id="birthday"
-                name="birthday"
-                type="date"
-                required
+              <DatePicker
                 value={formData.birthday}
-                onChange={handleChange}
-                className="input-field"
-                max={new Date().toISOString().split('T')[0]}
+                onChange={(date) => setFormData(prev => ({ ...prev, birthday: date }))}
+                required
               />
-              <p className="text-xs text-gray-500 mt-1">
+              <p className="text-xs text-gray-500 mt-2">
                 誕生日には1,000ポイントプレゼント！
               </p>
             </div>

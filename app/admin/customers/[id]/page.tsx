@@ -4,20 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { storageService } from '@/lib/storage/storageService';
-import { Customer, Reservation, PointTransaction } from '@/lib/types';
+import { Customer, Reservation, PointTransaction, User } from '@/lib/types';
 import { ChevronLeftIcon } from '@heroicons/react/24/outline';
+import DatePicker from '@/components/ui/DatePicker';
+import { userService } from '@/lib/firebase/users';
+import { mockUserService } from '@/lib/mock/mockFirebase';
 
 export default function CustomerDetailPage() {
   const router = useRouter();
   const params = useParams();
   const { user } = useAuth();
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [userRecord, setUserRecord] = useState<User | null>(null);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [pointHistory, setPointHistory] = useState<PointTransaction[]>([]);
   const [notes, setNotes] = useState('');
   const [editingNotes, setEditingNotes] = useState(false);
   const [selectedTier, setSelectedTier] = useState('');
   const [activeTab, setActiveTab] = useState<'reservations' | 'points'>('reservations');
+  const [editingBirthday, setEditingBirthday] = useState(false);
+  const [birthday, setBirthday] = useState('');
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -30,7 +36,7 @@ export default function CustomerDetailPage() {
     }
   }, [user, router, params.id]);
 
-  const loadCustomerData = (customerId: string) => {
+  const loadCustomerData = async (customerId: string) => {
     // 顧客情報を取得
     const allCustomers = storageService.getAllCustomers();
     const customerData = allCustomers.find(c => c.id === customerId);
@@ -43,6 +49,23 @@ export default function CustomerDetailPage() {
     setCustomer(customerData);
     setNotes(customerData.notes || '');
     setSelectedTier(customerData.tier || 'bronze');
+    
+    // Userレコードも取得（生年月日情報のため）
+    try {
+      const isFirebaseConfigured = false; // 現在はモックを使用
+      let userData: User | null;
+      if (isFirebaseConfigured) {
+        userData = await userService.getUser(customerId);
+      } else {
+        userData = await mockUserService.getUser(customerId);
+      }
+      if (userData) {
+        setUserRecord(userData);
+        setBirthday(userData.birthday || '');
+      }
+    } catch (error) {
+      console.error('Failed to load user data:', error);
+    }
     
     // 予約履歴を取得
     const allReservations = JSON.parse(localStorage.getItem('reservations') || '[]');
@@ -74,6 +97,25 @@ export default function CustomerDetailPage() {
     const updatedCustomer = { ...customer, tier: selectedTier as any };
     storageService.updateCustomer(customer.id, updatedCustomer);
     setCustomer(updatedCustomer);
+  };
+
+  const handleBirthdayUpdate = async () => {
+    if (!customer || !userRecord) return;
+    
+    try {
+      const isFirebaseConfigured = false; // 現在はモックを使用
+      if (isFirebaseConfigured) {
+        await userService.updateUser(customer.id, { birthday });
+      } else {
+        await mockUserService.updateUser(customer.id, { birthday });
+      }
+      
+      setUserRecord({ ...userRecord, birthday });
+      setEditingBirthday(false);
+    } catch (error) {
+      console.error('Failed to update birthday:', error);
+      alert('生年月日の更新に失敗しました');
+    }
   };
 
   const calculateStats = () => {
@@ -161,7 +203,7 @@ export default function CustomerDetailPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div>
             <p className="text-sm text-gray-600 mb-1">メールアドレス</p>
             <p className="font-medium">{customer.email}</p>
@@ -169,6 +211,47 @@ export default function CustomerDetailPage() {
           <div>
             <p className="text-sm text-gray-600 mb-1">電話番号</p>
             <p className="font-medium">{customer.phone}</p>
+          </div>
+          <div>
+            <p className="text-sm text-gray-600 mb-1">生年月日</p>
+            <div className="flex items-center gap-2">
+              {editingBirthday ? (
+                <div className="flex items-center gap-2">
+                  <DatePicker
+                    value={birthday}
+                    onChange={setBirthday}
+                    required
+                  />
+                  <button
+                    onClick={handleBirthdayUpdate}
+                    className="px-3 py-1 bg-primary text-white rounded text-sm hover:bg-dark-gold"
+                  >
+                    保存
+                  </button>
+                  <button
+                    onClick={() => {
+                      setBirthday(userRecord?.birthday || '');
+                      setEditingBirthday(false);
+                    }}
+                    className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
+                  >
+                    キャンセル
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <p className="font-medium">
+                    {birthday ? new Date(birthday).toLocaleDateString('ja-JP') : '未設定'}
+                  </p>
+                  <button
+                    onClick={() => setEditingBirthday(true)}
+                    className="text-sm text-primary hover:text-dark-gold"
+                  >
+                    編集
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           <div>
             <p className="text-sm text-gray-600 mb-1">登録日</p>

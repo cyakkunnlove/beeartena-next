@@ -177,10 +177,10 @@ export default function ProfilePage() {
                   id="birthDate"
                   name="birthDate"
                   value={formData.birthDate}
-                  onChange={handleChange}
-                  disabled={!isEditing}
+                  disabled={true}
                   className="input-field disabled:bg-gray-50"
                 />
+                <p className="text-xs text-gray-500 mt-1">※生年月日の変更はサポートにお問い合わせください</p>
               </div>
 
               <div className="input-group">
