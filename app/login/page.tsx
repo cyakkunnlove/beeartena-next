@@ -28,8 +28,13 @@ export default function LoginPage() {
     setIsLoading(true);
 
     try {
-      await login(formData.email, formData.password);
-      router.push('/mypage');
+      const user = await login(formData.email, formData.password);
+      // 管理者の場合は管理画面へ、一般ユーザーの場合はマイページへ
+      if (user.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/mypage');
+      }
     } catch (err: any) {
       setError(err.message || 'ログインに失敗しました');
     } finally {
@@ -118,10 +123,14 @@ export default function LoginPage() {
           </div>
         </form>
 
-        <div className="text-center">
-          <Link href="/admin/login" className="text-sm text-gray-500 hover:text-gray-700">
-            管理者ログインはこちら
-          </Link>
+        <div className="bg-gray-50 rounded-lg p-4 text-center">
+          <p className="text-sm text-gray-600 mb-2">
+            管理者アカウント：
+          </p>
+          <p className="text-xs text-gray-500">
+            メール: admin@beeartena.jp<br />
+            パスワード: admin123
+          </p>
         </div>
       </div>
     </div>
