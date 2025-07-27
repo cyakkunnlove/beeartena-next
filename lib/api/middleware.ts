@@ -12,11 +12,20 @@ const getJwtSecret = () => {
 };
 
 // CORSヘッダーを設定
-export function setCorsHeaders(response: NextResponse) {
-  response.headers.set('Access-Control-Allow-Origin', '*');
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  return response;
+export function setCorsHeaders(response: Response | NextResponse): NextResponse {
+  // ResponseをNextResponseに変換
+  const nextResponse = response instanceof NextResponse 
+    ? response 
+    : new NextResponse(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers
+      });
+  
+  nextResponse.headers.set('Access-Control-Allow-Origin', '*');
+  nextResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  nextResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  return nextResponse;
 }
 
 // 認証ミドルウェア

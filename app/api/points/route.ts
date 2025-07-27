@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { pointService } from '@/lib/firebase/points';
 import { errorResponse, successResponse, setCorsHeaders, verifyAuth, requireAdmin } from '@/lib/api/middleware';
 
 export async function OPTIONS(request: NextRequest) {
-  return setCorsHeaders(new Response(null, { status: 200 }));
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }));
 }
 
 // ポイント履歴取得

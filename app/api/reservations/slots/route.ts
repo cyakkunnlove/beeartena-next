@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { reservationService } from '@/lib/reservationService';
 import { errorResponse, successResponse, setCorsHeaders } from '@/lib/api/middleware';
 
 export async function OPTIONS(request: NextRequest) {
-  return setCorsHeaders(new Response(null, { status: 200 }));
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }));
 }
 
 // 予約可能な時間枠を取得（認証不要）

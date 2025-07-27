@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { userService } from '@/lib/firebase/users';
 import { errorResponse, successResponse, setCorsHeaders, requireAdmin } from '@/lib/api/middleware';
 
 export async function OPTIONS(request: NextRequest) {
-  return setCorsHeaders(new Response(null, { status: 200 }));
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }));
 }
 
 // 顧客一覧取得（管理者のみ）

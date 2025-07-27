@@ -1,10 +1,10 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { authService } from '@/lib/auth/authService';
 import { generateToken } from '@/lib/api/jwt';
 import { errorResponse, successResponse, validateRequestBody, rateLimit, setCorsHeaders } from '@/lib/api/middleware';
 
 export async function OPTIONS(request: NextRequest) {
-  return setCorsHeaders(new Response(null, { status: 200 }));
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }));
 }
 
 export async function POST(request: NextRequest) {

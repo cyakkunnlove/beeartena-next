@@ -1,9 +1,9 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { inquiryService } from '@/lib/firebase/inquiries';
 import { errorResponse, successResponse, validateRequestBody, setCorsHeaders, verifyAuth, requireAdmin, rateLimit } from '@/lib/api/middleware';
 
 export async function OPTIONS(request: NextRequest) {
-  return setCorsHeaders(new Response(null, { status: 200 }));
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }));
 }
 
 // 問い合わせ一覧取得（管理者のみ）
