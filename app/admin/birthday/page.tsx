@@ -5,6 +5,8 @@ import { useAuth } from '@/lib/auth/AuthContext';
 import { User } from '@/lib/types';
 import { apiClient } from '@/lib/api/client';
 import { CakeIcon, GiftIcon } from '@heroicons/react/24/outline';
+import { userService } from '@/lib/firebase/users';
+import { mockUserService } from '@/lib/mock/mockFirebase';
 
 export default function BirthdayManagementPage() {
   const { user: currentUser } = useAuth();
@@ -22,9 +24,21 @@ export default function BirthdayManagementPage() {
 
   const fetchUsers = async () => {
     try {
-      const allUsers = await apiClient.getCustomers();
+      // Firebaseが設定されているか確認（クライアントサイドでは環境変数が展開されている）
+      const isFirebaseConfigured = false; // 現在はモックを使用
+
+      let allUsers: User[];
+      if (isFirebaseConfigured) {
+        allUsers = await userService.getAllUsers();
+      } else {
+        allUsers = await mockUserService.getAllUsers();
+      }
+
+      // カスタマーのみをフィルタリング
+      const customers = allUsers.filter(u => u.role === 'customer');
+      
       // 誕生日でソート
-      const sortedUsers = allUsers.sort((a, b) => {
+      const sortedUsers = customers.sort((a, b) => {
         if (!a.birthday && !b.birthday) return 0;
         if (!a.birthday) return 1;
         if (!b.birthday) return -1;
@@ -39,6 +53,7 @@ export default function BirthdayManagementPage() {
       setUsers(sortedUsers);
     } catch (error) {
       console.error('Failed to fetch users:', error);
+      setUsers([]);
     } finally {
       setLoading(false);
     }
