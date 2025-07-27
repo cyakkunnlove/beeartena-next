@@ -119,10 +119,10 @@ export default function ReservationCalendar({
       r.date === dateStr && (r.status === 'confirmed' || r.status === 'pending')
     );
     
-    const slots = reservationService.getTimeSlotsForDate(dateStr);
-    const allSlotsFull = slots.length > 0 && slots.every(slot => !slot.available);
-
-    if (allSlotsFull) {
+    // 曜日ごとの最大予約数
+    const maxCapacity = dayOfWeek === 3 ? 4 : 2; // 水曜日は4枠、その他は2枠
+    
+    if (dayReservations.length >= maxCapacity) {
       return {
         style: {
           backgroundColor: '#fee2e2',
