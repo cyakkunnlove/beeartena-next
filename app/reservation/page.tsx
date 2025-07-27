@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
-import { storageService } from '@/lib/storage/storageService';
+import { apiClient } from '@/lib/api/client';
 import Calendar from '@/components/reservation/Calendar';
 import TimeSlots from '@/components/reservation/TimeSlots';
 import ServiceSelection from '@/components/reservation/ServiceSelection';
@@ -18,6 +18,7 @@ export default function ReservationPage() {
   const [selectedService, setSelectedService] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -31,7 +32,7 @@ export default function ReservationPage() {
       setFormData({
         name: user.name,
         email: user.email,
-        phone: user.phone,
+        phone: user.phone || '',
         notes: '',
       });
     }
@@ -57,6 +58,9 @@ export default function ReservationPage() {
   };
 
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+    
+    setIsSubmitting(true);
     try {
       const serviceData = {
         '2D': { name: 'パウダーブロウ', price: 20000 },
@@ -66,21 +70,19 @@ export default function ReservationPage() {
 
       const service = serviceData[selectedService as keyof typeof serviceData];
 
-      const reservation = {
-        customerId: user?.id || 'guest',
-        customerName: formData.name,
-        customerEmail: formData.email,
-        customerPhone: formData.phone,
-        serviceType: selectedService as any,
+      const reservationData = {
+        serviceId: selectedService,
         serviceName: service.name,
-        price: service.price,
+        servicePrice: service.price,
         date: selectedDate,
         time: selectedTime,
-        status: 'pending' as const,
+        customerName: formData.name,
+        customerPhone: formData.phone,
+        customerEmail: formData.email,
         notes: formData.notes,
       };
 
-      storageService.createReservation(reservation);
+      await apiClient.createReservation(reservationData);
 
       // Show success and redirect
       alert('予約が完了しました。確認メールをお送りします。');
@@ -90,8 +92,10 @@ export default function ReservationPage() {
       } else {
         router.push('/');
       }
-    } catch (error) {
-      alert('予約に失敗しました。もう一度お試しください。');
+    } catch (error: any) {
+      alert(error.message || '予約に失敗しました。もう一度お試しください。');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -206,6 +210,7 @@ export default function ReservationPage() {
               onClick={() => setStep(3)}
               className="mt-4 text-primary hover:text-dark-gold"
               whileTap={{ scale: 0.95 }}
+              disabled={isSubmitting}
             >
               ← 時間選択に戻る
             </motion.button>

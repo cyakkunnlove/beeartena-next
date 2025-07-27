@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User, AuthContextType } from '@/lib/types';
-import { authService } from '@/lib/auth/authService';
+import { apiClient } from '@/lib/api/client';
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
@@ -14,10 +14,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check for existing session
     const checkAuth = async () => {
       try {
-        const currentUser = await authService.getCurrentUser();
-        setUser(currentUser);
+        const token = localStorage.getItem('auth_token');
+        if (token) {
+          const currentUser = await apiClient.getCurrentUser();
+          setUser(currentUser);
+        }
       } catch (error) {
         console.error('Auth check failed:', error);
+        // トークンが無効な場合はクリア
+        apiClient.clearToken();
       } finally {
         setLoading(false);
       }
@@ -27,25 +32,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-    const user = await authService.login(email, password);
+    const user = await apiClient.login(email, password);
     setUser(user);
     return user;
   };
 
   const register = async (email: string, password: string, name: string, phone: string): Promise<User> => {
-    const user = await authService.register(email, password, name, phone);
+    const user = await apiClient.register({ email, password, name, phone });
     setUser(user);
     return user;
   };
 
   const logout = async () => {
-    await authService.logout();
+    await apiClient.logout();
     setUser(null);
   };
 
   const updateProfile = async (updates: Partial<User>): Promise<User> => {
     if (!user) throw new Error('ユーザーがログインしていません');
-    const updatedUser = await authService.updateProfile(user.id, updates);
+    const updatedUser = await apiClient.updateCustomer(user.id, updates);
     setUser(updatedUser);
     return updatedUser;
   };

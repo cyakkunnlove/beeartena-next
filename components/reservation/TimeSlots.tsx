@@ -1,6 +1,7 @@
 'use client';
 
-import { reservationService } from '@/lib/reservationService';
+import { useState, useEffect } from 'react';
+import { apiClient } from '@/lib/api/client';
 
 interface TimeSlotsProps {
   date: string;
@@ -9,10 +10,34 @@ interface TimeSlotsProps {
 }
 
 export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) {
+  const [timeSlots, setTimeSlots] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const selectedDate = new Date(date);
-  
-  // Get actual time slots from reservation service
-  const timeSlots = reservationService.getTimeSlotsForDate(date);
+
+  useEffect(() => {
+    const fetchTimeSlots = async () => {
+      try {
+        setLoading(true);
+        const slots = await apiClient.getTimeSlots(date);
+        setTimeSlots(slots);
+      } catch (error) {
+        console.error('時間枠の取得に失敗しました:', error);
+        setTimeSlots([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTimeSlots();
+  }, [date]);
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center py-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div>

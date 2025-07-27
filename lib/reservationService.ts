@@ -1,5 +1,7 @@
 import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types';
-import { storageService } from '@/lib/storage/storageService';
+import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations';
+import { pointService } from '@/lib/firebase/points';
+import { userService } from '@/lib/firebase/users';
 
 class ReservationService {
   private settings: ReservationSettings = {
@@ -38,8 +40,76 @@ class ReservationService {
     return this.settings;
   }
 
+  // 予約作成
+  async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
+    const newReservation = await firebaseReservationService.createReservation(reservation);
+    
+    // 予約完了時のポイント付与（予約金額の5%）
+    if (reservation.servicePrice) {
+      await pointService.addReservationPoints(reservation.userId, reservation.servicePrice);
+    }
+    
+    return newReservation;
+  }
+
+  // 予約取得
+  async getReservation(id: string): Promise<Reservation | null> {
+    return firebaseReservationService.getReservation(id);
+  }
+
+  // ユーザーの予約一覧取得
+  async getUserReservations(userId: string): Promise<Reservation[]> {
+    return firebaseReservationService.getUserReservations(userId);
+  }
+
+  // 全予約取得（管理者用）
+  async getAllReservations(): Promise<Reservation[]> {
+    return firebaseReservationService.getAllReservations();
+  }
+
+  // 予約確定
+  async confirmReservation(id: string): Promise<void> {
+    await firebaseReservationService.updateReservationStatus(id, 'confirmed');
+  }
+
+  // 予約キャンセル
+  async cancelReservation(id: string, reason?: string): Promise<void> {
+    const reservation = await firebaseReservationService.getReservation(id);
+    if (!reservation) {
+      throw new Error('予約が見つかりません');
+    }
+
+    // キャンセル処理
+    await firebaseReservationService.cancelReservation(id, reason);
+
+    // ポイントの返却（予約確定済みの場合）
+    if (reservation.status === 'confirmed' && reservation.servicePrice) {
+      const pointAmount = Math.floor(reservation.servicePrice * 0.05);
+      await pointService.usePoints(
+        reservation.userId,
+        pointAmount,
+        `予約キャンセルによるポイント返却（予約ID: ${id}）`
+      );
+    }
+  }
+
+  // 予約完了処理
+  async completeReservation(id: string): Promise<void> {
+    const reservation = await firebaseReservationService.getReservation(id);
+    if (!reservation) {
+      throw new Error('予約が見つかりません');
+    }
+
+    await firebaseReservationService.updateReservationStatus(id, 'completed');
+    
+    // 累計利用金額を更新
+    if (reservation.servicePrice) {
+      await userService.updateTotalSpent(reservation.userId, reservation.servicePrice);
+    }
+  }
+
   // 特定の日付の予約可能な時間枠を取得
-  getTimeSlotsForDate(date: string): TimeSlot[] {
+  async getTimeSlotsForDate(date: string): Promise<TimeSlot[]> {
     const dateObj = new Date(date);
     const dayOfWeek = dateObj.getDay();
     const businessHours = this.settings.businessHours[dayOfWeek];
@@ -49,8 +119,7 @@ class ReservationService {
     }
 
     const slots: TimeSlot[] = [];
-    const reservations = storageService.getAllReservations()
-      .filter(r => r.date === date && r.status !== 'cancelled');
+    const reservations = await firebaseReservationService.getReservationsByDate(dateObj);
 
     // 水曜日は時間枠が多い
     if (dayOfWeek === 3) {
@@ -86,13 +155,13 @@ class ReservationService {
   }
 
   // 特定の日付が予約可能かチェック
-  isDateAvailable(date: string): boolean {
-    const slots = this.getTimeSlotsForDate(date);
+  async isDateAvailable(date: string): Promise<boolean> {
+    const slots = await this.getTimeSlotsForDate(date);
     return slots.some(slot => slot.available);
   }
 
   // 月の予約状況サマリーを取得
-  getMonthAvailability(year: number, month: number): Map<string, boolean> {
+  async getMonthAvailability(year: number, month: number): Promise<Map<string, boolean>> {
     const availability = new Map<string, boolean>();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
@@ -104,7 +173,7 @@ class ReservationService {
       if (date < new Date()) {
         availability.set(dateStr, false);
       } else {
-        availability.set(dateStr, this.isDateAvailable(dateStr));
+        availability.set(dateStr, await this.isDateAvailable(dateStr));
       }
     }
 

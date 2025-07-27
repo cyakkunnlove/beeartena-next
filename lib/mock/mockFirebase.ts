@@ -1,0 +1,260 @@
+// Mock Firebase implementation for development without Firebase setup
+import { User, Reservation, Point, Inquiry } from '@/lib/types';
+import { v4 as uuidv4 } from 'uuid';
+
+// Mock data storage
+let mockUsers: User[] = [
+  {
+    id: 'admin-1',
+    email: 'admin@beeartena.jp',
+    name: '管理者',
+    phone: '090-0000-0000',
+    role: 'admin',
+    points: 0,
+    createdAt: new Date('2024-01-01')
+  }
+];
+
+let mockReservations: Reservation[] = [];
+let mockPoints: Point[] = [];
+let mockInquiries: Inquiry[] = [];
+
+// Helper to simulate async behavior
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+export const mockAuth = {
+  currentUser: null as User | null,
+
+  async login(email: string, password: string): Promise<User> {
+    await delay(500);
+    
+    // 管理者アカウント
+    if (email === 'admin@beeartena.jp' && password === 'admin123') {
+      const admin = mockUsers.find(u => u.email === email)!;
+      this.currentUser = admin;
+      return admin;
+    }
+    
+    // 一般ユーザー
+    const user = mockUsers.find(u => u.email === email);
+    if (!user) {
+      throw new Error('メールアドレスまたはパスワードが正しくありません');
+    }
+    
+    // 簡易パスワードチェック（実際はFirebase Authが処理）
+    if (password.length < 6) {
+      throw new Error('メールアドレスまたはパスワードが正しくありません');
+    }
+    
+    this.currentUser = user;
+    return user;
+  },
+
+  async register(email: string, password: string, name: string, phone: string): Promise<User> {
+    await delay(500);
+    
+    if (mockUsers.find(u => u.email === email)) {
+      throw new Error('このメールアドレスは既に登録されています');
+    }
+    
+    const newUser: User = {
+      id: uuidv4(),
+      email,
+      name,
+      phone,
+      role: 'customer',
+      points: 0,
+      createdAt: new Date()
+    };
+    
+    mockUsers.push(newUser);
+    this.currentUser = newUser;
+    return newUser;
+  },
+
+  async logout(): Promise<void> {
+    await delay(100);
+    this.currentUser = null;
+  },
+
+  async getCurrentUser(): Promise<User | null> {
+    await delay(100);
+    return this.currentUser;
+  },
+
+  onAuthStateChange(callback: (user: User | null) => void) {
+    // Simulate auth state change
+    setTimeout(() => callback(this.currentUser), 100);
+    
+    // Return unsubscribe function
+    return () => {};
+  }
+};
+
+export const mockReservationService = {
+  async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
+    await delay(500);
+    
+    const newReservation: Reservation = {
+      ...reservation,
+      id: uuidv4(),
+      createdAt: new Date(),
+      userId: reservation.userId || mockAuth.currentUser?.id || 'guest',
+      status: 'pending'
+    };
+    
+    mockReservations.push(newReservation);
+    return newReservation;
+  },
+
+  async getReservation(id: string): Promise<Reservation | null> {
+    await delay(200);
+    return mockReservations.find(r => r.id === id) || null;
+  },
+
+  async getUserReservations(userId: string): Promise<Reservation[]> {
+    await delay(300);
+    return mockReservations.filter(r => r.userId === userId);
+  },
+
+  async getAllReservations(): Promise<Reservation[]> {
+    await delay(300);
+    return mockReservations;
+  },
+
+  async updateReservationStatus(id: string, status: 'pending' | 'confirmed' | 'cancelled'): Promise<void> {
+    await delay(300);
+    const reservation = mockReservations.find(r => r.id === id);
+    if (reservation) {
+      reservation.status = status;
+    }
+  },
+
+  async cancelReservation(id: string, reason?: string): Promise<void> {
+    await delay(300);
+    const reservation = mockReservations.find(r => r.id === id);
+    if (reservation) {
+      reservation.status = 'cancelled';
+      (reservation as any).cancelReason = reason;
+    }
+  },
+
+  async getReservationsByDate(date: Date): Promise<Reservation[]> {
+    await delay(200);
+    const dateStr = date.toISOString().split('T')[0];
+    return mockReservations.filter(r => r.date === dateStr && r.status !== 'cancelled');
+  }
+};
+
+export const mockPointService = {
+  async addPoints(userId: string, amount: number, description: string): Promise<Point> {
+    await delay(300);
+    
+    const point: Point = {
+      id: uuidv4(),
+      userId,
+      amount,
+      type: 'earned',
+      description,
+      createdAt: new Date()
+    };
+    
+    mockPoints.push(point);
+    
+    // Update user points
+    const user = mockUsers.find(u => u.id === userId);
+    if (user) {
+      user.points = (user.points || 0) + amount;
+    }
+    
+    return point;
+  },
+
+  async usePoints(userId: string, amount: number, description: string): Promise<Point> {
+    await delay(300);
+    
+    const user = mockUsers.find(u => u.id === userId);
+    if (!user || (user.points || 0) < amount) {
+      throw new Error('ポイントが不足しています');
+    }
+    
+    const point: Point = {
+      id: uuidv4(),
+      userId,
+      amount,
+      type: 'used',
+      description,
+      createdAt: new Date()
+    };
+    
+    mockPoints.push(point);
+    user.points = (user.points || 0) - amount;
+    
+    return point;
+  },
+
+  async getUserPointHistory(userId: string): Promise<Point[]> {
+    await delay(200);
+    return mockPoints.filter(p => p.userId === userId);
+  },
+
+  async getUserPoints(userId: string): Promise<number> {
+    await delay(100);
+    const user = mockUsers.find(u => u.id === userId);
+    return user?.points || 0;
+  },
+
+  async addReservationPoints(userId: string, reservationAmount: number): Promise<Point> {
+    const pointAmount = Math.floor(reservationAmount * 0.05);
+    return this.addPoints(userId, pointAmount, `予約完了ポイント（${reservationAmount}円の5%）`);
+  }
+};
+
+export const mockUserService = {
+  async getUser(id: string): Promise<User | null> {
+    await delay(200);
+    return mockUsers.find(u => u.id === id) || null;
+  },
+
+  async getAllUsers(): Promise<User[]> {
+    await delay(300);
+    return mockUsers;
+  },
+
+  async updateUser(id: string, updates: Partial<User>): Promise<void> {
+    await delay(300);
+    const userIndex = mockUsers.findIndex(u => u.id === id);
+    if (userIndex !== -1) {
+      mockUsers[userIndex] = { ...mockUsers[userIndex], ...updates };
+    }
+  }
+};
+
+export const mockInquiryService = {
+  async createInquiry(inquiry: Omit<Inquiry, 'id' | 'createdAt' | 'status'>): Promise<Inquiry> {
+    await delay(500);
+    
+    const newInquiry: Inquiry = {
+      ...inquiry,
+      id: uuidv4(),
+      status: 'pending',
+      createdAt: new Date()
+    };
+    
+    mockInquiries.push(newInquiry);
+    return newInquiry;
+  },
+
+  async getAllInquiries(): Promise<Inquiry[]> {
+    await delay(300);
+    return mockInquiries;
+  },
+
+  async updateInquiryStatus(id: string, status: 'pending' | 'answered' | 'closed'): Promise<void> {
+    await delay(300);
+    const inquiry = mockInquiries.find(i => i.id === id);
+    if (inquiry) {
+      inquiry.status = status;
+    }
+  }
+};

@@ -1,150 +1,98 @@
 import bcrypt from 'bcryptjs';
-import { v4 as uuidv4 } from 'uuid';
 import { User } from '@/lib/types';
-import { storageService } from '@/lib/storage/storageService';
+import { firebaseAuth } from '@/lib/firebase/auth';
+import { userService } from '@/lib/firebase/users';
 
 const SESSION_KEY = 'beeartena_session';
-const USERS_KEY = 'beeartena_users';
 
 class AuthService {
+  private currentUser: User | null = null;
+
+  constructor() {
+    // Firebase認証状態の監視
+    if (typeof window !== 'undefined') {
+      firebaseAuth.onAuthStateChange((user) => {
+        this.currentUser = user;
+        if (user) {
+          // セッション情報を保存
+          const session = {
+            userId: user.id,
+            createdAt: new Date().toISOString(),
+          };
+          localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+        } else {
+          localStorage.removeItem(SESSION_KEY);
+        }
+      });
+    }
+  }
+
   async login(email: string, password: string): Promise<User> {
-    const users = storageService.getUsers();
-    const user = users.find(u => u.email === email);
-
-    if (!user) {
-      throw new Error('メールアドレスまたはパスワードが正しくありません');
+    try {
+      const user = await firebaseAuth.login(email, password);
+      this.currentUser = user;
+      return user;
+    } catch (error: any) {
+      if (error.message.includes('auth/user-not-found') || 
+          error.message.includes('auth/wrong-password')) {
+        throw new Error('メールアドレスまたはパスワードが正しくありません');
+      }
+      throw error;
     }
-
-    const passwordMatch = await bcrypt.compare(password, (user as any).passwordHash);
-    if (!passwordMatch) {
-      throw new Error('メールアドレスまたはパスワードが正しくありません');
-    }
-
-    // Create session
-    const session = {
-      userId: user.id,
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
-    // Remove password hash before returning
-    const { passwordHash, ...userWithoutPassword } = user as any;
-    return userWithoutPassword;
   }
 
   async register(email: string, password: string, name: string, phone: string): Promise<User> {
-    const users = storageService.getUsers();
-    
-    // Check if user already exists
-    if (users.find(u => u.email === email)) {
-      throw new Error('このメールアドレスは既に登録されています');
+    try {
+      const user = await firebaseAuth.register(email, password, name, phone);
+      this.currentUser = user;
+      return user;
+    } catch (error: any) {
+      if (error.message.includes('auth/email-already-in-use')) {
+        throw new Error('このメールアドレスは既に登録されています');
+      }
+      if (error.message.includes('auth/weak-password')) {
+        throw new Error('パスワードは6文字以上で設定してください');
+      }
+      throw error;
     }
-
-    // Hash password
-    const passwordHash = await bcrypt.hash(password, 10);
-
-    // Create new user
-    const newUser: User & { passwordHash: string } = {
-      id: uuidv4(),
-      email,
-      passwordHash,
-      name,
-      phone,
-      role: 'customer',
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-
-    // Save user
-    users.push(newUser);
-    storageService.saveUsers(users);
-
-    // Create customer record
-    storageService.createCustomer({
-      ...newUser,
-      birthDate: undefined,
-      gender: undefined,
-      address: undefined,
-      notes: '',
-      tags: [],
-    });
-
-    // Initialize points
-    storageService.initializePoints(newUser.id);
-
-    // Create session
-    const session = {
-      userId: newUser.id,
-      createdAt: new Date().toISOString(),
-    };
-    localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-
-    // Return user without password
-    const { passwordHash: _, ...userWithoutPassword } = newUser;
-    return userWithoutPassword;
   }
 
   async logout(): Promise<void> {
+    await firebaseAuth.logout();
+    this.currentUser = null;
     localStorage.removeItem(SESSION_KEY);
   }
 
   async getCurrentUser(): Promise<User | null> {
-    const sessionStr = localStorage.getItem(SESSION_KEY);
-    if (!sessionStr) return null;
-
-    try {
-      const session = JSON.parse(sessionStr);
-      const users = storageService.getUsers();
-      const user = users.find(u => u.id === session.userId);
-      
-      if (!user) {
-        localStorage.removeItem(SESSION_KEY);
-        return null;
-      }
-
-      // Remove password hash
-      const { passwordHash, ...userWithoutPassword } = user as any;
-      return userWithoutPassword;
-    } catch (error) {
-      localStorage.removeItem(SESSION_KEY);
-      return null;
+    // キャッシュされたユーザーがあればそれを返す
+    if (this.currentUser) {
+      return this.currentUser;
     }
+
+    // Firebaseから現在のユーザーを取得
+    const user = await firebaseAuth.getCurrentUser();
+    this.currentUser = user;
+    return user;
   }
 
   async updateProfile(userId: string, updates: Partial<User>): Promise<User> {
-    const users = storageService.getUsers();
-    const userIndex = users.findIndex(u => u.id === userId);
+    // roleとpointsは直接更新できないようにする
+    const { role, points, ...safeUpdates } = updates;
     
-    if (userIndex === -1) {
+    await userService.updateUser(userId, safeUpdates);
+    
+    // 更新後のユーザー情報を取得
+    const updatedUser = await userService.getUser(userId);
+    if (!updatedUser) {
       throw new Error('ユーザーが見つかりません');
     }
-
-    // Update user
-    users[userIndex] = {
-      ...users[userIndex],
-      ...updates,
-      id: userId, // Ensure ID doesn't change
-      role: users[userIndex].role, // Ensure role doesn't change
-      updatedAt: new Date(),
-    };
-
-    storageService.saveUsers(users);
-
-    // Update customer record if needed
-    if (updates.name || updates.phone) {
-      const customer = storageService.getCustomer(userId);
-      if (customer) {
-        storageService.updateCustomer(userId, updates);
-      }
-    }
-
-    const { passwordHash, ...userWithoutPassword } = users[userIndex] as any;
-    return userWithoutPassword;
+    
+    this.currentUser = updatedUser;
+    return updatedUser;
   }
 
   isAuthenticated(): boolean {
-    const sessionStr = localStorage.getItem(SESSION_KEY);
-    return !!sessionStr;
+    return !!this.currentUser;
   }
 
   async checkAdminRole(): Promise<boolean> {
