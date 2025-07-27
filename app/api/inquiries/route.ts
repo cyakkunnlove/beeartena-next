@@ -36,7 +36,17 @@ export async function POST(request: NextRequest) {
   if (error) return setCorsHeaders(error);
 
   try {
-    const inquiry = await inquiryService.createInquiry(data);
+    // subjectをtypeに変換し、必要なフィールドを追加
+    const inquiryData = {
+      name: data.name,
+      email: data.email,
+      phone: data.phone,
+      type: 'general' as const,  // subjectの代わりにデフォルトのtypeを設定
+      message: data.message,
+      updatedAt: new Date()
+    };
+    
+    const inquiry = await inquiryService.createInquiry(inquiryData);
     return setCorsHeaders(successResponse(inquiry, 201));
   } catch (error: any) {
     return setCorsHeaders(errorResponse(error.message || '問い合わせの送信に失敗しました', 500));
