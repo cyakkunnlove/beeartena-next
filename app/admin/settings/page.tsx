@@ -7,6 +7,7 @@ import { reservationService } from '@/lib/reservationService';
 import { BusinessHours, ReservationSettings } from '@/lib/types';
 import { motion } from 'framer-motion';
 import SlideTransition from '@/components/layout/SlideTransition';
+import { CalendarIcon, TrashIcon } from '@heroicons/react/24/outline';
 
 const DAYS_OF_WEEK = [
   { value: 0, label: '日曜日' },
@@ -24,6 +25,16 @@ export default function AdminSettings() {
   const [settings, setSettings] = useState<ReservationSettings | null>(null);
   const [blockedDate, setBlockedDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // 定休日設定
+  const [regularClosedDays, setRegularClosedDays] = useState<number[]>([]);
+  
+  // 期間休業設定
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
+  
+  // カレンダー表示
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -34,6 +45,12 @@ export default function AdminSettings() {
     // Load current settings
     const currentSettings = reservationService.getSettings();
     setSettings(currentSettings);
+    
+    // 定休日を営業時間から抽出
+    const closedDays = currentSettings.businessHours
+      .filter(h => !h.isOpen)
+      .map(h => h.dayOfWeek);
+    setRegularClosedDays(closedDays);
   }, [user, router]);
 
   const handleBusinessHoursChange = (dayOfWeek: number, field: keyof BusinessHours, value: string | boolean) => {
@@ -88,6 +105,80 @@ export default function AdminSettings() {
     });
   };
 
+  // 定休日の一括設定
+  const handleRegularClosedDaysChange = (dayOfWeek: number) => {
+    if (!settings) return;
+
+    const updatedClosedDays = regularClosedDays.includes(dayOfWeek)
+      ? regularClosedDays.filter(d => d !== dayOfWeek)
+      : [...regularClosedDays, dayOfWeek];
+    
+    setRegularClosedDays(updatedClosedDays);
+    
+    // 営業時間も更新
+    const updatedHours = [...settings.businessHours];
+    updatedHours[dayOfWeek] = {
+      ...updatedHours[dayOfWeek],
+      isOpen: !updatedClosedDays.includes(dayOfWeek),
+    };
+    
+    setSettings({
+      ...settings,
+      businessHours: updatedHours,
+    });
+  };
+
+  // 期間での休業日設定
+  const handlePeriodClosedDates = () => {
+    if (!settings || !periodStart || !periodEnd) return;
+
+    const start = new Date(periodStart);
+    const end = new Date(periodEnd);
+    const updatedBlockedDates = [...(settings.blockedDates || [])];
+
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const dateStr = d.toISOString().split('T')[0];
+      if (!updatedBlockedDates.includes(dateStr)) {
+        updatedBlockedDates.push(dateStr);
+      }
+    }
+
+    updatedBlockedDates.sort();
+    setSettings({
+      ...settings,
+      blockedDates: updatedBlockedDates,
+    });
+
+    setPeriodStart('');
+    setPeriodEnd('');
+  };
+
+  // 特定月の定休日を一括設定
+  const applyRegularClosedDaysToMonth = (year: number, month: number) => {
+    if (!settings || regularClosedDays.length === 0) return;
+
+    const updatedBlockedDates = [...(settings.blockedDates || [])];
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const dayOfWeek = date.getDay();
+      
+      if (regularClosedDays.includes(dayOfWeek)) {
+        const dateStr = date.toISOString().split('T')[0];
+        if (!updatedBlockedDates.includes(dateStr)) {
+          updatedBlockedDates.push(dateStr);
+        }
+      }
+    }
+
+    updatedBlockedDates.sort();
+    setSettings({
+      ...settings,
+      blockedDates: updatedBlockedDates,
+    });
+  };
+
   const handleSave = () => {
     if (!settings) return;
 
@@ -98,6 +189,41 @@ export default function AdminSettings() {
       setIsSaving(false);
       alert('設定を保存しました');
     }, 500);
+  };
+
+  // カレンダー表示用のヘルパー関数
+  const getDaysInMonth = (date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const days = [];
+    
+    // 前月の日付で埋める
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // 今月の日付
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(new Date(year, month, i));
+    }
+
+    return days;
+  };
+
+  const isBlockedDate = (date: Date | null) => {
+    if (!date || !settings) return false;
+    const dateStr = date.toISOString().split('T')[0];
+    return settings.blockedDates?.includes(dateStr) || false;
+  };
+
+  const isRegularClosedDay = (date: Date | null) => {
+    if (!date) return false;
+    return regularClosedDays.includes(date.getDay());
   };
 
   if (!user || user.role !== 'admin' || !settings) {
@@ -121,7 +247,7 @@ export default function AdminSettings() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto space-y-8">
+        <div className="max-w-6xl mx-auto space-y-8">
           {/* 基本設定 */}
           <SlideTransition>
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -159,10 +285,41 @@ export default function AdminSettings() {
             </div>
           </SlideTransition>
 
-          {/* 営業時間設定 */}
+          {/* 定休日設定 */}
           <SlideTransition delay={0.1}>
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4">営業時間</h2>
+              <h2 className="text-xl font-bold mb-4">定休日設定</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                毎週の定休日を設定します。選択した曜日は自動的に休業日となります。
+              </p>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {DAYS_OF_WEEK.map((day) => (
+                  <label
+                    key={day.value}
+                    className={`flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${
+                      regularClosedDays.includes(day.value)
+                        ? 'border-red-500 bg-red-50 text-red-700'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={regularClosedDays.includes(day.value)}
+                      onChange={() => handleRegularClosedDaysChange(day.value)}
+                      className="sr-only"
+                    />
+                    <span className="font-medium">{day.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </SlideTransition>
+
+          {/* 営業時間設定 */}
+          <SlideTransition delay={0.2}>
+            <div className="bg-white rounded-lg shadow-md p-6">
+              <h2 className="text-xl font-bold mb-4">営業時間詳細</h2>
               
               <div className="space-y-4">
                 {DAYS_OF_WEEK.map((day) => {
@@ -170,7 +327,9 @@ export default function AdminSettings() {
                   return (
                     <motion.div
                       key={day.value}
-                      className="flex items-center gap-4 p-4 border rounded-lg"
+                      className={`flex items-center gap-4 p-4 border rounded-lg ${
+                        !hours.isOpen ? 'bg-gray-50' : ''
+                      }`}
                       whileHover={{ scale: 1.01 }}
                       transition={{ type: "spring", stiffness: 300 }}
                     >
@@ -178,17 +337,7 @@ export default function AdminSettings() {
                         <span className="font-medium">{day.label}</span>
                       </div>
                       
-                      <label className="flex items-center">
-                        <input
-                          type="checkbox"
-                          checked={hours.isOpen}
-                          onChange={(e) => handleBusinessHoursChange(day.value, 'isOpen', e.target.checked)}
-                          className="mr-2"
-                        />
-                        営業
-                      </label>
-                      
-                      {hours.isOpen && (
+                      {hours.isOpen ? (
                         <>
                           <input
                             type="time"
@@ -204,6 +353,8 @@ export default function AdminSettings() {
                             className="px-3 py-1 border rounded"
                           />
                         </>
+                      ) : (
+                        <span className="text-red-600 font-medium">定休日</span>
                       )}
                     </motion.div>
                   );
@@ -213,54 +364,168 @@ export default function AdminSettings() {
           </SlideTransition>
 
           {/* 休業日設定 */}
-          <SlideTransition delay={0.2}>
+          <SlideTransition delay={0.3}>
             <div className="bg-white rounded-lg shadow-md p-6">
-              <h2 className="text-xl font-bold mb-4">休業日設定</h2>
+              <h2 className="text-xl font-bold mb-4">特別休業日設定</h2>
               
-              <div className="mb-4">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  休業日を追加
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="date"
-                    value={blockedDate}
-                    onChange={(e) => setBlockedDate(e.target.value)}
-                    className="flex-1 px-4 py-2 border rounded-lg"
-                    min={new Date().toISOString().split('T')[0]}
-                  />
-                  <motion.button
-                    onClick={handleAddBlockedDate}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-dark-gold"
-                    whileTap={{ scale: 0.95 }}
-                    disabled={!blockedDate}
-                  >
-                    追加
-                  </motion.button>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 個別日付設定 */}
+                <div>
+                  <h3 className="font-medium mb-3">個別の休業日</h3>
+                  <div className="flex gap-2 mb-4">
+                    <input
+                      type="date"
+                      value={blockedDate}
+                      onChange={(e) => setBlockedDate(e.target.value)}
+                      className="flex-1 px-4 py-2 border rounded-lg"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                    <motion.button
+                      onClick={handleAddBlockedDate}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-dark-gold"
+                      whileTap={{ scale: 0.95 }}
+                      disabled={!blockedDate}
+                    >
+                      追加
+                    </motion.button>
+                  </div>
+
+                  {/* 期間設定 */}
+                  <h3 className="font-medium mb-3">期間での休業日設定</h3>
+                  <div className="space-y-2 mb-4">
+                    <input
+                      type="date"
+                      value={periodStart}
+                      onChange={(e) => setPeriodStart(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg"
+                      placeholder="開始日"
+                      min={new Date().toISOString().split('T')[0]}
+                    />
+                    <input
+                      type="date"
+                      value={periodEnd}
+                      onChange={(e) => setPeriodEnd(e.target.value)}
+                      className="w-full px-4 py-2 border rounded-lg"
+                      placeholder="終了日"
+                      min={periodStart || new Date().toISOString().split('T')[0]}
+                    />
+                    <motion.button
+                      onClick={handlePeriodClosedDates}
+                      className="w-full px-4 py-2 bg-primary text-white rounded-lg hover:bg-dark-gold"
+                      whileTap={{ scale: 0.95 }}
+                      disabled={!periodStart || !periodEnd}
+                    >
+                      期間を休業日に設定
+                    </motion.button>
+                  </div>
+
+                  {/* 定休日の月間適用 */}
+                  <h3 className="font-medium mb-3">定休日を特定月に適用</h3>
+                  <div className="flex gap-2">
+                    <input
+                      type="month"
+                      value={`${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`}
+                      onChange={(e) => {
+                        const [year, month] = e.target.value.split('-');
+                        setCalendarMonth(new Date(parseInt(year), parseInt(month) - 1));
+                      }}
+                      className="flex-1 px-4 py-2 border rounded-lg"
+                    />
+                    <motion.button
+                      onClick={() => applyRegularClosedDaysToMonth(calendarMonth.getFullYear(), calendarMonth.getMonth())}
+                      className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-dark-gold"
+                      whileTap={{ scale: 0.95 }}
+                      disabled={regularClosedDays.length === 0}
+                    >
+                      適用
+                    </motion.button>
+                  </div>
+                </div>
+
+                {/* カレンダー表示 */}
+                <div>
+                  <h3 className="font-medium mb-3">休業日カレンダー</h3>
+                  <div className="border rounded-lg p-4">
+                    <div className="flex justify-between items-center mb-4">
+                      <button
+                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1))}
+                        className="p-1 hover:bg-gray-100 rounded"
+                      >
+                        ←
+                      </button>
+                      <h4 className="font-medium">
+                        {calendarMonth.getFullYear()}年{calendarMonth.getMonth() + 1}月
+                      </h4>
+                      <button
+                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1))}
+                        className="p-1 hover:bg-gray-100 rounded"
+                      >
+                        →
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-7 gap-1 text-center text-sm">
+                      {['日', '月', '火', '水', '木', '金', '土'].map((day) => (
+                        <div key={day} className="font-medium py-1">
+                          {day}
+                        </div>
+                      ))}
+                      {getDaysInMonth(calendarMonth).map((date, index) => (
+                        <div
+                          key={index}
+                          className={`py-1 text-xs ${
+                            date
+                              ? isBlockedDate(date)
+                                ? 'bg-red-100 text-red-700 font-medium'
+                                : isRegularClosedDay(date)
+                                ? 'bg-gray-100 text-gray-500'
+                                : ''
+                              : ''
+                          }`}
+                        >
+                          {date?.getDate() || ''}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="mt-4 space-y-1 text-xs">
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-red-100 border border-red-300"></div>
+                        <span>特別休業日</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <div className="w-4 h-4 bg-gray-100 border border-gray-300"></div>
+                        <span>定休日</span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
-              
+
+              {/* 設定済みの休業日リスト */}
               {settings.blockedDates && settings.blockedDates.length > 0 && (
-                <div className="space-y-2">
-                  <h3 className="font-medium text-gray-700">設定済みの休業日</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
-                    {settings.blockedDates.map((date) => (
-                      <motion.div
-                        key={date}
-                        className="flex items-center justify-between p-2 bg-gray-50 rounded"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                      >
-                        <span>{new Date(date + 'T00:00:00').toLocaleDateString('ja-JP')}</span>
-                        <button
-                          onClick={() => handleRemoveBlockedDate(date)}
-                          className="text-red-500 hover:text-red-700"
+                <div className="mt-6">
+                  <h3 className="font-medium text-gray-700 mb-3">設定済みの特別休業日</h3>
+                  <div className="max-h-48 overflow-y-auto border rounded-lg p-3">
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                      {settings.blockedDates.map((date) => (
+                        <motion.div
+                          key={date}
+                          className="flex items-center justify-between p-2 bg-gray-50 rounded text-sm"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
                         >
-                          削除
-                        </button>
-                      </motion.div>
-                    ))}
+                          <span>{new Date(date + 'T00:00:00').toLocaleDateString('ja-JP')}</span>
+                          <button
+                            onClick={() => handleRemoveBlockedDate(date)}
+                            className="text-red-500 hover:text-red-700 ml-2"
+                          >
+                            <TrashIcon className="h-4 w-4" />
+                          </button>
+                        </motion.div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -272,7 +537,7 @@ export default function AdminSettings() {
             className="flex justify-end"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3 }}
+            transition={{ delay: 0.4 }}
           >
             <motion.button
               onClick={handleSave}
