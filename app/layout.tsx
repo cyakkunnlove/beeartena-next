@@ -1,8 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
-import Header from "@/components/layout/Header";
-import Footer from "@/components/layout/Footer";
-import BottomNav from "@/components/layout/BottomNav";
+import LayoutWrapper from "@/components/layout/LayoutWrapper";
 import { AuthProvider } from "@/lib/auth/AuthContext";
 import PageTransition from "@/components/layout/PageTransition";
 import StructuredData from "@/components/seo/StructuredData";
@@ -69,14 +67,11 @@ export default function RootLayout({
       <body className="min-h-screen flex flex-col">
         <SkipLink />
         <AuthProvider>
-          <Header />
-          <main id="main-content" className="flex-grow pb-16 md:pb-0">
+          <LayoutWrapper>
             <PageTransition>
               {children}
             </PageTransition>
-          </main>
-          <Footer className="hidden md:block" />
-          <BottomNav />
+          </LayoutWrapper>
         </AuthProvider>
       </body>
     </html>

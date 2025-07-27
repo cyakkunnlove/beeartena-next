@@ -60,7 +60,7 @@ export default function AdminLayout({
   }
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* サイドバー（モバイル） */}
       <div className={`fixed inset-0 z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
         <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
@@ -171,8 +171,8 @@ export default function AdminLayout({
           </div>
         </div>
 
-        <main className="flex-1">
-          <div className="py-6">
+        <main className="flex-1 overflow-y-auto">
+          <div className="py-6 px-4 sm:px-6 lg:px-8">
             {children}
           </div>
         </main>
