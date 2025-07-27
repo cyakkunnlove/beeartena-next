@@ -25,7 +25,7 @@ export async function GET(
     }
 
     // 本人または管理者のみアクセス可能
-    if (reservation.userId !== authUser.userId && authUser.role !== 'admin') {
+    if (reservation.customerId !== authUser.userId && authUser.role !== 'admin') {
       return setCorsHeaders(errorResponse('アクセス権限がありません', 403));
     }
 
@@ -88,7 +88,7 @@ export async function DELETE(
     }
 
     // 本人または管理者のみキャンセル可能
-    if (reservation.userId !== authUser.userId && authUser.role !== 'admin') {
+    if (reservation.customerId !== authUser.userId && authUser.role !== 'admin') {
       return setCorsHeaders(errorResponse('アクセス権限がありません', 403));
     }
 
