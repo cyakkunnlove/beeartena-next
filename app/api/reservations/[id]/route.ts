@@ -9,15 +9,16 @@ export async function OPTIONS(request: NextRequest) {
 // 予約詳細取得
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const authUser = await verifyAuth(request);
   if (!authUser) {
     return setCorsHeaders(errorResponse('認証が必要です', 401));
   }
 
   try {
-    const reservation = await reservationService.getReservation(params.id);
+    const reservation = await reservationService.getReservation(id);
     
     if (!reservation) {
       return setCorsHeaders(errorResponse('予約が見つかりません', 404));
@@ -37,8 +38,9 @@ export async function GET(
 // 予約更新（管理者のみ）
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const adminError = await requireAdmin(request);
   if (adminError) return setCorsHeaders(adminError);
 
@@ -48,15 +50,15 @@ export async function PUT(
 
     switch (action) {
       case 'confirm':
-        await reservationService.confirmReservation(params.id);
+        await reservationService.confirmReservation(id);
         return setCorsHeaders(successResponse({ message: '予約を確定しました' }));
         
       case 'complete':
-        await reservationService.completeReservation(params.id);
+        await reservationService.completeReservation(id);
         return setCorsHeaders(successResponse({ message: '予約を完了しました' }));
         
       case 'cancel':
-        await reservationService.cancelReservation(params.id, body.reason);
+        await reservationService.cancelReservation(id, body.reason);
         return setCorsHeaders(successResponse({ message: '予約をキャンセルしました' }));
         
       default:
@@ -70,15 +72,16 @@ export async function PUT(
 // 予約キャンセル（本人または管理者）
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const authUser = await verifyAuth(request);
   if (!authUser) {
     return setCorsHeaders(errorResponse('認証が必要です', 401));
   }
 
   try {
-    const reservation = await reservationService.getReservation(params.id);
+    const reservation = await reservationService.getReservation(id);
     
     if (!reservation) {
       return setCorsHeaders(errorResponse('予約が見つかりません', 404));
@@ -90,7 +93,7 @@ export async function DELETE(
     }
 
     const body = await request.json().catch(() => ({ reason: '' }));
-    await reservationService.cancelReservation(params.id, body.reason);
+    await reservationService.cancelReservation(id, body.reason);
 
     return setCorsHeaders(successResponse({ message: '予約をキャンセルしました' }));
   } catch (error: any) {

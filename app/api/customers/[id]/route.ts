@@ -9,13 +9,14 @@ export async function OPTIONS(request: NextRequest) {
 // 顧客詳細取得（本人または管理者）
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireUserOrAdmin(request, params.id);
+  const { id } = await params;
+  const authError = await requireUserOrAdmin(request, id);
   if (authError) return setCorsHeaders(authError);
 
   try {
-    const user = await userService.getUser(params.id);
+    const user = await userService.getUser(id);
     
     if (!user) {
       return setCorsHeaders(errorResponse('顧客が見つかりません', 404));
@@ -30,19 +31,20 @@ export async function GET(
 // 顧客情報更新（本人または管理者）
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
-  const authError = await requireUserOrAdmin(request, params.id);
+  const { id } = await params;
+  const authError = await requireUserOrAdmin(request, id);
   if (authError) return setCorsHeaders(authError);
 
   try {
     const body = await request.json();
     
     // roleとpointsは更新不可
-    const { role, points, id, ...updates } = body;
+    const { role, points, id: _id, ...updates } = body;
 
-    await userService.updateUser(params.id, updates);
-    const updatedUser = await userService.getUser(params.id);
+    await userService.updateUser(id, updates);
+    const updatedUser = await userService.getUser(id);
 
     return setCorsHeaders(successResponse(updatedUser));
   } catch (error: any) {

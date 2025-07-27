@@ -9,13 +9,14 @@ export async function OPTIONS(request: NextRequest) {
 // 問い合わせ詳細取得（管理者のみ）
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const adminError = await requireAdmin(request);
   if (adminError) return setCorsHeaders(adminError);
 
   try {
-    const inquiry = await inquiryService.getInquiry(params.id);
+    const inquiry = await inquiryService.getInquiry(id);
     
     if (!inquiry) {
       return setCorsHeaders(errorResponse('問い合わせが見つかりません', 404));
@@ -30,8 +31,9 @@ export async function GET(
 // 問い合わせ更新（管理者のみ）
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params;
   const adminError = await requireAdmin(request);
   if (adminError) return setCorsHeaders(adminError);
 
@@ -40,14 +42,14 @@ export async function PUT(
     const { status, reply } = body;
 
     if (status) {
-      await inquiryService.updateInquiryStatus(params.id, status);
+      await inquiryService.updateInquiryStatus(id, status);
     }
 
     if (reply) {
-      await inquiryService.replyToInquiry(params.id, reply);
+      await inquiryService.replyToInquiry(id, reply);
     }
 
-    const updatedInquiry = await inquiryService.getInquiry(params.id);
+    const updatedInquiry = await inquiryService.getInquiry(id);
     return setCorsHeaders(successResponse(updatedInquiry));
   } catch (error: any) {
     return setCorsHeaders(errorResponse(error.message || '問い合わせの更新に失敗しました', 500));
