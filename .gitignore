@@ -8,6 +8,10 @@
 
 # testing
 /coverage
+/test-results
+/playwright-report
+/playwright/.cache
+/k6-results
 
 # next.js
 /.next/
@@ -146,4 +150,15 @@ dist
 .yarn/unplugged
 .yarn/build-state.yml
 .yarn/install-state.gz
-.pnp.*serviceAccountKey.json
+.pnp.*
+
+# Firebase service account keys
+**/firebase-service-account-key.json
+**/*serviceAccountKey.json
+**/service-account*.json
+
+# visual regression
+/e2e/screenshots/
+/e2e/videos/
+__screenshots__/
+__diff_output__/

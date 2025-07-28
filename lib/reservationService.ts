@@ -3,6 +3,85 @@ import { reservationService as firebaseReservationService } from '@/lib/firebase
 import { pointService } from '@/lib/firebase/points';
 import { userService } from '@/lib/firebase/users';
 
+// Test helper functions
+export function isTimeSlotAvailable(
+  date: string,
+  time: string,
+  existingReservations: Reservation[]
+): boolean {
+  return !existingReservations.some(
+    reservation => reservation.date === date && reservation.time === time
+  );
+}
+
+export function generateTimeSlots(
+  date: string,
+  existingReservations: Reservation[] = []
+): TimeSlot[] {
+  const slots: TimeSlot[] = [];
+  const startHour = 10;
+  const endHour = 17;
+
+  for (let hour = startHour; hour <= endHour; hour++) {
+    const time = `${hour}:00`;
+    slots.push({
+      date,
+      time,
+      available: isTimeSlotAvailable(date, time, existingReservations),
+      maxCapacity: 1,
+      currentBookings: existingReservations.filter(
+        r => r.date === date && r.time === time
+      ).length,
+    });
+  }
+
+  return slots;
+}
+
+export function validateReservationData(data: any): {
+  isValid: boolean;
+  errors: string[];
+} {
+  const errors: string[] = [];
+
+  // Check required fields
+  if (!data.date) {
+    errors.push('日付を選択してください');
+  } else {
+    // Check if date is not in the past
+    const selectedDate = new Date(data.date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate < today) {
+      errors.push('予約日は今日以降の日付を選択してください');
+    }
+  }
+
+  if (!data.time) {
+    errors.push('時間を選択してください');
+  } else {
+    // Validate time format (HH:MM)
+    const timeRegex = /^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(data.time)) {
+      errors.push('無効な時間形式です');
+    }
+  }
+
+  if (!data.service) {
+    errors.push('サービスを選択してください');
+  }
+
+  if (!data.userId) {
+    errors.push('ユーザー情報が必要です');
+  }
+
+  return {
+    isValid: errors.length === 0,
+    errors,
+  };
+}
+
 class ReservationService {
   private settings: ReservationSettings = {
     slotDuration: 120, // 2時間

@@ -1,0 +1,220 @@
+{
+  "alerts": [
+    {
+      "name": "High Error Rate",
+      "description": "アプリケーションのエラー率が閾値を超えた場合",
+      "conditions": {
+        "metric": "error_rate",
+        "operator": ">",
+        "threshold": 5,
+        "duration": "5m",
+        "aggregation": "avg"
+      },
+      "severity": "critical",
+      "channels": ["slack", "pagerduty", "email"],
+      "actions": [
+        "スケールアウト",
+        "エラーログの確認",
+        "最近のデプロイのロールバック検討"
+      ]
+    },
+    {
+      "name": "Memory Usage High",
+      "description": "メモリ使用率が85%を超えた場合",
+      "conditions": {
+        "metric": "memory_usage_percent",
+        "operator": ">",
+        "threshold": 85,
+        "duration": "10m",
+        "aggregation": "avg"
+      },
+      "severity": "warning",
+      "channels": ["slack", "email"],
+      "actions": [
+        "メモリリークの確認",
+        "不要なプロセスの終了",
+        "インスタンスの追加"
+      ]
+    },
+    {
+      "name": "CPU Usage Critical",
+      "description": "CPU使用率が90%を超えた場合",
+      "conditions": {
+        "metric": "cpu_usage_percent",
+        "operator": ">",
+        "threshold": 90,
+        "duration": "5m",
+        "aggregation": "avg"
+      },
+      "severity": "critical",
+      "channels": ["slack", "pagerduty"],
+      "actions": [
+        "負荷の高いプロセスの特定",
+        "オートスケーリングの確認",
+        "キャッシュの有効化"
+      ]
+    },
+    {
+      "name": "Response Time Slow",
+      "description": "API応答時間が1秒を超えた場合",
+      "conditions": {
+        "metric": "api_response_time_ms",
+        "operator": ">",
+        "threshold": 1000,
+        "duration": "5m",
+        "aggregation": "p95"
+      },
+      "severity": "warning",
+      "channels": ["slack"],
+      "actions": [
+        "遅いエンドポイントの特定",
+        "データベースクエリの最適化",
+        "CDNキャッシュの確認"
+      ]
+    },
+    {
+      "name": "Database Connection Pool Exhausted",
+      "description": "データベース接続プールが枯渇した場合",
+      "conditions": {
+        "metric": "db_connection_pool_available",
+        "operator": "<",
+        "threshold": 5,
+        "duration": "2m",
+        "aggregation": "min"
+      },
+      "severity": "critical",
+      "channels": ["slack", "pagerduty"],
+      "actions": [
+        "接続プールサイズの増加",
+        "長時間実行クエリの特定",
+        "接続リークの確認"
+      ]
+    },
+    {
+      "name": "Disk Space Low",
+      "description": "ディスク使用率が90%を超えた場合",
+      "conditions": {
+        "metric": "disk_usage_percent",
+        "operator": ">",
+        "threshold": 90,
+        "duration": "5m",
+        "aggregation": "max"
+      },
+      "severity": "warning",
+      "channels": ["slack", "email"],
+      "actions": [
+        "古いログファイルの削除",
+        "不要なファイルのクリーンアップ",
+        "ディスク容量の拡張"
+      ]
+    },
+    {
+      "name": "SSL Certificate Expiry",
+      "description": "SSL証明書の有効期限が30日以内の場合",
+      "conditions": {
+        "metric": "ssl_cert_days_remaining",
+        "operator": "<",
+        "threshold": 30,
+        "duration": "1h",
+        "aggregation": "min"
+      },
+      "severity": "warning",
+      "channels": ["email"],
+      "actions": [
+        "証明書の更新",
+        "自動更新の設定確認"
+      ]
+    },
+    {
+      "name": "Deployment Failed",
+      "description": "デプロイメントが失敗した場合",
+      "conditions": {
+        "event": "deployment_failed",
+        "source": "ci/cd"
+      },
+      "severity": "critical",
+      "channels": ["slack", "email"],
+      "actions": [
+        "ビルドログの確認",
+        "前回の成功したデプロイへのロールバック",
+        "開発チームへの通知"
+      ]
+    },
+    {
+      "name": "Security Vulnerability Detected",
+      "description": "セキュリティ脆弱性が検出された場合",
+      "conditions": {
+        "event": "security_vulnerability",
+        "severity": ["high", "critical"]
+      },
+      "severity": "critical",
+      "channels": ["slack", "email", "security-team"],
+      "actions": [
+        "脆弱性の詳細確認",
+        "パッチの適用",
+        "影響範囲の評価"
+      ]
+    },
+    {
+      "name": "Rate Limit Exceeded",
+      "description": "APIレート制限に達した場合",
+      "conditions": {
+        "metric": "api_rate_limit_exceeded",
+        "operator": ">",
+        "threshold": 100,
+        "duration": "1m",
+        "aggregation": "sum"
+      },
+      "severity": "warning",
+      "channels": ["slack"],
+      "actions": [
+        "レート制限の見直し",
+        "悪意のあるリクエストの確認",
+        "キャッシュ戦略の改善"
+      ]
+    }
+  ],
+  "notification_channels": {
+    "slack": {
+      "webhook_url": "${SLACK_WEBHOOK_URL}",
+      "channel": "#beeartena-alerts",
+      "username": "BEE ART ENA Monitor"
+    },
+    "pagerduty": {
+      "integration_key": "${PAGERDUTY_INTEGRATION_KEY}",
+      "service_id": "beeartena-production"
+    },
+    "email": {
+      "recipients": ["devops@beeartena.com", "oncall@beeartena.com"],
+      "smtp_server": "smtp.sendgrid.net",
+      "smtp_port": 587,
+      "from": "alerts@beeartena.com"
+    },
+    "security-team": {
+      "email": ["security@beeartena.com"],
+      "slack": "#security-alerts"
+    }
+  },
+  "escalation_policy": {
+    "levels": [
+      {
+        "level": 1,
+        "delay": "0m",
+        "contacts": ["oncall-primary"],
+        "channels": ["slack"]
+      },
+      {
+        "level": 2,
+        "delay": "15m",
+        "contacts": ["oncall-secondary", "team-lead"],
+        "channels": ["slack", "pagerduty"]
+      },
+      {
+        "level": 3,
+        "delay": "30m",
+        "contacts": ["engineering-manager", "cto"],
+        "channels": ["slack", "pagerduty", "phone"]
+      }
+    ]
+  }
+}

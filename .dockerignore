@@ -1,0 +1,86 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+coverage/
+.nyc_output
+test-results/
+playwright-report/
+playwright/.cache
+e2e/screenshots/
+e2e/videos/
+
+# Next.js
+.next/
+out/
+
+# Production
+build/
+dist/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Local env files
+.env*.local
+.env
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.circleci/
+
+# Documentation
+*.md
+docs/
+LICENSE
+
+# Development files
+.eslintrc.json
+.prettierrc.json
+.prettierignore
+jest.config.js
+playwright.config.ts
+tsconfig.json
+.lighthouserc.js
+sonar-project.properties
+
+# Firebase
+.firebase/
+firebase-debug.log
+serviceAccountKey.json
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore

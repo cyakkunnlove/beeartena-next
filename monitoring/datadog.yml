@@ -1,0 +1,152 @@
+# Datadog モニタリング設定
+# このファイルはDatadog Agent設定の参考として使用
+
+# APM (Application Performance Monitoring)
+apm_config:
+  enabled: true
+  env: production
+  service: beeartena-nextjs
+  version: ${DD_VERSION}
+  
+  # トレーシング設定
+  analyzed_spans:
+    beeartena-nextjs|express.request: 1
+    beeartena-nextjs|next.request: 1
+    beeartena-nextjs|firebase.query: 1
+    
+  # サンプリングレート
+  trace_sample_rate: 0.1
+
+# ログ収集
+logs:
+  enabled: true
+  
+  # Next.jsアプリケーションログ
+  - type: file
+    path: /var/log/beeartena/*.log
+    service: beeartena-nextjs
+    source: nodejs
+    tags:
+      - env:production
+      - app:beeartena
+      
+  # エラーログ
+  - type: file
+    path: /var/log/beeartena/error.log
+    service: beeartena-nextjs
+    source: nodejs
+    tags:
+      - env:production
+      - app:beeartena
+      - log_type:error
+
+# カスタムメトリクス
+custom_metrics:
+  # API応答時間
+  - metric: beeartena.api.response_time
+    type: histogram
+    tags:
+      - endpoint
+      - method
+      - status_code
+      
+  # アクティブユーザー数
+  - metric: beeartena.users.active
+    type: gauge
+    tags:
+      - user_type
+      
+  # イベント予約数
+  - metric: beeartena.bookings.count
+    type: counter
+    tags:
+      - event_type
+      - status
+      
+  # エラー率
+  - metric: beeartena.errors.rate
+    type: gauge
+    tags:
+      - error_type
+      - component
+
+# モニター設定
+monitors:
+  # 高エラー率アラート
+  - name: "High Error Rate"
+    type: metric
+    query: "avg(last_5m):sum:beeartena.errors.rate{env:production} > 0.05"
+    message: |
+      @slack-beeartena-alerts
+      エラー率が5%を超えています。
+      現在のエラー率: {{value}}%
+      確認してください: https://app.datadoghq.com/dashboard/beeartena
+    priority: P1
+    
+  # API応答時間アラート
+  - name: "Slow API Response"
+    type: metric
+    query: "avg(last_5m):avg:beeartena.api.response_time{env:production} > 1000"
+    message: |
+      @slack-beeartena-alerts
+      API応答時間が1秒を超えています。
+      現在の平均応答時間: {{value}}ms
+    priority: P2
+    
+  # メモリ使用率アラート
+  - name: "High Memory Usage"
+    type: metric
+    query: "avg(last_5m):system.mem.used{service:beeartena-nextjs} / system.mem.total{service:beeartena-nextjs} > 0.85"
+    message: |
+      @slack-beeartena-alerts
+      メモリ使用率が85%を超えています。
+      スケールアウトを検討してください。
+    priority: P2
+    
+  # ダウンタイムアラート
+  - name: "Service Down"
+    type: service check
+    query: "\"http.can_connect\".over(\"url:https://beeartena.com\").by(\"*\").last(2).count_by_status()"
+    message: |
+      @pagerduty-beeartena
+      BEE ART ENAがダウンしています！
+      緊急対応が必要です。
+    priority: P1
+
+# ダッシュボード
+dashboards:
+  - name: "BEE ART ENA Overview"
+    widgets:
+      - type: timeseries
+        title: "API Response Time"
+        query: "avg:beeartena.api.response_time{*} by {endpoint}"
+        
+      - type: query_value
+        title: "Active Users"
+        query: "sum:beeartena.users.active{*}"
+        
+      - type: toplist
+        title: "Top Errors"
+        query: "top(sum:beeartena.errors.rate{*} by {error_type}, 10, 'sum', 'desc')"
+        
+      - type: heatmap
+        title: "Request Heatmap"
+        query: "sum:beeartena.api.requests{*} by {hour,endpoint}"
+
+# SLO (Service Level Objectives)
+slos:
+  - name: "API Availability"
+    type: metric
+    description: "APIの可用性は99.9%以上を維持"
+    sli:
+      query: "sum:beeartena.api.requests.success{*} / sum:beeartena.api.requests.total{*}"
+    target: 0.999
+    timeframe: 30d
+    
+  - name: "Response Time"
+    type: metric
+    description: "95%のリクエストは500ms以内に応答"
+    sli:
+      query: "p95:beeartena.api.response_time{*}"
+    target: 500
+    timeframe: 7d

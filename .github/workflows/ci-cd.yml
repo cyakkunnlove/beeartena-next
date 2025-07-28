@@ -1,0 +1,460 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+  NEXT_TELEMETRY_DISABLED: 1
+
+jobs:
+  # コード品質チェック
+  code-quality:
+    name: Code Quality Checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run Prettier check
+        run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md}"
+
+      - name: TypeScript type check
+        run: npx tsc --noEmit
+
+      - name: Check for console.log statements
+        run: |
+          if grep -r "console.log" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/; then
+            echo "❌ console.log statements found in source code"
+            exit 1
+          fi
+
+  # セキュリティスキャン
+  security-scan:
+    name: Security Scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Run npm audit
+        run: npm audit --production --audit-level=moderate
+
+      - name: Run Snyk security scan
+        uses: snyk/actions/node@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          args: --severity-threshold=high
+
+      - name: Run TruffleHog OSS
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --debug --only-verified
+
+      - name: Run Semgrep
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/security-audit
+            p/secrets
+            p/javascript
+            p/typescript
+            p/react
+
+  # ユニット/統合テスト
+  test:
+    name: Unit & Integration Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests with coverage
+        run: npm run test:coverage
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage/lcov.info
+          flags: unittests
+          name: codecov-umbrella
+          fail_ci_if_error: true
+
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+
+      - name: Archive test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results-${{ matrix.node-version }}
+          path: |
+            coverage/
+            test-results/
+
+  # E2Eテスト
+  e2e-test:
+    name: E2E Tests
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        browser: [chromium, firefox, webkit]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}
+
+      - name: Run E2E tests - ${{ matrix.browser }}
+        run: npm run test:e2e -- --project=${{ matrix.browser }}
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: playwright-report-${{ matrix.browser }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload screenshots
+        if: failure()
+        uses: actions/upload-artifact@v3
+        with:
+          name: e2e-screenshots-${{ matrix.browser }}
+          path: e2e/screenshots/
+
+  # ビルド
+  build:
+    name: Build Application
+    needs: [code-quality, security-scan, test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}
+          NEXT_PUBLIC_FIREBASE_CONFIG: ${{ secrets.FIREBASE_CONFIG }}
+
+      - name: Analyze bundle size
+        run: |
+          npm install -g @next/bundle-analyzer
+          ANALYZE=true npm run build
+          
+      - name: Check build output
+        run: |
+          echo "📊 Build size report:"
+          du -sh .next/
+          echo ""
+          echo "⚠️ Large files (>500KB):"
+          find .next -name "*.js" -size +500k -exec ls -lh {} \;
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-output
+          path: |
+            .next/
+            public/
+          retention-days: 7
+
+  # プレビューデプロイメント
+  preview-deploy:
+    name: Preview Deployment
+    if: github.event_name == 'pull_request'
+    needs: [build, e2e-test]
+    runs-on: ubuntu-latest
+    environment:
+      name: preview
+      url: ${{ steps.vercel-deploy.outputs.url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install Vercel CLI
+        run: npm install -g vercel
+
+      - name: Deploy to Vercel Preview
+        id: vercel-deploy
+        run: |
+          DEPLOYMENT_URL=$(vercel deploy --token=${{ secrets.VERCEL_TOKEN }} --yes)
+          echo "url=$DEPLOYMENT_URL" >> $GITHUB_OUTPUT
+          echo "Preview deployed to: $DEPLOYMENT_URL"
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Comment PR with preview URL
+        uses: actions/github-script@v6
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🚀 Preview deployment ready!\n\n🔗 **Preview URL**: ${{ steps.vercel-deploy.outputs.url }}\n\n✅ All tests passed`
+            })
+
+      - name: Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            ${{ steps.vercel-deploy.outputs.url }}
+            ${{ steps.vercel-deploy.outputs.url }}/
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+
+  # ステージングデプロイメント
+  staging-deploy:
+    name: Staging Deployment
+    if: github.ref == 'refs/heads/develop' && github.event_name == 'push'
+    needs: [build, e2e-test]
+    runs-on: ubuntu-latest
+    environment:
+      name: staging
+      url: https://staging.beeartena.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for staging
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.STAGING_API_URL }}
+          NEXT_PUBLIC_FIREBASE_CONFIG: ${{ secrets.STAGING_FIREBASE_CONFIG }}
+          NODE_ENV: production
+
+      - name: Deploy to Vercel Staging
+        run: |
+          npm install -g vercel
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Run smoke tests
+        run: |
+          npm install -g wait-on
+          wait-on https://staging.beeartena.com -t 60000
+          npm run test:e2e -- --grep @smoke
+
+      - name: Notify Slack
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: 'Staging deployment completed'
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
+
+  # 本番デプロイメント
+  production-deploy:
+    name: Production Deployment
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: [build, e2e-test]
+    runs-on: ubuntu-latest
+    environment:
+      name: production
+      url: https://beeartena.com
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for production
+        run: npm run build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.PRODUCTION_API_URL }}
+          NEXT_PUBLIC_FIREBASE_CONFIG: ${{ secrets.PRODUCTION_FIREBASE_CONFIG }}
+          NODE_ENV: production
+
+      - name: Create deployment backup
+        run: |
+          BACKUP_TAG="backup-$(date +%Y%m%d-%H%M%S)"
+          git tag $BACKUP_TAG
+          git push origin $BACKUP_TAG
+
+      - name: Deploy to Vercel Production
+        run: |
+          npm install -g vercel
+          vercel deploy --prod --token=${{ secrets.VERCEL_TOKEN }} --yes
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Run production smoke tests
+        run: |
+          npm install -g wait-on
+          wait-on https://beeartena.com -t 60000
+          npm run test:e2e -- --grep @critical
+
+      - name: Create release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ github.run_number }}
+          release_name: Release v${{ github.run_number }}
+          body: |
+            Production deployment completed
+            
+            **Changes**: ${{ github.event.head_commit.message }}
+            **Commit**: ${{ github.sha }}
+          draft: false
+          prerelease: false
+
+      - name: Notify team
+        uses: 8398a7/action-slack@v3
+        with:
+          status: ${{ job.status }}
+          text: |
+            🚀 Production deployment ${{ job.status }}
+            Version: v${{ github.run_number }}
+            URL: https://beeartena.com
+          webhook_url: ${{ secrets.SLACK_WEBHOOK }}
+        if: always()
+
+  # パフォーマンス監視
+  performance-monitoring:
+    name: Performance Monitoring
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    needs: [production-deploy]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Lighthouse performance audit
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            https://beeartena.com
+            https://beeartena.com/events
+            https://beeartena.com/artists
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          configPath: './.lighthouserc.js'
+
+      - name: Run k6 performance tests
+        run: |
+          npm install -g wait-on
+          wait-on https://beeartena.com -t 60000
+          npm run test:perf
+
+      - name: Upload performance results
+        uses: actions/upload-artifact@v3
+        with:
+          name: performance-results
+          path: |
+            k6-results/
+            .lighthouseci/

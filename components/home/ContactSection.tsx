@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { storageService } from '@/lib/storage/storageService';
+import FormField from '@/components/form/FormField';
+import { useToastContext } from '@/components/layout/LayoutWrapper';
+import Skeleton, { CardSkeleton } from '@/components/ui/Skeleton';
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
 
 export default function ContactSection() {
   const [formData, setFormData] = useState({
@@ -13,19 +17,19 @@ export default function ContactSection() {
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const toast = useToastContext();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleFieldChange = (name: string) => (value: string) => {
     setFormData(prev => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [name]: value,
     }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setSubmitMessage('');
 
     try {
       // Save inquiry to local storage
@@ -37,7 +41,12 @@ export default function ContactSection() {
         message: formData.message,
       });
 
-      setSubmitMessage('お問い合わせを受け付けました。ご連絡ありがとうございます。');
+      toast.showToast({
+        type: 'success',
+        title: 'お問い合わせを受け付けました',
+        message: 'ご連絡ありがとうございます。',
+      });
+      
       setFormData({
         name: '',
         email: '',
@@ -46,15 +55,36 @@ export default function ContactSection() {
         message: '',
       });
     } catch (error) {
-      setSubmitMessage('送信に失敗しました。もう一度お試しください。');
+      toast.showToast({
+        type: 'error',
+        title: '送信に失敗しました',
+        message: 'もう一度お試しください。',
+      });
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  if (isLoading) {
+    return (
+      <section className="py-20 bg-white">
+        <ResponsiveContainer maxWidth="xl">
+          <div className="text-center mb-12">
+            <Skeleton variant="text" width={300} height={40} className="mx-auto mb-4" />
+            <Skeleton variant="text" width={500} height={20} className="mx-auto" />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <CardSkeleton />
+            <CardSkeleton />
+          </div>
+        </ResponsiveContainer>
+      </section>
+    );
+  }
+
   return (
-    <section id="reservation" className="py-20 bg-white">
-      <div className="container mx-auto px-4">
+    <section id="reservation" className="py-12 sm:py-16 md:py-20 bg-white">
+      <ResponsiveContainer maxWidth="xl">
         <h2 className="section-title">お問い合わせ・ご相談</h2>
         <p className="section-subtitle">
           お気軽にご相談ください。ご予約は専用ページよりお手続きください。
@@ -109,95 +139,80 @@ export default function ContactSection() {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="bg-gray-50 rounded-xl p-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="input-group">
-                <label htmlFor="name" className="input-label">
-                  お名前 *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  required
-                  className="input-field"
-                />
-              </div>
-
-              <div className="input-group">
-                <label htmlFor="email" className="input-label">
-                  メールアドレス *
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  required
-                  className="input-field"
-                />
-              </div>
-
-              <div className="input-group">
-                <label htmlFor="phone" className="input-label">
-                  電話番号
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="input-field"
-                />
-              </div>
-
-              <div className="input-group">
-                <label htmlFor="inquiryType" className="input-label">
-                  お問い合わせ内容 *
-                </label>
-                <select
-                  id="inquiryType"
-                  name="inquiryType"
-                  value={formData.inquiryType}
-                  onChange={handleChange}
-                  required
-                  className="input-field"
-                >
-                  <option value="">選択してください</option>
-                  <option value="general">一般的なご質問</option>
-                  <option value="menu">メニュー・料金について</option>
-                  <option value="booking">予約について</option>
-                  <option value="aftercare">アフターケアについて</option>
-                  <option value="other">その他</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="input-group mt-6">
-              <label htmlFor="message" className="input-label">
-                お問い合わせ内容 *
-              </label>
-              <textarea
-                id="message"
-                name="message"
-                value={formData.message}
-                onChange={handleChange}
-                rows={5}
+          <form onSubmit={handleSubmit} className="bg-gray-50 rounded-xl p-6 sm:p-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+              <FormField
+                id="name"
+                name="name"
+                label="お名前"
+                type="text"
+                value={formData.name}
+                onChange={handleFieldChange('name')}
                 required
-                placeholder="ご質問やご相談内容をお聞かせください"
-                className="input-field"
+                placeholder="田中太郎"
+                validateOnChange
+              />
+
+              <FormField
+                id="email"
+                name="email"
+                label="メールアドレス"
+                type="email"
+                value={formData.email}
+                onChange={handleFieldChange('email')}
+                required
+                placeholder="example@email.com"
+                validateOnChange
+              />
+
+              <FormField
+                id="phone"
+                name="phone"
+                label="電話番号"
+                type="tel"
+                value={formData.phone}
+                onChange={handleFieldChange('phone')}
+                placeholder="090-1234-5678"
+                validateOnChange
+              />
+
+              <FormField
+                id="inquiryType"
+                name="inquiryType"
+                label="お問い合わせ種別"
+                type="select"
+                value={formData.inquiryType}
+                onChange={handleFieldChange('inquiryType')}
+                required
+                options={[
+                  { value: 'general', label: '一般的なご質問' },
+                  { value: 'menu', label: 'メニュー・料金について' },
+                  { value: 'booking', label: '予約について' },
+                  { value: 'aftercare', label: 'アフターケアについて' },
+                  { value: 'other', label: 'その他' },
+                ]}
               />
             </div>
 
-            {submitMessage && (
-              <div className={`mt-4 p-4 rounded-lg ${submitMessage.includes('失敗') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                {submitMessage}
-              </div>
-            )}
+            <div className="mt-6">
+              <FormField
+                id="message"
+                name="message"
+                label="お問い合わせ内容"
+                type="textarea"
+                value={formData.message}
+                onChange={handleFieldChange('message')}
+                required
+                placeholder="ご質問やご相談内容をお聞かせください"
+                rows={5}
+                validationRules={[
+                  {
+                    test: (val) => val.length >= 10,
+                    message: '10文字以上入力してください',
+                  },
+                ]}
+              />
+            </div>
 
             <div className="mt-8 text-center">
               <button
@@ -216,7 +231,7 @@ export default function ContactSection() {
             </div>
           </form>
         </div>
-      </div>
+      </ResponsiveContainer>
     </section>
   );
 }
