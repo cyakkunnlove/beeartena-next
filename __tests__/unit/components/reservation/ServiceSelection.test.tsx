@@ -11,7 +11,9 @@ jest.mock('framer-motion', () => ({
       <div {...props}>{children}</div>
     ),
     button: ({ children, variants, whileHover, whileTap, onClick, ...props }: any) => (
-      <button onClick={onClick} {...props}>{children}</button>
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
     ),
   },
 }))
@@ -68,14 +70,14 @@ describe('ServiceSelection Component', () => {
       const { rerender } = render(<ServiceSelection onSelect={mockOnSelect} selected="2D" />)
 
       const buttons = screen.getAllByRole('button')
-      const selectedButton = buttons.find(btn => btn.textContent?.includes('2D'))
+      const selectedButton = buttons.find((btn) => btn.textContent?.includes('2D'))
 
       expect(selectedButton).toHaveClass('border-primary', 'bg-primary/5')
 
       // Change selection
       rerender(<ServiceSelection onSelect={mockOnSelect} selected="3D" />)
 
-      const newSelectedButton = buttons.find(btn => btn.textContent?.includes('3D'))
+      const newSelectedButton = buttons.find((btn) => btn.textContent?.includes('3D'))
       expect(newSelectedButton).toHaveClass('border-primary', 'bg-primary/5')
     })
 
@@ -83,10 +85,12 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="4D" />)
 
       const buttons = screen.getAllByRole('button')
-      const selectedButton = buttons.find(btn => btn.textContent?.includes('4D'))
+      const selectedButton = buttons.find((btn) => btn.textContent?.includes('4D'))
 
       // Check for selection indicator (the border div)
-      const indicator = selectedButton?.querySelector('.absolute.inset-0.rounded-xl.border-2.border-primary')
+      const indicator = selectedButton?.querySelector(
+        '.absolute.inset-0.rounded-xl.border-2.border-primary',
+      )
       expect(indicator).toBeInTheDocument()
     })
 
@@ -94,7 +98,7 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="2D" />)
 
       const buttons = screen.getAllByRole('button')
-      const nonSelectedButton = buttons.find(btn => btn.textContent?.includes('3D'))
+      const nonSelectedButton = buttons.find((btn) => btn.textContent?.includes('3D'))
 
       expect(nonSelectedButton).toHaveClass('hover:border-primary/50')
     })
@@ -106,7 +110,7 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="" />)
 
       const buttons = screen.getAllByRole('button')
-      const button2D = buttons.find(btn => btn.textContent?.includes('2D'))
+      const button2D = buttons.find((btn) => btn.textContent?.includes('2D'))
 
       await user.click(button2D!)
 
@@ -119,15 +123,15 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="" />)
 
       const buttons = screen.getAllByRole('button')
-      
+
       // Click different services
-      await user.click(buttons.find(btn => btn.textContent?.includes('2D'))!)
+      await user.click(buttons.find((btn) => btn.textContent?.includes('2D'))!)
       expect(mockOnSelect).toHaveBeenCalledWith('2D')
 
-      await user.click(buttons.find(btn => btn.textContent?.includes('3D'))!)
+      await user.click(buttons.find((btn) => btn.textContent?.includes('3D'))!)
       expect(mockOnSelect).toHaveBeenCalledWith('3D')
 
-      await user.click(buttons.find(btn => btn.textContent?.includes('4D'))!)
+      await user.click(buttons.find((btn) => btn.textContent?.includes('4D'))!)
       expect(mockOnSelect).toHaveBeenCalledWith('4D')
 
       expect(mockOnSelect).toHaveBeenCalledTimes(3)
@@ -137,8 +141,8 @@ describe('ServiceSelection Component', () => {
       const user = userEvent.setup()
       render(<ServiceSelection onSelect={mockOnSelect} selected="2D" />)
 
-      const button2D = screen.getAllByRole('button').find(btn => btn.textContent?.includes('2D'))
-      
+      const button2D = screen.getAllByRole('button').find((btn) => btn.textContent?.includes('2D'))
+
       await user.click(button2D!)
 
       expect(mockOnSelect).toHaveBeenCalledWith('2D')
@@ -175,7 +179,7 @@ describe('ServiceSelection Component', () => {
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(3)
 
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button).toHaveAttribute('type', 'button')
         expect(button).toBeEnabled()
       })
@@ -185,7 +189,7 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="" />)
 
       const buttons = screen.getAllByRole('button')
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button).toHaveClass('touch-manipulation')
       })
     })
@@ -193,8 +197,9 @@ describe('ServiceSelection Component', () => {
     it('should have proper contrast for selected state', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="2D" />)
 
-      const selectedButton = screen.getAllByRole('button')
-        .find(btn => btn.textContent?.includes('2D'))
+      const selectedButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.textContent?.includes('2D'))
 
       // Selected button should have visible styling
       expect(selectedButton).toHaveClass('border-primary', 'bg-primary/5')
@@ -215,10 +220,15 @@ describe('ServiceSelection Component', () => {
       const services = [
         { id: '2D', name: 'パウダーブロウ', description: 'ふんわりパウダー眉', price: '¥20,000' },
         { id: '3D', name: 'フェザーブロウ', description: '立体的な毛流れ眉', price: '¥20,000' },
-        { id: '4D', name: 'パウダー&フェザー', description: '2D+3Dのいいとこ取り', price: '¥25,000' },
+        {
+          id: '4D',
+          name: 'パウダー&フェザー',
+          description: '2D+3Dのいいとこ取り',
+          price: '¥25,000',
+        },
       ]
 
-      services.forEach(service => {
+      services.forEach((service) => {
         expect(screen.getByText(service.id)).toBeInTheDocument()
         expect(screen.getByText(service.name)).toBeInTheDocument()
         expect(screen.getByText(service.description)).toBeInTheDocument()
@@ -233,8 +243,8 @@ describe('ServiceSelection Component', () => {
       const featuredBadges = screen.getAllByText('人気No.1')
 
       expect(featuredBadges).toHaveLength(1)
-      
-      const button4D = buttons.find(btn => btn.textContent?.includes('4D'))
+
+      const button4D = buttons.find((btn) => btn.textContent?.includes('4D'))
       expect(button4D).toContainElement(featuredBadges[0])
     })
   })
@@ -244,7 +254,7 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="" />)
 
       const buttons = screen.getAllByRole('button')
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button).not.toHaveClass('border-primary', 'bg-primary/5')
       })
     })
@@ -253,7 +263,7 @@ describe('ServiceSelection Component', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="invalid" />)
 
       const buttons = screen.getAllByRole('button')
-      buttons.forEach(button => {
+      buttons.forEach((button) => {
         expect(button).not.toHaveClass('border-primary', 'bg-primary/5')
       })
     })
@@ -276,15 +286,15 @@ describe('ServiceSelection Component', () => {
     it('should maintain selection after re-render', () => {
       const { rerender } = render(<ServiceSelection onSelect={mockOnSelect} selected="3D" />)
 
-      let selectedButton = screen.getAllByRole('button')
-        .find(btn => btn.textContent?.includes('3D'))
+      let selectedButton = screen
+        .getAllByRole('button')
+        .find((btn) => btn.textContent?.includes('3D'))
       expect(selectedButton).toHaveClass('border-primary')
 
       // Re-render with same props
       rerender(<ServiceSelection onSelect={mockOnSelect} selected="3D" />)
 
-      selectedButton = screen.getAllByRole('button')
-        .find(btn => btn.textContent?.includes('3D'))
+      selectedButton = screen.getAllByRole('button').find((btn) => btn.textContent?.includes('3D'))
       expect(selectedButton).toHaveClass('border-primary')
     })
   })

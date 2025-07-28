@@ -99,7 +99,7 @@ describe('UserService', () => {
         expect.objectContaining({
           ...mockUser,
           createdAt: expect.any(Object),
-        })
+        }),
       )
     })
 
@@ -121,7 +121,7 @@ describe('UserService', () => {
         expect.anything(),
         expect.objectContaining({
           createdAt: mockTimestamp,
-        })
+        }),
       )
     })
 
@@ -197,9 +197,11 @@ describe('UserService', () => {
       }
       ;(getDocs as jest.Mock).mockResolvedValue({
         empty: false,
-        docs: [{
-          data: () => mockDocData,
-        }],
+        docs: [
+          {
+            data: () => mockDocData,
+          },
+        ],
       })
 
       const result = await userService.getUserByEmail('test@example.com')
@@ -257,7 +259,7 @@ describe('UserService', () => {
         { ...mockUser, id: 'user2', createdAt: { toDate: () => new Date('2025-01-02') } },
       ]
       ;(getDocs as jest.Mock).mockResolvedValue({
-        docs: users.map(u => ({ data: () => u })),
+        docs: users.map((u) => ({ data: () => u })),
       })
 
       const result = await userService.getAllUsers()
@@ -310,7 +312,7 @@ describe('UserService', () => {
         expect.objectContaining({
           ...updates,
           updatedAt: { seconds: 123, nanoseconds: 456 },
-        })
+        }),
       )
     })
 
@@ -328,7 +330,7 @@ describe('UserService', () => {
         expect.anything(),
         expect.objectContaining({
           createdAt: mockTimestamp,
-        })
+        }),
       )
     })
 
@@ -400,7 +402,7 @@ describe('UserService', () => {
           totalSpent: 105000,
           rank: 'Silver', // 95000 + 10000 = 105000, which is Silver
           updatedAt: { seconds: 123, nanoseconds: 456 },
-        })
+        }),
       )
     })
 
@@ -418,7 +420,7 @@ describe('UserService', () => {
         expect.objectContaining({
           totalSpent: 5000,
           rank: 'Bronze',
-        })
+        }),
       )
     })
 
@@ -427,8 +429,9 @@ describe('UserService', () => {
         exists: () => false,
       })
 
-      await expect(userService.updateTotalSpent('nonexistent', 5000))
-        .rejects.toThrow('ユーザーが見つかりません')
+      await expect(userService.updateTotalSpent('nonexistent', 5000)).rejects.toThrow(
+        'ユーザーが見つかりません',
+      )
     })
 
     it('should skip update when Firebase not configured', async () => {
@@ -462,7 +465,7 @@ describe('UserService', () => {
           expect.objectContaining({
             totalSpent: testCase.current + testCase.add,
             rank: testCase.expectedRank,
-          })
+          }),
         )
       }
     })
@@ -476,16 +479,14 @@ describe('UserService', () => {
     it('should provide default error message when error has no message', async () => {
       ;(getDoc as jest.Mock).mockRejectedValue({})
 
-      await expect(userService.getUser('user123'))
-        .rejects.toThrow('ユーザーの取得に失敗しました')
+      await expect(userService.getUser('user123')).rejects.toThrow('ユーザーの取得に失敗しました')
     })
 
     it('should preserve specific error messages', async () => {
       const specificError = new Error('Specific Firebase error')
       ;(setDoc as jest.Mock).mockRejectedValue(specificError)
 
-      await expect(userService.createUser(mockUser))
-        .rejects.toThrow('Specific Firebase error')
+      await expect(userService.createUser(mockUser)).rejects.toThrow('Specific Firebase error')
     })
   })
 })

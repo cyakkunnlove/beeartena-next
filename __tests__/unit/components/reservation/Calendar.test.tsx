@@ -8,7 +8,8 @@ jest.mock('@/lib/reservationService', () => ({
   reservationService: {
     getMonthAvailability: jest.fn().mockImplementation((year, month) => {
       // Return different data based on the month
-      if (month === 6) { // July (0-indexed)
+      if (month === 6) {
+        // July (0-indexed)
         const availability = new Map()
         // Fill all July dates with availability status
         for (let day = 1; day <= 31; day++) {
@@ -17,7 +18,8 @@ jest.mock('@/lib/reservationService', () => ({
           availability.set(dateStr, day !== 25)
         }
         return Promise.resolve(availability)
-      } else if (month === 7) { // August (0-indexed)
+      } else if (month === 7) {
+        // August (0-indexed)
         const availability = new Map()
         // Fill all August dates with availability status
         for (let day = 1; day <= 31; day++) {
@@ -82,7 +84,7 @@ describe('Calendar Component', () => {
     // First navigate to August
     const navButtons = document.querySelectorAll('.flex.justify-between.items-center.mb-4 button')
     const nextButton = navButtons[1]
-    
+
     await act(async () => {
       fireEvent.click(nextButton)
     })
@@ -98,8 +100,8 @@ describe('Calendar Component', () => {
   it.skip('should highlight selected date', async () => {
     // Use the current date (July 15th) as selected since it's not in the past
     const julySelected = '2025-07-15'
-    
-    let container: HTMLElement
+
+    let container: HTMLElement = null!
     await act(async () => {
       const result = render(<Calendar onSelect={mockOnSelect} selected={julySelected} />)
       container = result.container
@@ -107,11 +109,11 @@ describe('Calendar Component', () => {
 
     await waitFor(() => {
       const buttons = container.querySelectorAll('button')
-      const dayButtons = Array.from(buttons).filter(btn => 
-        btn.textContent && /^\d+$/.test(btn.textContent.trim())
+      const dayButtons = Array.from(buttons).filter(
+        (btn) => btn.textContent && /^\d+$/.test(btn.textContent.trim()),
       )
-      const selectedButton = dayButtons.find(btn => btn.textContent === '15')
-      
+      const selectedButton = dayButtons.find((btn) => btn.textContent === '15')
+
       expect(selectedButton).toBeTruthy()
       expect(selectedButton?.className).toContain('bg-primary')
       expect(selectedButton?.className).toContain('text-white')
@@ -119,7 +121,7 @@ describe('Calendar Component', () => {
   })
 
   it.skip('should call onSelect when available date is clicked', async () => {
-    let container: HTMLElement
+    let container: HTMLElement = null!
     await act(async () => {
       const result = render(<Calendar onSelect={mockOnSelect} selected={mockSelected} />)
       container = result.container
@@ -128,7 +130,7 @@ describe('Calendar Component', () => {
     // Navigate to August first
     const navButtons = container.querySelectorAll('.flex.justify-between.items-center.mb-4 button')
     const nextButton = navButtons[1]
-    
+
     await act(async () => {
       fireEvent.click(nextButton)
     })
@@ -139,26 +141,26 @@ describe('Calendar Component', () => {
 
     // Re-query buttons after navigation
     const buttons = container.querySelectorAll('button')
-    const dayButtons = Array.from(buttons).filter(btn => 
-      btn.textContent && /^\d+$/.test(btn.textContent.trim())
+    const dayButtons = Array.from(buttons).filter(
+      (btn) => btn.textContent && /^\d+$/.test(btn.textContent.trim()),
     )
-    
+
     // Find the button by index to avoid confusion - August starts on Friday
     // Index mapping: 0=Friday 1st, 1=Saturday 2nd, 2=Sunday 3rd, etc.
     // We want the 20th which is index 19
     const targetButton = dayButtons[19] // 20th of August
-    
+
     expect(targetButton).toBeTruthy()
     expect(targetButton.textContent).toBe('20')
     expect(targetButton).not.toBeDisabled()
-    
+
     fireEvent.click(targetButton!)
-    
+
     expect(mockOnSelect).toHaveBeenCalledWith('2025-08-20')
   })
 
   it.skip('should not call onSelect when unavailable date is clicked', async () => {
-    let container: HTMLElement
+    let container: HTMLElement = null!
     await act(async () => {
       const result = render(<Calendar onSelect={mockOnSelect} selected={mockSelected} />)
       container = result.container
@@ -170,17 +172,17 @@ describe('Calendar Component', () => {
     })
 
     const buttons = container.querySelectorAll('button')
-    const dayButtons = Array.from(buttons).filter(btn => 
-      btn.textContent && /^\d+$/.test(btn.textContent.trim())
+    const dayButtons = Array.from(buttons).filter(
+      (btn) => btn.textContent && /^\d+$/.test(btn.textContent.trim()),
     )
     // July 25th is marked as unavailable in our mock
-    const unavailableButton = dayButtons.find(btn => btn.textContent === '25')
-    
+    const unavailableButton = dayButtons.find((btn) => btn.textContent === '25')
+
     expect(unavailableButton).toBeTruthy()
     expect(unavailableButton).toBeDisabled()
-    
+
     fireEvent.click(unavailableButton!)
-    
+
     expect(mockOnSelect).not.toHaveBeenCalled()
   })
 
@@ -196,7 +198,7 @@ describe('Calendar Component', () => {
     // Find the next button by its position in the navigation header
     const navButtons = document.querySelectorAll('.flex.justify-between.items-center.mb-4 button')
     const nextButton = navButtons[1] // The second button in the navigation header
-    
+
     await act(async () => {
       fireEvent.click(nextButton)
     })
@@ -227,7 +229,7 @@ describe('Calendar Component', () => {
   })
 
   it('should mark unavailable dates with red dot', async () => {
-    let container: HTMLElement
+    let container: HTMLElement = null!
     await act(async () => {
       const result = render(<Calendar onSelect={mockOnSelect} selected={mockSelected} />)
       container = result.container
@@ -236,7 +238,7 @@ describe('Calendar Component', () => {
     // Navigate to August first
     const navButtons = container.querySelectorAll('.flex.justify-between.items-center.mb-4 button')
     const nextButton = navButtons[1]
-    
+
     await act(async () => {
       fireEvent.click(nextButton)
     })
@@ -256,7 +258,7 @@ describe('Calendar Component', () => {
 
   it('should fetch availability when month changes', async () => {
     const { reservationService } = require('@/lib/reservationService')
-    
+
     await act(async () => {
       render(<Calendar onSelect={mockOnSelect} selected={mockSelected} />)
     })
@@ -275,7 +277,7 @@ describe('Calendar Component', () => {
     // Navigate to next month
     const navButtons = document.querySelectorAll('.flex.justify-between.items-center.mb-4 button')
     const nextButton = navButtons[1] // The second button in the navigation header
-    
+
     await act(async () => {
       fireEvent.click(nextButton)
     })

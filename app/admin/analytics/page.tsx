@@ -19,7 +19,14 @@ import {
 } from 'recharts'
 
 import { useAuth } from '@/lib/auth/AuthContext'
-import { ChartData, ServiceChartData, TierChartData, TimeSlotChartData, Reservation, User } from '@/lib/types'
+import {
+  ChartData,
+  ServiceChartData,
+  TierChartData,
+  TimeSlotChartData,
+  Reservation,
+  User,
+} from '@/lib/types'
 
 export default function AnalyticsPage() {
   const { user } = useAuth()
@@ -88,6 +95,7 @@ export default function AnalyticsPage() {
       name,
       revenue,
       count: serviceCount[name],
+      value: revenue,
     }))
 
     setServiceData(serviceDataArray)
@@ -107,9 +115,17 @@ export default function AnalyticsPage() {
         tierCounts[tier as keyof typeof tierCounts]++
       })
 
+    const tierColors = {
+      bronze: '#CD7F32',
+      silver: '#C0C0C0',
+      gold: '#FFD700',
+      platinum: '#E5E4E2',
+    }
+
     const tierDataArray = Object.entries(tierCounts).map(([tier, count]) => ({
       name: tier.charAt(0).toUpperCase() + tier.slice(1),
       value: count,
+      fill: tierColors[tier as keyof typeof tierColors],
     }))
 
     setCustomerTierData(tierDataArray)
@@ -125,8 +141,8 @@ export default function AnalyticsPage() {
     const timeSlotDataArray = Object.entries(timeSlots)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([time, count]) => ({
-        time,
-        count,
+        name: time,
+        value: count,
       }))
 
     setTimeSlotData(timeSlotDataArray)

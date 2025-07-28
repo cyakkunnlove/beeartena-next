@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { User, Reservation, Inquiry } from '@/lib/types'
 
-
 export default function AdminDashboard() {
   const router = useRouter()
   const { user } = useAuth()

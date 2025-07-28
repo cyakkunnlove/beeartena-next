@@ -12,7 +12,9 @@ jest.mock('@/lib/auth/AuthContext')
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -128,7 +130,7 @@ describe('LoginPage', () => {
     it('should handle successful login for customer', async () => {
       const user = userEvent.setup()
       mockLogin.mockResolvedValue(mockCustomerUser)
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'customer@example.com')
@@ -144,7 +146,7 @@ describe('LoginPage', () => {
     it('should handle successful login for admin', async () => {
       const user = userEvent.setup()
       mockLogin.mockResolvedValue(mockAdminUser)
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'admin@example.com')
@@ -160,7 +162,7 @@ describe('LoginPage', () => {
     it('should display error on login failure', async () => {
       const user = userEvent.setup()
       mockLogin.mockRejectedValue(new Error('Invalid credentials'))
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'wrong@example.com')
@@ -175,7 +177,7 @@ describe('LoginPage', () => {
     it('should display generic error for non-Error objects', async () => {
       const user = userEvent.setup()
       mockLogin.mockRejectedValue('Some error')
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
@@ -192,7 +194,7 @@ describe('LoginPage', () => {
       mockLogin
         .mockRejectedValueOnce(new Error('First error'))
         .mockResolvedValueOnce(mockCustomerUser)
-      
+
       render(<LoginPage />)
 
       // First submission - error
@@ -219,13 +221,13 @@ describe('LoginPage', () => {
   describe('Loading State', () => {
     it('should show loading state during submission', async () => {
       const user = userEvent.setup()
-      mockLogin.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
-      
+      mockLogin.mockImplementation(() => new Promise((resolve) => setTimeout(resolve, 100)))
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
       await user.type(screen.getByLabelText('パスワード'), 'password')
-      
+
       const submitButton = screen.getByRole('button', { name: 'ログイン' })
       await user.click(submitButton)
 
@@ -237,7 +239,7 @@ describe('LoginPage', () => {
     it('should restore button state after submission', async () => {
       const user = userEvent.setup()
       mockLogin.mockResolvedValue(mockCustomerUser)
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
@@ -254,7 +256,7 @@ describe('LoginPage', () => {
     it('should restore button state after error', async () => {
       const user = userEvent.setup()
       mockLogin.mockRejectedValue(new Error('Login failed'))
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
@@ -275,7 +277,7 @@ describe('LoginPage', () => {
       render(<LoginPage />)
 
       const form = screen.getByRole('button', { name: 'ログイン' }).closest('form')!
-      
+
       // Simulate form submission
       fireEvent.submit(form)
 
@@ -334,7 +336,7 @@ describe('LoginPage', () => {
     it('should submit form on Enter key', async () => {
       const user = userEvent.setup()
       mockLogin.mockResolvedValue(mockCustomerUser)
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')
@@ -364,7 +366,7 @@ describe('LoginPage', () => {
     it('should style error message correctly', async () => {
       const user = userEvent.setup()
       mockLogin.mockRejectedValue(new Error('エラーメッセージ'))
-      
+
       render(<LoginPage />)
 
       await user.type(screen.getByLabelText('メールアドレス'), 'test@example.com')

@@ -35,6 +35,18 @@ describe('Login API Route', () => {
 
   const mockToken = 'mock.jwt.token'
 
+  // Define createMockRequest at top level to be available in all describe blocks
+  const createMockRequest = (body: any, headers: Record<string, string> = {}) => {
+    return new NextRequest('http://localhost:3000/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(body),
+      headers: {
+        'Content-Type': 'application/json',
+        ...headers,
+      },
+    })
+  }
+
   beforeEach(() => {
     jest.clearAllMocks()
   })
@@ -53,17 +65,6 @@ describe('Login API Route', () => {
   })
 
   describe('POST /api/auth/login', () => {
-    const createMockRequest = (body: any, headers: Record<string, string> = {}) => {
-      return new NextRequest('http://localhost:3000/api/auth/login', {
-        method: 'POST',
-        body: JSON.stringify(body),
-        headers: {
-          'Content-Type': 'application/json',
-          ...headers,
-        },
-      })
-    }
-
     it('should successfully login with valid credentials', async () => {
       const mockBody = { email: 'test@example.com', password: 'password123' }
       const mockRequest = createMockRequest(mockBody)
@@ -79,10 +80,10 @@ describe('Login API Route', () => {
       const response = await POST(mockRequest)
 
       expect(middleware.rateLimit).toHaveBeenCalledWith(mockRequest, 5, 60000)
-      expect(middleware.validateRequestBody).toHaveBeenCalledWith(
-        mockRequest,
-        ['email', 'password']
-      )
+      expect(middleware.validateRequestBody).toHaveBeenCalledWith(mockRequest, [
+        'email',
+        'password',
+      ])
       expect(authService.login).toHaveBeenCalledWith('test@example.com', 'password123')
       expect(generateToken).toHaveBeenCalledWith(mockUser)
       expect(middleware.successResponse).toHaveBeenCalledWith({
@@ -95,7 +96,7 @@ describe('Login API Route', () => {
     it('should handle rate limiting', async () => {
       const mockRequest = createMockRequest({})
       const rateLimitResponse = { status: 429, message: 'Too many requests' }
-      
+
       ;(middleware.rateLimit as jest.Mock).mockReturnValue(rateLimitResponse)
 
       const response = await POST(mockRequest)
@@ -130,9 +131,7 @@ describe('Login API Route', () => {
         data: mockBody,
         error: null,
       })
-      ;(authService.login as jest.Mock).mockRejectedValue(
-        new Error('Invalid credentials')
-      )
+      ;(authService.login as jest.Mock).mockRejectedValue(new Error('Invalid credentials'))
 
       const response = await POST(mockRequest)
 
@@ -225,7 +224,9 @@ describe('Login API Route', () => {
 
     it('should handle concurrent login requests', async () => {
       const mockBody = { email: 'test@example.com', password: 'password123' }
-      const requests = Array(3).fill(null).map(() => createMockRequest(mockBody))
+      const requests = Array(3)
+        .fill(null)
+        .map(() => createMockRequest(mockBody))
 
       ;(middleware.rateLimit as jest.Mock).mockReturnValue(null)
       ;(middleware.validateRequestBody as jest.Mock).mockResolvedValue({
@@ -235,7 +236,7 @@ describe('Login API Route', () => {
       ;(authService.login as jest.Mock).mockResolvedValue(mockUser)
       ;(generateToken as jest.Mock).mockResolvedValue(mockToken)
 
-      const responses = await Promise.all(requests.map(req => POST(req)))
+      const responses = await Promise.all(requests.map((req) => POST(req)))
 
       expect(responses).toHaveLength(3)
       expect(authService.login).toHaveBeenCalledTimes(3)
@@ -251,9 +252,7 @@ describe('Login API Route', () => {
       })
 
       ;(middleware.rateLimit as jest.Mock).mockReturnValue(null)
-      ;(middleware.validateRequestBody as jest.Mock).mockRejectedValue(
-        new Error('Invalid JSON')
-      )
+      ;(middleware.validateRequestBody as jest.Mock).mockRejectedValue(new Error('Invalid JSON'))
 
       await expect(POST(mockRequest)).rejects.toThrow()
     })
@@ -310,7 +309,10 @@ describe('Login API Route', () => {
         jest.clearAllMocks()
         testCase.setup()
 
-        const mockRequest = createMockRequest({ email: 'test@example.com', password: 'password123' })
+        const mockRequest = createMockRequest({
+          email: 'test@example.com',
+          password: 'password123',
+        })
         await POST(mockRequest)
 
         expect(middleware.setCorsHeaders).toHaveBeenCalled()
@@ -331,7 +333,7 @@ describe('Login API Route', () => {
         error: null,
       })
       ;(authService.login as jest.Mock).mockRejectedValue(
-        new Error('User test@example.com not found in database')
+        new Error('User test@example.com not found in database'),
       )
 
       await POST(mockRequest)
@@ -339,7 +341,7 @@ describe('Login API Route', () => {
       // Should not expose the actual error message containing user email
       expect(middleware.errorResponse).not.toHaveBeenCalledWith(
         expect.stringContaining('test@example.com'),
-        expect.any(Number)
+        expect.any(Number),
       )
     })
 

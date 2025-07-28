@@ -55,7 +55,7 @@ describe('reservationService', () => {
     jest.useFakeTimers()
     jest.setSystemTime(new Date('2025-07-01'))
   })
-  
+
   afterEach(() => {
     jest.useRealTimers()
   })
@@ -65,24 +65,26 @@ describe('reservationService', () => {
       const mockDate = '2025-08-01' // Friday
       const mockReservations = [{ time: '18:30', status: 'confirmed' }]
 
-      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(mockReservations)
+      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(
+        mockReservations,
+      )
 
       const slots = await reservationService.getTimeSlotsForDate(mockDate)
 
       expect(slots).toHaveLength(2) // 18:30 and 19:30 for weekdays
-      expect(slots[0]).toEqual({ 
-        time: '18:30', 
+      expect(slots[0]).toEqual({
+        time: '18:30',
         available: false, // Booked
         date: mockDate,
         maxCapacity: 1,
-        currentBookings: 1
+        currentBookings: 1,
       })
-      expect(slots[1]).toEqual({ 
-        time: '19:30', 
+      expect(slots[1]).toEqual({
+        time: '19:30',
         available: true,
         date: mockDate,
         maxCapacity: 1,
-        currentBookings: 0
+        currentBookings: 0,
       })
     })
 
@@ -90,30 +92,32 @@ describe('reservationService', () => {
       const mockDate = '2025-08-06' // Wednesday
       const mockReservations = [{ time: '11:00', status: 'confirmed' }]
 
-      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(mockReservations)
+      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(
+        mockReservations,
+      )
 
       const slots = await reservationService.getTimeSlotsForDate(mockDate)
 
       expect(slots).toHaveLength(4) // 9:00, 11:00, 13:00, 15:00 (2-hour slots)
-      expect(slots[0]).toEqual({ 
-        time: '9:00', 
+      expect(slots[0]).toEqual({
+        time: '9:00',
         available: true,
         date: mockDate,
         maxCapacity: 1,
-        currentBookings: 0
+        currentBookings: 0,
       })
-      expect(slots[1]).toEqual({ 
-        time: '11:00', 
+      expect(slots[1]).toEqual({
+        time: '11:00',
         available: false, // Booked
         date: mockDate,
         maxCapacity: 1,
-        currentBookings: 1
+        currentBookings: 1,
       })
     })
 
     it('should return all slots as available when no reservations exist', async () => {
       const mockDate = '2025-08-01' // Friday
-      
+
       ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
 
       const slots = await reservationService.getTimeSlotsForDate(mockDate)
@@ -124,7 +128,7 @@ describe('reservationService', () => {
 
     it('should return empty array for Sunday (closed)', async () => {
       const sundayDate = '2025-08-03' // Sunday
-      
+
       ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
 
       const slots = await reservationService.getTimeSlotsForDate(sundayDate)
@@ -138,7 +142,6 @@ describe('reservationService', () => {
       const settings = reservationService.getSettings()
       settings.blockedDates = [blockedDate]
       reservationService.saveSettings(settings)
-      
       ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
 
       const slots = await reservationService.getTimeSlotsForDate(blockedDate)
@@ -150,22 +153,23 @@ describe('reservationService', () => {
       const mockDate = '2025-08-01'
       const mockReservations = [
         { time: '18:30', status: 'confirmed' },
-        { time: '18:30', status: 'pending' }
+        { time: '18:30', status: 'pending' },
       ]
-      
+
       // Update settings to allow 3 bookings per slot
       const settings = reservationService.getSettings()
       settings.maxCapacityPerSlot = 3
       reservationService.saveSettings(settings)
-
-      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(mockReservations)
+      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(
+        mockReservations,
+      )
 
       const slots = await reservationService.getTimeSlotsForDate(mockDate)
 
       expect(slots).toHaveLength(2) // Friday has 2 slots
       expect(slots[0].currentBookings).toBe(2)
       expect(slots[0].available).toBe(true) // Still available (2 < 3)
-      
+
       // Reset settings
       settings.maxCapacityPerSlot = 1
       reservationService.saveSettings(settings)
@@ -175,7 +179,7 @@ describe('reservationService', () => {
   describe('isDateAvailable', () => {
     it.skip('should return true when date has available slots', async () => {
       const mockDate = '2025-08-01' // Friday
-      
+
       // Mock the getReservationsByDate to return an empty array (all slots available)
       ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
 
@@ -188,10 +192,12 @@ describe('reservationService', () => {
       const mockDate = '2025-08-01' // Friday
       const mockReservations = [
         { time: '18:30', status: 'confirmed' },
-        { time: '19:30', status: 'confirmed' }
+        { time: '19:30', status: 'confirmed' },
       ]
-      
-      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(mockReservations)
+
+      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(
+        mockReservations,
+      )
 
       const isAvailable = await reservationService.isDateAvailable(mockDate)
 
@@ -200,7 +206,7 @@ describe('reservationService', () => {
 
     it('should return false for closed days', async () => {
       const sundayDate = '2025-08-03' // Sunday
-      
+
       ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
 
       const isAvailable = await reservationService.isDateAvailable(sundayDate)
@@ -212,14 +218,15 @@ describe('reservationService', () => {
   describe('getMonthAvailability', () => {
     it.skip('should return availability map for entire month', async () => {
       // Mock that only the 1st (Friday) has one available slot
-      ;(firebaseReservationService.getReservationsByDate as jest.Mock)
-        .mockImplementation((date: Date) => {
+      ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockImplementation(
+        (date: Date) => {
           const dateStr = date.toISOString().split('T')[0]
           if (dateStr === '2025-08-01') {
             return Promise.resolve([{ time: '18:30', status: 'confirmed' }])
           }
           return Promise.resolve([])
-        })
+        },
+      )
 
       const availability = await reservationService.getMonthAvailability(2025, 7) // August (0-indexed)
 
@@ -233,7 +240,6 @@ describe('reservationService', () => {
       jest.useRealTimers()
       jest.useFakeTimers()
       jest.setSystemTime(new Date('2025-08-15'))
-      
       ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
 
       const availability = await reservationService.getMonthAvailability(2025, 7)
@@ -266,7 +272,7 @@ describe('reservationService', () => {
         allDay: false,
         status: 'confirmed',
       })
-      
+
       // Check that event has 2-hour duration
       const start = events[0].start
       const end = events[0].end

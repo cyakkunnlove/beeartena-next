@@ -79,7 +79,7 @@ describe('ReservationService - Firebase', () => {
 
     it('should detect various non-configured states', async () => {
       const nonConfiguredKeys = ['', 'test-api-key', undefined]
-      
+
       for (const key of nonConfiguredKeys) {
         process.env.NEXT_PUBLIC_FIREBASE_API_KEY = key
         ;(mockReservationService.getAllReservations as jest.Mock).mockResolvedValue([])
@@ -123,7 +123,7 @@ describe('ReservationService - Firebase', () => {
           status: 'pending',
           date: expect.any(Object),
           createdAt: expect.any(Object),
-        })
+        }),
       )
     })
 
@@ -143,9 +143,9 @@ describe('ReservationService - Firebase', () => {
     it('should handle creation errors', async () => {
       ;(setDoc as jest.Mock).mockRejectedValue(new Error('Firestore error'))
 
-      await expect(
-        reservationService.createReservation({} as any)
-      ).rejects.toThrow('Firestore error')
+      await expect(reservationService.createReservation({} as any)).rejects.toThrow(
+        'Firestore error',
+      )
     })
 
     it('should use mock service when not configured', async () => {
@@ -200,7 +200,6 @@ describe('ReservationService - Firebase', () => {
       const mockDocData = { ...mockReservation }
       delete (mockDocData as any).date
       delete (mockDocData as any).createdAt
-
       ;(getDoc as jest.Mock).mockResolvedValue({
         exists: () => true,
         data: () => mockDocData,
@@ -214,9 +213,7 @@ describe('ReservationService - Firebase', () => {
     it('should handle Firestore errors', async () => {
       ;(getDoc as jest.Mock).mockRejectedValue(new Error('Network error'))
 
-      await expect(
-        reservationService.getReservation('res123')
-      ).rejects.toThrow('Network error')
+      await expect(reservationService.getReservation('res123')).rejects.toThrow('Network error')
     })
   })
 
@@ -266,9 +263,9 @@ describe('ReservationService - Firebase', () => {
     it('should handle query errors', async () => {
       ;(getDocs as jest.Mock).mockRejectedValue(new Error('Query failed'))
 
-      await expect(
-        reservationService.getUserReservations('customer123')
-      ).rejects.toThrow('Query failed')
+      await expect(reservationService.getUserReservations('customer123')).rejects.toThrow(
+        'Query failed',
+      )
     })
   })
 
@@ -327,20 +324,17 @@ describe('ReservationService - Firebase', () => {
 
       await reservationService.updateReservationStatus('res123', status)
 
-      expect(updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        {
-          status,
-          updatedAt: { seconds: 123, nanoseconds: 456 },
-        }
-      )
+      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+        status,
+        updatedAt: { seconds: 123, nanoseconds: 456 },
+      })
     })
 
     it('should handle update errors', async () => {
       ;(updateDoc as jest.Mock).mockRejectedValue(new Error('Update failed'))
 
       await expect(
-        reservationService.updateReservationStatus('res123', 'confirmed')
+        reservationService.updateReservationStatus('res123', 'confirmed'),
       ).rejects.toThrow('Update failed')
     })
 
@@ -349,7 +343,10 @@ describe('ReservationService - Firebase', () => {
 
       await reservationService.updateReservationStatus('res123', 'confirmed')
 
-      expect(mockReservationService.updateReservationStatus).toHaveBeenCalledWith('res123', 'confirmed')
+      expect(mockReservationService.updateReservationStatus).toHaveBeenCalledWith(
+        'res123',
+        'confirmed',
+      )
     })
   })
 
@@ -365,15 +362,12 @@ describe('ReservationService - Firebase', () => {
 
       await reservationService.cancelReservation('res123', 'Customer request')
 
-      expect(updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
-        {
-          status: 'cancelled',
-          cancelReason: 'Customer request',
-          cancelledAt: mockNow,
-          updatedAt: mockNow,
-        }
-      )
+      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+        status: 'cancelled',
+        cancelReason: 'Customer request',
+        cancelledAt: mockNow,
+        updatedAt: mockNow,
+      })
     })
 
     it('should cancel reservation without reason', async () => {
@@ -386,16 +380,16 @@ describe('ReservationService - Firebase', () => {
         expect.objectContaining({
           status: 'cancelled',
           cancelReason: '',
-        })
+        }),
       )
     })
 
     it('should handle cancellation errors', async () => {
       ;(updateDoc as jest.Mock).mockRejectedValue(new Error('Cancellation failed'))
 
-      await expect(
-        reservationService.cancelReservation('res123')
-      ).rejects.toThrow('Cancellation failed')
+      await expect(reservationService.cancelReservation('res123')).rejects.toThrow(
+        'Cancellation failed',
+      )
     })
   })
 
@@ -422,12 +416,12 @@ describe('ReservationService - Firebase', () => {
       // Check that date range is set correctly
       expect(Timestamp.fromDate).toHaveBeenCalledWith(new Date('2025-08-01T00:00:00.000Z'))
       expect(Timestamp.fromDate).toHaveBeenCalledWith(new Date('2025-08-01T23:59:59.999Z'))
-      
+
       // Check query conditions
       expect(where).toHaveBeenCalledWith('date', '>=', expect.any(Object))
       expect(where).toHaveBeenCalledWith('date', '<=', expect.any(Object))
       expect(where).toHaveBeenCalledWith('status', '!=', 'cancelled')
-      
+
       expect(result).toHaveLength(1)
     })
 
@@ -468,7 +462,9 @@ describe('ReservationService - Firebase', () => {
     it('should use mock service when not configured', async () => {
       process.env.NEXT_PUBLIC_FIREBASE_API_KEY = 'test-api-key'
       const mockReservations = [mockReservation]
-      ;(mockReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(mockReservations)
+      ;(mockReservationService.getReservationsByDate as jest.Mock).mockResolvedValue(
+        mockReservations,
+      )
 
       const result = await reservationService.getReservationsByDate(new Date())
 
@@ -485,18 +481,18 @@ describe('ReservationService - Firebase', () => {
     it('should provide default error messages', async () => {
       ;(getDoc as jest.Mock).mockRejectedValue({})
 
-      await expect(
-        reservationService.getReservation('res123')
-      ).rejects.toThrow('予約の取得に失敗しました')
+      await expect(reservationService.getReservation('res123')).rejects.toThrow(
+        '予約の取得に失敗しました',
+      )
     })
 
     it('should preserve specific error messages', async () => {
       const specificError = new Error('Specific Firestore error')
       ;(setDoc as jest.Mock).mockRejectedValue(specificError)
 
-      await expect(
-        reservationService.createReservation({} as any)
-      ).rejects.toThrow('Specific Firestore error')
+      await expect(reservationService.createReservation({} as any)).rejects.toThrow(
+        'Specific Firestore error',
+      )
     })
 
     it('should handle different error types', async () => {
@@ -513,7 +509,7 @@ describe('ReservationService - Firebase', () => {
         ;(updateDoc as jest.Mock).mockRejectedValue(error)
 
         await expect(
-          reservationService.updateReservationStatus('res123', 'confirmed')
+          reservationService.updateReservationStatus('res123', 'confirmed'),
         ).rejects.toThrow()
       }
     })

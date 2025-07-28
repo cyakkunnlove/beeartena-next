@@ -256,6 +256,9 @@ describe('ReservationForm Component', () => {
     )
 
     const form = container.querySelector('form')
+    if (!form) {
+      throw new Error('Form not found')
+    }
     const event = new Event('submit', { bubbles: true, cancelable: true })
     const preventDefault = jest.spyOn(event, 'preventDefault')
 

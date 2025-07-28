@@ -4,7 +4,7 @@ test.describe('Reservation Flow @smoke', () => {
   test('should complete reservation flow for non-logged-in user @critical', async ({ page }) => {
     // Navigate to reservation page
     await page.goto('/reservation')
-    
+
     // Step 1: Select service
     await expect(page.locator('h2')).toContainText('サービス選択')
     await page.click('text=2D眉毛')
@@ -23,10 +23,10 @@ test.describe('Reservation Flow @smoke', () => {
     await page.fill('input[id="name"]', 'テスト 太郎')
     await page.fill('input[id="email"]', 'test@example.com')
     await page.fill('input[id="phone"]', '090-1234-5678')
-    
+
     // Check agreement
     await page.check('input[id="agreement"]')
-    
+
     // Submit form
     await page.click('button:has-text("予約を確定する")')
 
@@ -40,10 +40,10 @@ test.describe('Reservation Flow @smoke', () => {
     await page.fill('input[id="email"]', 'test@example.com')
     await page.fill('input[id="password"]', 'password123')
     await page.click('button[type="submit"]')
-    
+
     // Navigate to reservation page
     await page.goto('/reservation')
-    
+
     // Step 1: Select service
     await expect(page.locator('h2')).toContainText('サービス選択')
     await page.click('text=3D眉毛')
@@ -59,7 +59,7 @@ test.describe('Reservation Flow @smoke', () => {
     // Step 4: Form should be auto-filled
     await expect(page.locator('h2')).toContainText('予約情報入力')
     await expect(page.locator('input[id="email"]')).toHaveValue('test@example.com')
-    
+
     // Check agreement and submit
     await page.check('input[id="agreement"]')
     await page.click('button:has-text("予約を確定する")')
@@ -96,7 +96,7 @@ test.describe('Reservation Flow @smoke', () => {
     await page.click('text=4D眉毛')
     await page.locator('button.bg-white:not(.cursor-not-allowed)').first().click()
     await page.locator('button:not(.bg-gray-100):not(.cursor-not-allowed)').first().click()
-    
+
     // Form should be auto-filled, just check agreement and submit
     await page.check('input[id="agreement"]')
     await page.click('button:has-text("予約を確定する")')
@@ -142,7 +142,7 @@ test.describe('Reservation Flow @smoke', () => {
     await page.click('text=2D眉毛')
     await page.locator('button.bg-white:not(.cursor-not-allowed)').first().click()
     await page.locator('button:not(.bg-gray-100):not(.cursor-not-allowed)').first().click()
-    
+
     // Fill form
     await page.fill('input[id="name"]', 'テスト 太郎')
     await page.fill('input[id="email"]', 'test@example.com')

@@ -86,22 +86,27 @@ describe('Register API Route', () => {
       const response = await POST(mockRequest)
 
       expect(middleware.rateLimit).toHaveBeenCalledWith(mockRequest, 3, 60000) // 1分間に3回
-      expect(middleware.validateRequestBody).toHaveBeenCalledWith(
-        mockRequest,
-        ['email', 'password', 'name', 'phone']
-      )
+      expect(middleware.validateRequestBody).toHaveBeenCalledWith(mockRequest, [
+        'email',
+        'password',
+        'name',
+        'phone',
+      ])
       expect(authService.register).toHaveBeenCalledWith(
         'newuser@example.com',
         'password123',
         '新規ユーザー',
         '090-9876-5432',
-        '1990-05-05'
+        '1990-05-05',
       )
       expect(generateToken).toHaveBeenCalledWith(mockUser)
-      expect(middleware.successResponse).toHaveBeenCalledWith({
-        user: mockUser,
-        token: mockToken,
-      }, 201)
+      expect(middleware.successResponse).toHaveBeenCalledWith(
+        {
+          user: mockUser,
+          token: mockToken,
+        },
+        201,
+      )
     })
 
     it('should successfully register without birthday', async () => {
@@ -128,14 +133,14 @@ describe('Register API Route', () => {
         'password123',
         '新規ユーザー',
         '090-9876-5432',
-        undefined
+        undefined,
       )
     })
 
     it('should handle rate limiting', async () => {
       const mockRequest = createMockRequest({})
       const rateLimitResponse = { status: 429, message: 'Too many registration attempts' }
-      
+
       ;(middleware.rateLimit as jest.Mock).mockReturnValue(rateLimitResponse)
 
       const response = await POST(mockRequest)
@@ -185,9 +190,7 @@ describe('Register API Route', () => {
         data: mockBody,
         error: null,
       })
-      ;(authService.register as jest.Mock).mockRejectedValue(
-        new Error('Email already registered')
-      )
+      ;(authService.register as jest.Mock).mockRejectedValue(new Error('Email already registered'))
 
       const response = await POST(mockRequest)
 
@@ -216,12 +219,7 @@ describe('Register API Route', () => {
     })
 
     it('should validate email format', async () => {
-      const invalidEmails = [
-        'notanemail',
-        'test',
-        'example.com',
-        'test @example.com',
-      ]
+      const invalidEmails = ['notanemail', 'test', 'example.com', 'test @example.com']
 
       for (const email of invalidEmails) {
         jest.clearAllMocks()
@@ -241,7 +239,9 @@ describe('Register API Route', () => {
 
         await POST(mockRequest)
 
-        expect(middleware.errorResponse).toHaveBeenCalledWith('有効なメールアドレスを入力してください')
+        expect(middleware.errorResponse).toHaveBeenCalledWith(
+          '有効なメールアドレスを入力してください',
+        )
         expect(authService.register).not.toHaveBeenCalled()
       }
     })
@@ -280,17 +280,13 @@ describe('Register API Route', () => {
           'password123',
           'Test User',
           phone,
-          undefined
+          undefined,
         )
       }
     })
 
     it('should validate birthday format', async () => {
-      const validBirthdays = [
-        '1990-01-01',
-        '2000-12-31',
-        '1985-06-15',
-      ]
+      const validBirthdays = ['1990-01-01', '2000-12-31', '1985-06-15']
 
       for (const birthday of validBirthdays) {
         jest.clearAllMocks()
@@ -318,7 +314,7 @@ describe('Register API Route', () => {
           'password123',
           'Test User',
           '090-1234-5678',
-          birthday
+          birthday,
         )
       }
     })
@@ -344,7 +340,9 @@ describe('Register API Route', () => {
 
         await POST(mockRequest)
 
-        expect(middleware.errorResponse).toHaveBeenCalledWith('パスワードは6文字以上で設定してください')
+        expect(middleware.errorResponse).toHaveBeenCalledWith(
+          'パスワードは6文字以上で設定してください',
+        )
         expect(authService.register).not.toHaveBeenCalled()
       }
     })
@@ -410,9 +408,7 @@ describe('Register API Route', () => {
         data: mockBody,
         error: null,
       })
-      ;(authService.register as jest.Mock).mockRejectedValueOnce(
-        new Error('Email already exists')
-      )
+      ;(authService.register as jest.Mock).mockRejectedValueOnce(new Error('Email already exists'))
 
       const response2 = await POST(request2)
       expect(middleware.errorResponse).toHaveBeenCalled()
@@ -449,7 +445,7 @@ describe('Register API Route', () => {
         'password123',
         'Test User',
         '090-1234-5678',
-        '1990-01-01'
+        '1990-01-01',
       )
     })
 
@@ -463,9 +459,7 @@ describe('Register API Route', () => {
       })
 
       ;(middleware.rateLimit as jest.Mock).mockReturnValue(null)
-      ;(middleware.validateRequestBody as jest.Mock).mockRejectedValue(
-        new Error('Invalid JSON')
-      )
+      ;(middleware.validateRequestBody as jest.Mock).mockRejectedValue(new Error('Invalid JSON'))
 
       await expect(POST(mockRequest)).rejects.toThrow()
     })
@@ -497,15 +491,12 @@ describe('Register API Route', () => {
         'password123',
         '<script>alert("xss")</script>',
         '090-1234-5678',
-        undefined
+        undefined,
       )
     })
 
     it('should apply CORS headers to all responses', async () => {
-      const scenarios = [
-        { shouldSucceed: true },
-        { shouldSucceed: false },
-      ]
+      const scenarios = [{ shouldSucceed: true }, { shouldSucceed: false }]
 
       for (const scenario of scenarios) {
         jest.clearAllMocks()

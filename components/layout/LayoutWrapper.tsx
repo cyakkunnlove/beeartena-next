@@ -10,7 +10,6 @@ import Header from '@/components/layout/Header'
 import PWAInstallPrompt, { useServiceWorker } from '@/components/pwa/PWAInstallPrompt'
 import { ToastContainer, useToast } from '@/components/ui/Toast'
 
-
 // Toast Context
 const ToastContext = createContext<ReturnType<typeof useToast> | null>(null)
 

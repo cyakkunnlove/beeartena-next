@@ -44,23 +44,23 @@ describe('BusinessHoursInfo Component', () => {
   describe('Rendering', () => {
     it('should render the business hours heading', () => {
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('営業時間')).toBeInTheDocument()
     })
 
     it('should render the reservation policy note', () => {
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('※ 1日1名限定の完全予約制となっております')).toBeInTheDocument()
     })
 
     it('should group days with same hours', () => {
       render(<BusinessHoursInfo />)
-      
+
       // 月・火・木・金・土 have same hours (18:30〜20:30)
       expect(screen.getByText('月・火・木・金・土曜日:')).toBeInTheDocument()
       expect(screen.getByText('18:30〜20:30')).toBeInTheDocument()
-      
+
       // 水曜日 has different hours (09:00〜17:00)
       expect(screen.getByText('水曜日:')).toBeInTheDocument()
       expect(screen.getByText('09:00〜17:00')).toBeInTheDocument()
@@ -68,17 +68,17 @@ describe('BusinessHoursInfo Component', () => {
 
     it('should display closed days', () => {
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('休業日:')).toBeInTheDocument()
       expect(screen.getByText('日曜日')).toBeInTheDocument()
     })
 
     it('should apply correct styling classes', () => {
       const { container } = render(<BusinessHoursInfo />)
-      
+
       const mainDiv = container.firstChild
       expect(mainDiv).toHaveClass('bg-light-accent', 'rounded-lg', 'p-4', 'mb-6')
-      
+
       const heading = screen.getByText('営業時間')
       expect(heading).toHaveClass('font-semibold', 'text-gray-700', 'mb-2')
     })
@@ -88,15 +88,15 @@ describe('BusinessHoursInfo Component', () => {
     it('should handle all days closed', () => {
       const allClosedSettings: ReservationSettings = {
         ...mockDefaultSettings,
-        businessHours: mockDefaultSettings.businessHours.map(h => ({
+        businessHours: mockDefaultSettings.businessHours.map((h) => ({
           ...h,
           isOpen: false,
         })),
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(allClosedSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('休業日:')).toBeInTheDocument()
       expect(screen.getByText('日・月・火・水・木・金・土曜日')).toBeInTheDocument()
     })
@@ -104,7 +104,7 @@ describe('BusinessHoursInfo Component', () => {
     it('should handle all days with same hours', () => {
       const sameHoursSettings: ReservationSettings = {
         ...mockDefaultSettings,
-        businessHours: mockDefaultSettings.businessHours.map(h => ({
+        businessHours: mockDefaultSettings.businessHours.map((h) => ({
           ...h,
           open: '10:00',
           close: '18:00',
@@ -112,9 +112,9 @@ describe('BusinessHoursInfo Component', () => {
         })),
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(sameHoursSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('日・月・火・水・木・金・土曜日:')).toBeInTheDocument()
       expect(screen.getByText('10:00〜18:00')).toBeInTheDocument()
       expect(screen.queryByText('休業日:')).not.toBeInTheDocument()
@@ -134,15 +134,15 @@ describe('BusinessHoursInfo Component', () => {
         ],
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(differentHoursSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('日曜日:')).toBeInTheDocument()
       expect(screen.getByText('09:00〜12:00')).toBeInTheDocument()
-      
+
       expect(screen.getByText('月曜日:')).toBeInTheDocument()
       expect(screen.getByText('10:00〜13:00')).toBeInTheDocument()
-      
+
       // Should have 7 different time entries
       const timeEntries = screen.getAllByText(/^\d{2}:\d{2}〜\d{2}:\d{2}$/)
       expect(timeEntries).toHaveLength(7)
@@ -162,12 +162,12 @@ describe('BusinessHoursInfo Component', () => {
         ],
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(mixedSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       expect(screen.getByText('月・水・金曜日:')).toBeInTheDocument()
       expect(screen.getByText('10:00〜18:00')).toBeInTheDocument()
-      
+
       expect(screen.getByText('休業日:')).toBeInTheDocument()
       expect(screen.getByText('日・火・木・土曜日')).toBeInTheDocument()
     })
@@ -176,7 +176,7 @@ describe('BusinessHoursInfo Component', () => {
   describe('Time Formatting', () => {
     it('should format time correctly', () => {
       render(<BusinessHoursInfo />)
-      
+
       // Check time format is HH:MM〜HH:MM
       expect(screen.getByText('18:30〜20:30')).toBeInTheDocument()
       expect(screen.getByText('09:00〜17:00')).toBeInTheDocument()
@@ -191,9 +191,9 @@ describe('BusinessHoursInfo Component', () => {
         ],
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(emptyTimeSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       // Should render "〜" for empty times
       expect(screen.getByText('日曜日:')).toBeInTheDocument()
       expect(screen.getByText('〜')).toBeInTheDocument()
@@ -204,15 +204,15 @@ describe('BusinessHoursInfo Component', () => {
     it('should handle no open days', () => {
       const noOpenDaysSettings: ReservationSettings = {
         ...mockDefaultSettings,
-        businessHours: mockDefaultSettings.businessHours.map(h => ({
+        businessHours: mockDefaultSettings.businessHours.map((h) => ({
           ...h,
           isOpen: false,
         })),
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(noOpenDaysSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       // Should still show the component structure
       expect(screen.getByText('営業時間')).toBeInTheDocument()
       expect(screen.getByText('休業日:')).toBeInTheDocument()
@@ -224,9 +224,9 @@ describe('BusinessHoursInfo Component', () => {
         businessHours: [],
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(emptySettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       // Should render without errors
       expect(screen.getByText('営業時間')).toBeInTheDocument()
       expect(screen.getByText('※ 1日1名限定の完全予約制となっております')).toBeInTheDocument()
@@ -242,7 +242,7 @@ describe('BusinessHoursInfo Component', () => {
         ],
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(malformedSettings)
-      
+
       // Should render without crashing
       expect(() => render(<BusinessHoursInfo />)).not.toThrow()
     })
@@ -251,14 +251,12 @@ describe('BusinessHoursInfo Component', () => {
   describe('Days of Week', () => {
     it('should use correct Japanese day names', () => {
       render(<BusinessHoursInfo />)
-      
+
       const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
-      
+
       // At least some days should be visible
-      const visibleDays = daysOfWeek.filter(day => 
-        screen.queryByText(new RegExp(day + '曜日'))
-      )
-      
+      const visibleDays = daysOfWeek.filter((day) => screen.queryByText(new RegExp(day + '曜日')))
+
       expect(visibleDays.length).toBeGreaterThan(0)
     })
 
@@ -276,9 +274,9 @@ describe('BusinessHoursInfo Component', () => {
         ],
       }
       ;(reservationService.getSettings as jest.Mock).mockReturnValue(customSettings)
-      
+
       render(<BusinessHoursInfo />)
-      
+
       // Days should be grouped correctly
       expect(screen.getByText('日・月曜日:')).toBeInTheDocument()
       expect(screen.getByText('火・水曜日:')).toBeInTheDocument()
@@ -290,20 +288,20 @@ describe('BusinessHoursInfo Component', () => {
   describe('Styling', () => {
     it('should apply correct text colors', () => {
       render(<BusinessHoursInfo />)
-      
+
       const closedDaysElement = screen.getByText('休業日:').parentElement
       expect(closedDaysElement).toHaveClass('text-red-500')
-      
+
       const noteElement = screen.getByText('※ 1日1名限定の完全予約制となっております')
       expect(noteElement).toHaveClass('text-xs', 'text-gray-500')
     })
 
     it('should have proper spacing', () => {
       const { container } = render(<BusinessHoursInfo />)
-      
+
       const contentDiv = container.querySelector('.space-y-1')
       expect(contentDiv).toBeInTheDocument()
-      
+
       const noteDiv = screen.getByText('※ 1日1名限定の完全予約制となっております')
       expect(noteDiv).toHaveClass('mt-3')
     })

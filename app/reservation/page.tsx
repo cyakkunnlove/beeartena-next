@@ -25,7 +25,12 @@ function ReservationContent() {
   const [_isSubmitting, setIsSubmitting] = useState(false)
   const [pointsToUse, setPointsToUse] = useState(0)
   const [_shouldAutoSubmit, _setShouldAutoSubmit] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    name: string
+    email: string
+    phone: string
+    notes: string
+  }>({
     name: '',
     email: '',
     phone: '',
@@ -69,7 +74,7 @@ function ReservationContent() {
     if (user && step === 4) {
       // フォームデータが初期状態の場合のみ自動入力
       if (!formData.name && !formData.email && !formData.phone) {
-        setFormData(prevData => ({
+        setFormData((prevData) => ({
           name: user.name || '',
           email: user.email || '',
           phone: user.phone || '',
@@ -94,7 +99,12 @@ function ReservationContent() {
     setStep(4)
   }
 
-  const handleFormSubmit = async (data: ReservationFormData) => {
+  const handleFormSubmit = async (data: {
+    name: string
+    email: string
+    phone: string
+    notes: string
+  }) => {
     setFormData(data)
     setIsSubmitting(true)
 

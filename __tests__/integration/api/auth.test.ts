@@ -110,7 +110,9 @@ describe('Auth API Integration Tests', () => {
 
     it('should fail with invalid email', async () => {
       const { authService } = require('@/lib/auth/authService')
-      authService.login.mockRejectedValue(new Error('メールアドレスまたはパスワードが正しくありません'))
+      authService.login.mockRejectedValue(
+        new Error('メールアドレスまたはパスワードが正しくありません'),
+      )
 
       const req = new NextRequest('http://localhost:3000/api/auth/login', {
         method: 'POST',
@@ -132,7 +134,9 @@ describe('Auth API Integration Tests', () => {
 
     it('should fail with invalid password', async () => {
       const { authService } = require('@/lib/auth/authService')
-      authService.login.mockRejectedValue(new Error('メールアドレスまたはパスワードが正しくありません'))
+      authService.login.mockRejectedValue(
+        new Error('メールアドレスまたはパスワードが正しくありません'),
+      )
 
       const req = new NextRequest('http://localhost:3000/api/auth/login', {
         method: 'POST',
@@ -172,7 +176,7 @@ describe('Auth API Integration Tests', () => {
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
       const { authService } = require('@/lib/auth/authService')
-      
+
       const mockUser = {
         id: 'new-user-id',
         email: 'newuser@example.com',
@@ -180,7 +184,7 @@ describe('Auth API Integration Tests', () => {
         role: 'customer',
         phone: '090-1234-5678',
       }
-      
+
       authService.register.mockResolvedValue(mockUser)
 
       const req = new NextRequest('http://localhost:3000/api/auth/register', {

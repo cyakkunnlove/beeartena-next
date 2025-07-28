@@ -40,6 +40,8 @@ export async function POST(request: NextRequest) {
       }),
     )
   } catch (error) {
-    return setCorsHeaders(errorResponse(error instanceof Error ? error.message : 'ログインに失敗しました', 401))
+    return setCorsHeaders(
+      errorResponse(error instanceof Error ? error.message : 'ログインに失敗しました', 401),
+    )
   }
 }

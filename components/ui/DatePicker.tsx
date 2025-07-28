@@ -50,7 +50,9 @@ export default function DatePicker({ value, onChange, required = false }: DatePi
   return (
     <div className="flex gap-2 items-center">
       <div className="flex-1">
-        <label htmlFor="date-picker-year" className="block text-xs text-gray-500 mb-1">年</label>
+        <label htmlFor="date-picker-year" className="block text-xs text-gray-500 mb-1">
+          年
+        </label>
         <select
           id="date-picker-year"
           value={year}
@@ -67,7 +69,9 @@ export default function DatePicker({ value, onChange, required = false }: DatePi
       </div>
 
       <div className="flex-1">
-        <label htmlFor="date-picker-month" className="block text-xs text-gray-500 mb-1">月</label>
+        <label htmlFor="date-picker-month" className="block text-xs text-gray-500 mb-1">
+          月
+        </label>
         <select
           id="date-picker-month"
           value={month}
@@ -84,7 +88,9 @@ export default function DatePicker({ value, onChange, required = false }: DatePi
       </div>
 
       <div className="flex-1">
-        <label htmlFor="date-picker-day" className="block text-xs text-gray-500 mb-1">日</label>
+        <label htmlFor="date-picker-day" className="block text-xs text-gray-500 mb-1">
+          日
+        </label>
         <select
           id="date-picker-day"
           value={day}

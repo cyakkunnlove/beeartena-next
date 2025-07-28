@@ -8,7 +8,6 @@ import { useState, useEffect } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 
-
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { user, logout } = useAuth()

@@ -67,7 +67,7 @@ export default function ContactSection() {
     }
   }
 
-  if (isLoading) {
+  if (_isLoading) {
     return (
       <section className="py-20 bg-white">
         <ResponsiveContainer maxWidth="xl">

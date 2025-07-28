@@ -171,6 +171,8 @@ export interface ChartData {
 
 export interface ServiceChartData {
   name: string
+  revenue: number
+  count: number
   value: number
 }
 

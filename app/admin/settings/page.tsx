@@ -10,9 +10,6 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationService } from '@/lib/reservationService'
 import { BusinessHours, ReservationSettings } from '@/lib/types'
 
-
-
-
 const DAYS_OF_WEEK = [
   { value: 0, label: '日曜日' },
   { value: 1, label: '月曜日' },
@@ -263,7 +260,10 @@ export default function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label htmlFor="slot-duration" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="slot-duration"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     1予約あたりの時間（分）
                   </label>
                   <input
@@ -280,7 +280,10 @@ export default function AdminSettings() {
                 </div>
 
                 <div>
-                  <label htmlFor="max-capacity" className="block text-sm font-medium text-gray-700 mb-2">
+                  <label
+                    htmlFor="max-capacity"
+                    className="block text-sm font-medium text-gray-700 mb-2"
+                  >
                     1時間枠あたりの最大予約数
                   </label>
                   <input

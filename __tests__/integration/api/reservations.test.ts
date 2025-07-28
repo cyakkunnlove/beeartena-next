@@ -217,7 +217,7 @@ describe('Reservations API Integration Tests', () => {
           time: '10:00',
           price: 30000,
           pointsUsed: 0,
-        })
+        }),
       )
     })
 
@@ -280,9 +280,7 @@ describe('Reservations API Integration Tests', () => {
       const { reservationService } = require('@/lib/reservationService')
 
       // Mock time slots
-      reservationService.getTimeSlotsForDate.mockResolvedValue([
-        { time: '14:00', available: true },
-      ])
+      reservationService.getTimeSlotsForDate.mockResolvedValue([{ time: '14:00', available: true }])
 
       // Mock reservation creation with points
       reservationService.createReservation.mockResolvedValue({
@@ -319,7 +317,7 @@ describe('Reservations API Integration Tests', () => {
         expect.objectContaining({
           pointsUsed: 1000,
           price: 50000,
-        })
+        }),
       )
     })
 
@@ -327,14 +325,10 @@ describe('Reservations API Integration Tests', () => {
       const { reservationService } = require('@/lib/reservationService')
 
       // Mock time slots
-      reservationService.getTimeSlotsForDate.mockResolvedValue([
-        { time: '10:00', available: true },
-      ])
+      reservationService.getTimeSlotsForDate.mockResolvedValue([{ time: '10:00', available: true }])
 
       // Mock reservation creation to fail due to insufficient points
-      reservationService.createReservation.mockRejectedValue(
-        new Error('ポイントが不足しています')
-      )
+      reservationService.createReservation.mockRejectedValue(new Error('ポイントが不足しています'))
 
       const req = new NextRequest('http://localhost:3000/api/reservations', {
         method: 'POST',

@@ -44,7 +44,7 @@ describe('AuthService', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     localStorageMock.clear()
-    
+
     // Reset the auth service state
     ;(authService as any).currentUser = null
   })
@@ -63,11 +63,11 @@ describe('AuthService', () => {
 
     it('should save session when user is authenticated', () => {
       const mockCallback = (firebaseAuth.onAuthStateChange as jest.Mock).mock.calls[0]?.[0]
-      
+
       if (mockCallback) {
         const mockDate = new Date('2025-07-01T10:00:00')
         jest.spyOn(global, 'Date').mockImplementation(() => mockDate as any)
-        
+
         mockCallback(mockUser)
 
         const savedSession = JSON.parse(localStorageMock.getItem('beeartena_session') || '{}')
@@ -79,7 +79,7 @@ describe('AuthService', () => {
 
     it('should clear session when user logs out', () => {
       localStorageMock.setItem('beeartena_session', JSON.stringify({ userId: 'user123' }))
-      
+
       const mockCallback = (firebaseAuth.onAuthStateChange as jest.Mock).mock.calls[0]?.[0]
       if (mockCallback) {
         mockCallback(null)
@@ -112,43 +112,33 @@ describe('AuthService', () => {
     })
 
     it('should handle invalid credentials error', async () => {
-      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(
-        new Error('auth/user-not-found')
-      )
+      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(new Error('auth/user-not-found'))
 
-      await expect(
-        authService.login('wrong@example.com', 'password123')
-      ).rejects.toThrow('メールアドレスまたはパスワードが正しくありません')
+      await expect(authService.login('wrong@example.com', 'password123')).rejects.toThrow(
+        'メールアドレスまたはパスワードが正しくありません',
+      )
     })
 
     it('should handle wrong password error', async () => {
-      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(
-        new Error('auth/wrong-password')
-      )
+      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(new Error('auth/wrong-password'))
 
-      await expect(
-        authService.login('test@example.com', 'wrongpassword')
-      ).rejects.toThrow('メールアドレスまたはパスワードが正しくありません')
+      await expect(authService.login('test@example.com', 'wrongpassword')).rejects.toThrow(
+        'メールアドレスまたはパスワードが正しくありません',
+      )
     })
 
     it('should propagate other login errors', async () => {
-      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(
-        new Error('Network error')
-      )
+      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(new Error('Network error'))
 
-      await expect(
-        authService.login('test@example.com', 'password123')
-      ).rejects.toThrow('Network error')
+      await expect(authService.login('test@example.com', 'password123')).rejects.toThrow(
+        'Network error',
+      )
     })
 
     it('should handle empty credentials', async () => {
-      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(
-        new Error('auth/invalid-email')
-      )
+      ;(firebaseAuth.login as jest.Mock).mockRejectedValue(new Error('auth/invalid-email'))
 
-      await expect(
-        authService.login('', '')
-      ).rejects.toThrow('auth/invalid-email')
+      await expect(authService.login('', '')).rejects.toThrow('auth/invalid-email')
     })
   })
 
@@ -161,7 +151,7 @@ describe('AuthService', () => {
         'password123',
         '新規ユーザー',
         '090-9876-5432',
-        '1995-05-05'
+        '1995-05-05',
       )
 
       expect(firebaseAuth.register).toHaveBeenCalledWith(
@@ -169,7 +159,7 @@ describe('AuthService', () => {
         'password123',
         '新規ユーザー',
         '090-9876-5432',
-        '1995-05-05'
+        '1995-05-05',
       )
       expect(result).toEqual(mockUser)
       expect((authService as any).currentUser).toEqual(mockUser)
@@ -182,7 +172,7 @@ describe('AuthService', () => {
         'new@example.com',
         'password123',
         '新規ユーザー',
-        '090-9876-5432'
+        '090-9876-5432',
       )
 
       expect(firebaseAuth.register).toHaveBeenCalledWith(
@@ -190,45 +180,41 @@ describe('AuthService', () => {
         'password123',
         '新規ユーザー',
         '090-9876-5432',
-        undefined
+        undefined,
       )
       expect(result).toEqual(mockUser)
     })
 
     it('should handle email already in use error', async () => {
       ;(firebaseAuth.register as jest.Mock).mockRejectedValue(
-        new Error('auth/email-already-in-use')
+        new Error('auth/email-already-in-use'),
       )
 
       await expect(
-        authService.register('existing@example.com', 'password123', 'Test', '090-0000-0000')
+        authService.register('existing@example.com', 'password123', 'Test', '090-0000-0000'),
       ).rejects.toThrow('このメールアドレスは既に登録されています')
     })
 
     it('should handle weak password error', async () => {
-      ;(firebaseAuth.register as jest.Mock).mockRejectedValue(
-        new Error('auth/weak-password')
-      )
+      ;(firebaseAuth.register as jest.Mock).mockRejectedValue(new Error('auth/weak-password'))
 
       await expect(
-        authService.register('new@example.com', '123', 'Test', '090-0000-0000')
+        authService.register('new@example.com', '123', 'Test', '090-0000-0000'),
       ).rejects.toThrow('パスワードは6文字以上で設定してください')
     })
 
     it('should propagate other registration errors', async () => {
-      ;(firebaseAuth.register as jest.Mock).mockRejectedValue(
-        new Error('Network error')
-      )
+      ;(firebaseAuth.register as jest.Mock).mockRejectedValue(new Error('Network error'))
 
       await expect(
-        authService.register('new@example.com', 'password123', 'Test', '090-0000-0000')
+        authService.register('new@example.com', 'password123', 'Test', '090-0000-0000'),
       ).rejects.toThrow('Network error')
     })
   })
 
   describe('logout', () => {
     it('should successfully logout user', async () => {
-      (authService as any).currentUser = mockUser
+      ;(authService as any).currentUser = mockUser
       localStorageMock.setItem('beeartena_session', JSON.stringify({ userId: 'user123' }))
       ;(firebaseAuth.logout as jest.Mock).mockResolvedValue(undefined)
 
@@ -257,7 +243,7 @@ describe('AuthService', () => {
 
   describe('getCurrentUser', () => {
     it('should return cached user if available', async () => {
-      (authService as any).currentUser = mockUser
+      ;(authService as any).currentUser = mockUser
 
       const result = await authService.getCurrentUser()
 
@@ -266,7 +252,7 @@ describe('AuthService', () => {
     })
 
     it('should fetch user from Firebase if not cached', async () => {
-      (authService as any).currentUser = null
+      ;(authService as any).currentUser = null
       ;(firebaseAuth.getCurrentUser as jest.Mock).mockResolvedValue(mockUser)
 
       const result = await authService.getCurrentUser()
@@ -277,7 +263,7 @@ describe('AuthService', () => {
     })
 
     it('should return null if no user is authenticated', async () => {
-      (authService as any).currentUser = null
+      ;(authService as any).currentUser = null
       ;(firebaseAuth.getCurrentUser as jest.Mock).mockResolvedValue(null)
 
       const result = await authService.getCurrentUser()
@@ -286,7 +272,7 @@ describe('AuthService', () => {
     })
 
     it('should handle errors when fetching current user', async () => {
-      (authService as any).currentUser = null
+      ;(authService as any).currentUser = null
       ;(firebaseAuth.getCurrentUser as jest.Mock).mockRejectedValue(new Error('Auth error'))
 
       await expect(authService.getCurrentUser()).rejects.toThrow('Auth error')
@@ -297,7 +283,7 @@ describe('AuthService', () => {
     it('should update user profile', async () => {
       const updates = { name: '新しい名前', phone: '090-9999-9999' }
       const updatedUser = { ...mockUser, ...updates }
-      
+
       ;(userService.updateUser as jest.Mock).mockResolvedValue(undefined)
       ;(userService.getUser as jest.Mock).mockResolvedValue(updatedUser)
 
@@ -313,7 +299,7 @@ describe('AuthService', () => {
       const updates = { name: '新しい名前', role: 'admin' as const }
       const safeUpdates = { name: '新しい名前' }
       const updatedUser = { ...mockUser, name: '新しい名前' }
-      
+
       ;(userService.updateUser as jest.Mock).mockResolvedValue(undefined)
       ;(userService.getUser as jest.Mock).mockResolvedValue(updatedUser)
 
@@ -322,7 +308,7 @@ describe('AuthService', () => {
       expect(userService.updateUser).toHaveBeenCalledWith('user123', safeUpdates)
       expect(userService.updateUser).not.toHaveBeenCalledWith(
         expect.anything(),
-        expect.objectContaining({ role: 'admin' })
+        expect.objectContaining({ role: 'admin' }),
       )
     })
 
@@ -330,17 +316,17 @@ describe('AuthService', () => {
       ;(userService.updateUser as jest.Mock).mockResolvedValue(undefined)
       ;(userService.getUser as jest.Mock).mockResolvedValue(null)
 
-      await expect(
-        authService.updateProfile('nonexistent', { name: 'Test' })
-      ).rejects.toThrow('ユーザーが見つかりません')
+      await expect(authService.updateProfile('nonexistent', { name: 'Test' })).rejects.toThrow(
+        'ユーザーが見つかりません',
+      )
     })
 
     it('should handle update errors', async () => {
       ;(userService.updateUser as jest.Mock).mockRejectedValue(new Error('Update failed'))
 
-      await expect(
-        authService.updateProfile('user123', { name: 'Test' })
-      ).rejects.toThrow('Update failed')
+      await expect(authService.updateProfile('user123', { name: 'Test' })).rejects.toThrow(
+        'Update failed',
+      )
     })
 
     it('should handle empty updates', async () => {
@@ -357,19 +343,19 @@ describe('AuthService', () => {
 
   describe('isAuthenticated', () => {
     it('should return true when user is logged in', () => {
-      (authService as any).currentUser = mockUser
+      ;(authService as any).currentUser = mockUser
 
       expect(authService.isAuthenticated()).toBe(true)
     })
 
     it('should return false when user is not logged in', () => {
-      (authService as any).currentUser = null
+      ;(authService as any).currentUser = null
 
       expect(authService.isAuthenticated()).toBe(false)
     })
 
     it('should return false for undefined user', () => {
-      (authService as any).currentUser = undefined
+      ;(authService as any).currentUser = undefined
 
       expect(authService.isAuthenticated()).toBe(false)
     })
@@ -439,7 +425,7 @@ describe('AuthService', () => {
   describe('Edge Cases', () => {
     it('should handle concurrent login attempts', async () => {
       ;(firebaseAuth.login as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve(mockUser), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve(mockUser), 100)),
       )
 
       const promise1 = authService.login('test@example.com', 'password123')
@@ -467,9 +453,9 @@ describe('AuthService', () => {
       const specialError = new Error('auth/user-not-found: <script>alert("xss")</script>')
       ;(firebaseAuth.login as jest.Mock).mockRejectedValue(specialError)
 
-      await expect(
-        authService.login('test@example.com', 'password123')
-      ).rejects.toThrow('メールアドレスまたはパスワードが正しくありません')
+      await expect(authService.login('test@example.com', 'password123')).rejects.toThrow(
+        'メールアドレスまたはパスワードが正しくありません',
+      )
     })
   })
 })

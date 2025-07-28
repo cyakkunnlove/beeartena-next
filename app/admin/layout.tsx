@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 
-
 interface NavItem {
   name: string
   href: string

@@ -16,7 +16,9 @@ jest.mock('next/image', () => ({
 jest.mock('next/link', () => ({
   __esModule: true,
   default: ({ children, href, ...props }: any) => (
-    <a href={href} {...props}>{children}</a>
+    <a href={href} {...props}>
+      {children}
+    </a>
   ),
 }))
 
@@ -27,10 +29,14 @@ jest.mock('framer-motion', () => ({
       <div {...props}>{children}</div>
     ),
     button: ({ children, whileTap, onClick, ...props }: any) => (
-      <button onClick={onClick} {...props}>{children}</button>
+      <button onClick={onClick} {...props}>
+        {children}
+      </button>
     ),
     span: ({ children, animate, transition, style, ...props }: any) => (
-      <span style={style} {...props}>{children}</span>
+      <span style={style} {...props}>
+        {children}
+      </span>
     ),
     ul: ({ children, ...props }: any) => <ul {...props}>{children}</ul>,
     li: ({ children, initial, animate, transition, ...props }: any) => (
@@ -78,7 +84,7 @@ describe('Header Component', () => {
   describe('Rendering', () => {
     it('should render logo image', () => {
       render(<Header />)
-      
+
       const logo = screen.getByAltText('BEE ART ENA')
       expect(logo).toBeInTheDocument()
       expect(logo).toHaveAttribute('src', '/images/aicon.jpg')
@@ -86,7 +92,7 @@ describe('Header Component', () => {
 
     it('should render all navigation links', () => {
       render(<Header />)
-      
+
       const links = [
         'トップ',
         'メニュー・料金',
@@ -96,8 +102,8 @@ describe('Header Component', () => {
         '症例ギャラリー',
         'FAQ',
       ]
-      
-      links.forEach(link => {
+
+      links.forEach((link) => {
         // Desktop menu (first occurrence)
         const desktopLinks = screen.getAllByText(link)
         expect(desktopLinks.length).toBeGreaterThan(0)
@@ -106,10 +112,10 @@ describe('Header Component', () => {
 
     it('should render reservation button', () => {
       render(<Header />)
-      
+
       const reservationButtons = screen.getAllByText('予約する')
       expect(reservationButtons.length).toBeGreaterThan(0)
-      
+
       // Check if it has the correct styling
       const desktopButton = reservationButtons[0]
       expect(desktopButton).toHaveClass('btn', 'btn-primary')
@@ -117,7 +123,7 @@ describe('Header Component', () => {
 
     it('should apply sticky header styling', () => {
       const { container } = render(<Header />)
-      
+
       const header = container.querySelector('header')
       expect(header).toHaveClass('bg-white', 'shadow-md', 'sticky', 'top-0', 'z-50')
     })
@@ -126,7 +132,7 @@ describe('Header Component', () => {
   describe('Authentication States', () => {
     it('should show login link when not authenticated', () => {
       render(<Header />)
-      
+
       const loginLinks = screen.getAllByText('会員登録/ログイン')
       expect(loginLinks.length).toBeGreaterThan(0)
     })
@@ -136,9 +142,9 @@ describe('Header Component', () => {
         user: mockCustomerUser,
         logout: mockLogout,
       })
-      
+
       render(<Header />)
-      
+
       expect(screen.getByText('マイページ')).toBeInTheDocument()
       expect(screen.getAllByText('ログアウト')).toHaveLength(2) // Desktop and mobile
       expect(screen.queryByText('会員登録/ログイン')).not.toBeInTheDocument()
@@ -149,9 +155,9 @@ describe('Header Component', () => {
         user: mockAdminUser,
         logout: mockLogout,
       })
-      
+
       render(<Header />)
-      
+
       expect(screen.getByText('管理画面')).toBeInTheDocument()
       expect(screen.queryByText('マイページ')).not.toBeInTheDocument()
     })
@@ -160,10 +166,10 @@ describe('Header Component', () => {
   describe('Mobile Menu', () => {
     it('should hide mobile menu by default', () => {
       render(<Header />)
-      
+
       const mobileMenuButton = screen.getByLabelText('メニューを開く')
       expect(mobileMenuButton).toBeInTheDocument()
-      
+
       // Mobile menu should be hidden initially
       const mobileMenu = screen.getByRole('list').parentElement
       expect(mobileMenu).toHaveClass('md:hidden')
@@ -172,43 +178,43 @@ describe('Header Component', () => {
     it('should toggle mobile menu on button click', async () => {
       const user = userEvent.setup()
       render(<Header />)
-      
+
       const menuButton = screen.getByLabelText('メニューを開く')
-      
+
       // Open menu
       await user.click(menuButton)
-      
+
       // Check if mobile menu items are visible
       const mobileLinks = screen.getAllByText('トップ')
       expect(mobileLinks).toHaveLength(2) // Desktop and mobile
-      
+
       // Close menu
       await user.click(menuButton)
-      
+
       // Menu should still be in DOM but with exit animation
       expect(screen.getAllByText('トップ')).toHaveLength(2)
     })
 
     it('should show hamburger menu animation', () => {
       render(<Header />)
-      
+
       const menuButton = screen.getByLabelText('メニューを開く')
       const spans = menuButton.querySelectorAll('span')
-      
+
       expect(spans).toHaveLength(3) // Three lines for hamburger menu
     })
 
     it('should close mobile menu on route change', () => {
       const { rerender } = render(<Header />)
-      
+
       // Open menu
       const menuButton = screen.getByLabelText('メニューを開く')
       fireEvent.click(menuButton)
-      
+
       // Change route
       ;(usePathname as jest.Mock).mockReturnValue('/pricing')
       rerender(<Header />)
-      
+
       // Menu should be closed (effect would handle this)
       expect(usePathname).toHaveBeenCalled()
     })
@@ -221,14 +227,14 @@ describe('Header Component', () => {
         logout: mockLogout,
       })
       mockLogout.mockResolvedValue(undefined)
-      
+
       render(<Header />)
-      
+
       const logoutButtons = screen.getAllByText('ログアウト')
       const desktopLogoutButton = logoutButtons[0]
-      
+
       fireEvent.click(desktopLogoutButton)
-      
+
       await waitFor(() => {
         expect(mockLogout).toHaveBeenCalled()
         expect(window.location.href).toBe('/')
@@ -241,18 +247,18 @@ describe('Header Component', () => {
         logout: mockLogout,
       })
       mockLogout.mockResolvedValue(undefined)
-      
+
       render(<Header />)
-      
+
       // Open mobile menu
       const menuButton = screen.getByLabelText('メニューを開く')
       fireEvent.click(menuButton)
-      
+
       const logoutButtons = screen.getAllByText('ログアウト')
       const mobileLogoutButton = logoutButtons[1]
-      
+
       fireEvent.click(mobileLogoutButton)
-      
+
       await waitFor(() => {
         expect(mockLogout).toHaveBeenCalled()
         expect(window.location.href).toBe('/')
@@ -265,11 +271,11 @@ describe('Header Component', () => {
         logout: mockLogout,
       })
       mockLogout.mockRejectedValue(new Error('Logout failed'))
-      
+
       render(<Header />)
-      
+
       const logoutButton = screen.getAllByText('ログアウト')[0]
-      
+
       // Should not throw
       await expect(async () => {
         fireEvent.click(logoutButton)
@@ -281,7 +287,7 @@ describe('Header Component', () => {
   describe('Navigation Links', () => {
     it('should have correct href attributes', () => {
       render(<Header />)
-      
+
       const links = [
         { text: 'トップ', href: '/' },
         { text: 'メニュー・料金', href: '/pricing' },
@@ -293,7 +299,7 @@ describe('Header Component', () => {
         { text: '会員登録/ログイン', href: '/login' },
         { text: '予約する', href: '/reservation' },
       ]
-      
+
       links.forEach(({ text, href }) => {
         const link = screen.getAllByText(text)[0].closest('a')
         expect(link).toHaveAttribute('href', href)
@@ -305,9 +311,9 @@ describe('Header Component', () => {
         user: mockAdminUser,
         logout: mockLogout,
       })
-      
+
       render(<Header />)
-      
+
       const adminLink = screen.getByText('管理画面').closest('a')
       expect(adminLink).toHaveAttribute('href', '/admin')
     })
@@ -317,9 +323,9 @@ describe('Header Component', () => {
         user: mockCustomerUser,
         logout: mockLogout,
       })
-      
+
       render(<Header />)
-      
+
       const mypageLink = screen.getByText('マイページ').closest('a')
       expect(mypageLink).toHaveAttribute('href', '/mypage')
     })
@@ -328,21 +334,21 @@ describe('Header Component', () => {
   describe('Responsive Behavior', () => {
     it('should hide desktop menu on mobile', () => {
       render(<Header />)
-      
+
       const desktopMenu = screen.getAllByRole('list')[0]
       expect(desktopMenu).toHaveClass('hidden', 'md:flex')
     })
 
     it('should hide mobile menu button on desktop', () => {
       render(<Header />)
-      
+
       const mobileMenuButton = screen.getByLabelText('メニューを開く')
       expect(mobileMenuButton).toHaveClass('md:hidden')
     })
 
     it('should apply responsive container styling', () => {
       const { container } = render(<Header />)
-      
+
       const nav = container.querySelector('nav')
       expect(nav).toHaveClass('container', 'mx-auto', 'px-4', 'py-4')
     })
@@ -351,9 +357,9 @@ describe('Header Component', () => {
   describe('Styling', () => {
     it('should apply hover effects to links', () => {
       render(<Header />)
-      
+
       const links = screen.getAllByText('トップ')
-      links.forEach(link => {
+      links.forEach((link) => {
         expect(link).toHaveClass('hover:text-primary', 'transition-colors')
       })
     })
@@ -363,9 +369,9 @@ describe('Header Component', () => {
         user: mockCustomerUser,
         logout: mockLogout,
       })
-      
+
       render(<Header />)
-      
+
       const desktopLogoutButton = screen.getAllByText('ログアウト')[0]
       expect(desktopLogoutButton).toHaveClass('text-gray-700', 'hover:text-primary')
     })
@@ -375,12 +381,12 @@ describe('Header Component', () => {
         user: mockCustomerUser,
         logout: mockLogout,
       })
-      
+
       render(<Header />)
-      
+
       // Open mobile menu
       fireEvent.click(screen.getByLabelText('メニューを開く'))
-      
+
       const mobileLogoutButton = screen.getAllByText('ログアウト')[1]
       expect(mobileLogoutButton).toHaveClass('block', 'w-full', 'text-left')
     })
@@ -389,7 +395,7 @@ describe('Header Component', () => {
   describe('Accessibility', () => {
     it('should have proper ARIA label for menu button', () => {
       render(<Header />)
-      
+
       const menuButton = screen.getByLabelText('メニューを開く')
       expect(menuButton).toBeInTheDocument()
     })
@@ -397,11 +403,11 @@ describe('Header Component', () => {
     it('should support keyboard navigation', async () => {
       const user = userEvent.setup()
       render(<Header />)
-      
+
       // Tab through elements
       await user.tab()
       expect(screen.getByAltText('BEE ART ENA').closest('a')).toHaveFocus()
-      
+
       await user.tab()
       expect(screen.getAllByText('トップ')[0].closest('a')).toHaveFocus()
     })
@@ -413,14 +419,14 @@ describe('Header Component', () => {
         logout: mockLogout,
       })
       mockLogout.mockResolvedValue(undefined)
-      
+
       render(<Header />)
-      
+
       const logoutButton = screen.getAllByText('ログアウト')[0]
       logoutButton.focus()
-      
+
       await user.keyboard('{Enter}')
-      
+
       expect(mockLogout).toHaveBeenCalled()
     })
   })

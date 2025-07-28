@@ -8,7 +8,6 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer, PointTransaction } from '@/lib/types'
 
-
 export default function PointsManagementPage() {
   const router = useRouter()
   const { user } = useAuth()
@@ -347,7 +346,12 @@ export default function PointsManagementPage() {
                 </fieldset>
 
                 <div className="mb-4">
-                  <label htmlFor="point-amount" className="block text-sm font-medium text-gray-700 mb-1">ポイント数</label>
+                  <label
+                    htmlFor="point-amount"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    ポイント数
+                  </label>
                   <input
                     id="point-amount"
                     type="number"
@@ -361,7 +365,12 @@ export default function PointsManagementPage() {
                 </div>
 
                 <div className="mb-6">
-                  <label htmlFor="point-reason" className="block text-sm font-medium text-gray-700 mb-1">理由</label>
+                  <label
+                    htmlFor="point-reason"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    理由
+                  </label>
                   <textarea
                     id="point-reason"
                     value={pointReason}

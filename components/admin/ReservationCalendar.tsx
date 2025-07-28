@@ -60,7 +60,7 @@ export default function ReservationCalendar({
   }
 
   // カスタムツールバー
-  const CustomToolbar = (toolbar: CalendarToolbarProps) => {
+  const CustomToolbar = (toolbar: any) => {
     const goToBack = () => {
       toolbar.onNavigate('PREV')
     }
