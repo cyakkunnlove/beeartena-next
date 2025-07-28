@@ -28,7 +28,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   className = '',
   priority = false,
   quality = 75,
-  placeholder = 'blur',
+  placeholder = 'empty',
   blurDataURL,
   onLoad,
   onError,

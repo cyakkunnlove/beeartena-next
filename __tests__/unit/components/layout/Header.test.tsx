@@ -48,11 +48,11 @@ jest.mock('framer-motion', () => ({
 
 // Mock window.location
 delete (window as any).location
-window.location = { 
+window.location = {
   href: '/',
   assign: jest.fn(),
   replace: jest.fn(),
-  reload: jest.fn()
+  reload: jest.fn(),
 } as any
 
 describe('Header Component', () => {
@@ -203,7 +203,7 @@ describe('Header Component', () => {
       const mobileLinks = screen.getAllByText('トップ')
       expect(mobileLinks).toHaveLength(2) // Desktop and mobile
 
-      // Close menu  
+      // Close menu
       await user.click(menuButton)
 
       // Wait for animation to complete
@@ -404,7 +404,7 @@ describe('Header Component', () => {
       // Open mobile menu first to render mobile logout button
       const menuButton = screen.getByLabelText('メニューを開く')
       fireEvent.click(menuButton)
-      
+
       const mobileLogoutButton = screen.getAllByText('ログアウト')[1]
       expect(mobileLogoutButton).toHaveClass('block', 'w-full', 'text-left')
     })

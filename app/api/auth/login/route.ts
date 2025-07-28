@@ -42,14 +42,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     // Don't expose sensitive information in error messages
     let errorMessage = 'ログインに失敗しました'
-    
+
     if (error instanceof Error) {
       // Only use specific error messages that don't contain user info
       if (error.message === 'メールアドレスまたはパスワードが正しくありません') {
         errorMessage = error.message
       }
     }
-    
+
     return setCorsHeaders(errorResponse(errorMessage, 401))
   }
 }

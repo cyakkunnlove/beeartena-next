@@ -241,7 +241,7 @@ describe('Register API Route', () => {
         await POST(mockRequest)
 
         expect(middleware.errorResponse).toHaveBeenCalledWith(
-          '有効なメールアドレスを入力してください'
+          '有効なメールアドレスを入力してください',
         )
         expect(authService.register).not.toHaveBeenCalled()
       }

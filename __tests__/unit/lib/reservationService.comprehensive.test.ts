@@ -41,7 +41,7 @@ describe('ReservationService - Comprehensive Tests', () => {
     localStorageMock.clear()
     jest.useFakeTimers()
     jest.setSystemTime(new Date('2025-07-01T10:00:00'))
-    
+
     // Reset to default settings since we clear localStorage
     const settings = reservationService.getSettings()
     reservationService.saveSettings(settings)
@@ -256,7 +256,7 @@ describe('ReservationService - Comprehensive Tests', () => {
 
     it('should toggle blocked dates', () => {
       const date = '2025-08-15'
-      
+
       // Clear any existing blocked dates
       const settings = reservationService.getSettings()
       settings.blockedDates = []

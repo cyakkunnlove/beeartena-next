@@ -219,7 +219,7 @@ describe('ReservationService - Firebase', () => {
       })
 
       await expect(reservationService.getReservation('res123')).rejects.toThrow(
-        "Cannot read properties of undefined (reading 'toDate')"
+        "Cannot read properties of undefined (reading 'toDate')",
       )
     })
 
@@ -431,7 +431,7 @@ describe('ReservationService - Firebase', () => {
       expectedStartOfDay.setHours(0, 0, 0, 0)
       const expectedEndOfDay = new Date('2025-08-01T12:00:00')
       expectedEndOfDay.setHours(23, 59, 59, 999)
-      
+
       expect(Timestamp.fromDate).toHaveBeenCalledWith(expectedStartOfDay)
       expect(Timestamp.fromDate).toHaveBeenCalledWith(expectedEndOfDay)
 
