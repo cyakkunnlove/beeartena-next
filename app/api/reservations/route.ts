@@ -31,10 +31,8 @@ export async function GET(request: NextRequest) {
 
 // 予約作成
 export async function POST(request: NextRequest) {
+  // 認証はオプショナル（ログインユーザーの場合はcustomerIdを自動設定）
   const authUser = await verifyAuth(request);
-  if (!authUser) {
-    return setCorsHeaders(errorResponse('認証が必要です', 401));
-  }
 
   const { data, error } = await validateRequestBody<{
     serviceId: string;
@@ -46,6 +44,8 @@ export async function POST(request: NextRequest) {
     customerPhone: string;
     customerEmail: string;
     notes?: string;
+    finalPrice?: number;
+    pointsUsed?: number;
   }>(request, ['serviceId', 'serviceName', 'price', 'date', 'time', 'customerName', 'customerPhone', 'customerEmail']);
 
   if (error) return setCorsHeaders(error);
@@ -61,6 +61,9 @@ export async function POST(request: NextRequest) {
 
     // serviceIdからserviceTypeへのマッピング
     const serviceTypeMap: Record<string, '2D' | '3D' | '4D'> = {
+      '2D': '2D',
+      '3D': '3D',
+      '4D': '4D',
       '2d-eyelash': '2D',
       '3d-eyelash': '3D',
       '4d-eyelash': '4D'
@@ -75,7 +78,7 @@ export async function POST(request: NextRequest) {
     const reservation = await reservationService.createReservation({
       ...data,
       serviceType,
-      customerId: authUser.userId,
+      customerId: authUser?.userId || null, // ログインしている場合のみcustomerIdを設定
       status: 'pending',
       updatedAt: new Date()
     });

@@ -25,7 +25,8 @@ class ApiClient {
 
   private async request<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: RequestInit = {},
+    requireAuth = true
   ): Promise<T> {
     const url = `${API_BASE_URL}/api${endpoint}`;
     const headers: Record<string, string> = {
@@ -42,7 +43,7 @@ class ApiClient {
       headers,
     });
 
-    if (response.status === 401) {
+    if (response.status === 401 && requireAuth) {
       // 認証エラーの場合はトークンをクリア
       this.clearToken();
       window.location.href = '/login';
@@ -101,7 +102,7 @@ class ApiClient {
     return this.request<any>('/reservations', {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }, false); // 認証を必須としない
   }
 
   async updateReservation(id: string, action: 'confirm' | 'complete' | 'cancel', reason?: string) {
@@ -119,7 +120,7 @@ class ApiClient {
   }
 
   async getTimeSlots(date: string) {
-    return this.request<any[]>(`/reservations/slots?date=${date}`);
+    return this.request<any[]>(`/reservations/slots?date=${date}`, {}, false); // 認証を必須としない
   }
 
   // ポイント関連
@@ -175,7 +176,7 @@ class ApiClient {
     return this.request<any>('/inquiries', {
       method: 'POST',
       body: JSON.stringify(data),
-    });
+    }, false); // 認証を必須としない
   }
 
   async updateInquiry(id: string, data: { status?: string; reply?: string }) {

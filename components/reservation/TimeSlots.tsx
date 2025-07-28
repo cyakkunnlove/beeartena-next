@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { apiClient } from '@/lib/api/client';
+import { reservationService } from '@/lib/reservationService';
 
 interface TimeSlotsProps {
   date: string;
@@ -18,7 +18,7 @@ export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) 
     const fetchTimeSlots = async () => {
       try {
         setLoading(true);
-        const slots = await apiClient.getTimeSlots(date);
+        const slots = await reservationService.getTimeSlotsForDate(date);
         setTimeSlots(slots);
       } catch (error) {
         console.error('時間枠の取得に失敗しました:', error);

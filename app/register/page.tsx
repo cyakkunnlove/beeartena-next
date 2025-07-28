@@ -1,13 +1,15 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth/AuthContext';
 import DatePicker from '@/components/ui/DatePicker';
+import { reservationStorage } from '@/lib/utils/reservationStorage';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register } = useAuth();
   const [formData, setFormData] = useState({
     email: '',
@@ -20,6 +22,27 @@ export default function RegisterPage() {
   });
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hasReservation, setHasReservation] = useState(false);
+  const [savedReservation, setSavedReservation] = useState<any>(null);
+
+  useEffect(() => {
+    // 予約から来た場合、保存された予約情報を取得
+    const fromReservation = searchParams.get('reservation') === 'true';
+    if (fromReservation) {
+      const reservation = reservationStorage.get();
+      if (reservation) {
+        setHasReservation(true);
+        setSavedReservation(reservation);
+        // 予約情報からフォームを事前入力
+        setFormData(prev => ({
+          ...prev,
+          name: reservation.formData.name,
+          email: reservation.formData.email,
+          phone: reservation.formData.phone,
+        }));
+      }
+    }
+  }, [searchParams]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value, type, checked } = e.target;
@@ -53,7 +76,13 @@ export default function RegisterPage() {
 
     try {
       await register(formData.email, formData.password, formData.name, formData.phone, formData.birthday);
-      router.push('/mypage');
+      
+      // 予約がある場合は予約ページに戻る
+      if (hasReservation) {
+        router.push('/reservation?from=register');
+      } else {
+        router.push('/mypage');
+      }
     } catch (err: any) {
       setError(err.message || '登録に失敗しました');
     } finally {
@@ -75,6 +104,19 @@ export default function RegisterPage() {
         </div>
 
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
+          {hasReservation && savedReservation && (
+            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg mb-4">
+              <h3 className="font-semibold text-blue-900 mb-2">予約情報を保持しています</h3>
+              <div className="text-sm text-blue-700 space-y-1">
+                <p>サービス: {savedReservation.serviceName}</p>
+                <p>日時: {new Date(savedReservation.date).toLocaleDateString('ja-JP')} {savedReservation.time}</p>
+              </div>
+              <p className="text-xs text-blue-600 mt-2">
+                会員登録完了後、予約手続きに戻ります
+              </p>
+            </div>
+          )}
+
           {error && (
             <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm">
               {error}

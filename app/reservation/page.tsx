@@ -1,18 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/lib/auth/AuthContext';
 import { apiClient } from '@/lib/api/client';
+import { reservationService } from '@/lib/firebase/reservations';
 import Calendar from '@/components/reservation/Calendar';
 import TimeSlots from '@/components/reservation/TimeSlots';
 import ServiceSelection from '@/components/reservation/ServiceSelection';
 import ReservationForm from '@/components/reservation/ReservationForm';
 import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo';
 import { motion, AnimatePresence } from 'framer-motion';
+import { reservationStorage } from '@/lib/utils/reservationStorage';
 
 export default function ReservationPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [selectedService, setSelectedService] = useState('');
@@ -28,8 +31,21 @@ export default function ReservationPage() {
   });
 
   useEffect(() => {
-    // If user is logged in, prefill form
-    if (user) {
+    // 会員登録から戻ってきた場合、保存された予約情報を復元
+    const fromRegister = searchParams.get('from') === 'register';
+    const savedReservation = reservationStorage.get();
+    
+    if (fromRegister && savedReservation) {
+      setSelectedService(savedReservation.serviceId);
+      setSelectedDate(savedReservation.date);
+      setSelectedTime(savedReservation.time);
+      setFormData(savedReservation.formData);
+      // 最後のステップに移動
+      setStep(4);
+      // 復元後は削除
+      reservationStorage.clear();
+    } else if (user) {
+      // If user is logged in, prefill form
       setFormData({
         name: user.name,
         email: user.email,
@@ -37,7 +53,7 @@ export default function ReservationPage() {
         notes: '',
       });
     }
-  }, [user]);
+  }, [user, searchParams]);
 
   const handleServiceSelect = (service: string) => {
     setSelectedService(service);
@@ -72,26 +88,46 @@ export default function ReservationPage() {
   const handleSubmit = async () => {
     if (isSubmitting) return;
     
+    // 未ログインユーザーの場合、予約情報を保存して会員登録へ
+    if (!user) {
+      const service = serviceData[selectedService as keyof typeof serviceData];
+      
+      // 予約情報を保存
+      reservationStorage.save({
+        serviceId: selectedService,
+        serviceName: service.name,
+        date: selectedDate,
+        time: selectedTime,
+        formData: formData,
+      });
+      
+      // 会員登録ページへリダイレクト
+      router.push('/register?reservation=true');
+      return;
+    }
+    
     setIsSubmitting(true);
     try {
       const service = serviceData[selectedService as keyof typeof serviceData];
       const finalPrice = service.price - pointsToUse;
 
       const reservationData = {
-        serviceId: selectedService,
+        serviceType: selectedService as '2D' | '3D' | '4D',
         serviceName: service.name,
         price: service.price,
-        finalPrice: finalPrice,
-        pointsUsed: pointsToUse,
-        date: selectedDate,
+        date: new Date(selectedDate),
         time: selectedTime,
         customerName: formData.name,
         customerPhone: formData.phone,
         customerEmail: formData.email,
+        customerId: user?.id || null,
         notes: formData.notes,
+        finalPrice: finalPrice,
+        pointsUsed: pointsToUse,
       };
 
-      await apiClient.createReservation(reservationData);
+      // Firebaseに直接保存
+      await reservationService.createReservation(reservationData);
 
       // ポイント使用の記録
       if (user && pointsToUse > 0) {
