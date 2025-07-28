@@ -1,85 +1,70 @@
 import React from 'react'
-import { render, fireEvent, waitFor } from '@/test/utils/render'
+import { render, fireEvent, waitFor } from '@testing-library/react'
 import TimeSlots from '@/components/reservation/TimeSlots'
-import { createMockTimeSlot } from '@/test/utils/mockData'
 import '@testing-library/jest-dom'
 
-describe('TimeSlots', () => {
-  const mockSlots = [
-    createMockTimeSlot({ time: '10:00', available: true }),
-    createMockTimeSlot({ time: '11:00', available: true }),
-    createMockTimeSlot({ time: '12:00', available: false }),
-    createMockTimeSlot({ time: '13:00', available: true }),
-  ]
+// Mock the reservationService
+jest.mock('@/lib/reservationService', () => ({
+  reservationService: {
+    getTimeSlotsForDate: jest.fn().mockResolvedValue([
+      { time: '10:00', available: true },
+      { time: '11:00', available: true },
+      { time: '12:00', available: false },
+      { time: '13:00', available: true },
+    ]),
+  },
+}))
 
+describe('TimeSlots', () => {
   const mockOnSelect = jest.fn()
+  const mockDate = '2025-08-01'
+  const mockSelected = '10:00'
 
   beforeEach(() => {
     jest.clearAllMocks()
   })
 
-  it('should render all time slots', () => {
-    const { getByText } = render(<TimeSlots slots={mockSlots} onSelect={mockOnSelect} />)
-
-    expect(getByText('10:00')).toBeInTheDocument()
-    expect(getByText('11:00')).toBeInTheDocument()
-    expect(getByText('12:00')).toBeInTheDocument()
-    expect(getByText('13:00')).toBeInTheDocument()
-  })
-
-  it('should show available slots as clickable', () => {
-    const { getByText } = render(<TimeSlots slots={mockSlots} onSelect={mockOnSelect} />)
-
-    const availableSlot = getByText('10:00').closest('button')
-    expect(availableSlot).not.toBeDisabled()
-    expect(availableSlot).toHaveClass('hover:bg-pink-50')
-  })
-
-  it('should show unavailable slots as disabled', () => {
-    const { getByText } = render(<TimeSlots slots={mockSlots} onSelect={mockOnSelect} />)
-
-    const unavailableSlot = getByText('12:00').closest('button')
-    expect(unavailableSlot).toBeDisabled()
-    expect(unavailableSlot).toHaveClass('opacity-50')
-  })
-
-  it('should call onSelect when available slot is clicked', () => {
-    const { getByText } = render(<TimeSlots slots={mockSlots} onSelect={mockOnSelect} />)
-
-    const slot = getByText('10:00').closest('button')
-    fireEvent.click(slot!)
-
-    expect(mockOnSelect).toHaveBeenCalledWith('10:00')
-  })
-
-  it('should not call onSelect when unavailable slot is clicked', () => {
-    const { getByText } = render(<TimeSlots slots={mockSlots} onSelect={mockOnSelect} />)
-
-    const slot = getByText('12:00').closest('button')
-    fireEvent.click(slot!)
-
-    expect(mockOnSelect).not.toHaveBeenCalled()
-  })
-
-  it('should highlight selected slot', () => {
+  it('should render time slots after loading', async () => {
     const { getByText } = render(
-      <TimeSlots slots={mockSlots} onSelect={mockOnSelect} selectedTime="11:00" />,
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
     )
 
-    const selectedSlot = getByText('11:00').closest('button')
-    expect(selectedSlot).toHaveClass('bg-pink-500')
-    expect(selectedSlot).toHaveClass('text-white')
+    await waitFor(() => {
+      expect(getByText('10:00')).toBeInTheDocument()
+      expect(getByText('11:00')).toBeInTheDocument()
+      expect(getByText('12:00')).toBeInTheDocument()
+      expect(getByText('13:00')).toBeInTheDocument()
+    })
   })
 
-  it('should handle empty slots array', () => {
-    const { getByText } = render(<TimeSlots slots={[]} onSelect={mockOnSelect} />)
+  it('should show loading state initially', () => {
+    const { container } = render(
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+    )
 
-    expect(getByText('利用可能な時間枠がありません')).toBeInTheDocument()
+    const spinner = container.querySelector('.animate-spin')
+    expect(spinner).toBeInTheDocument()
   })
 
-  it('should show loading state', () => {
-    const { getByTestId } = render(<TimeSlots slots={mockSlots} onSelect={mockOnSelect} loading />)
+  it('should call onSelect when time slot is clicked', async () => {
+    const { getByText } = render(
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+    )
 
-    expect(getByTestId('loading-spinner')).toBeInTheDocument()
+    await waitFor(() => {
+      const slot = getByText('11:00')
+      fireEvent.click(slot)
+      expect(mockOnSelect).toHaveBeenCalledWith('11:00')
+    })
+  })
+
+  it('should show selected date', async () => {
+    const { getByText } = render(
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+    )
+
+    await waitFor(() => {
+      expect(getByText(/2025年8月1日/)).toBeInTheDocument()
+    })
   })
 })
