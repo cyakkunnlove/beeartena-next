@@ -124,7 +124,7 @@ class ReservationService {
     const newReservation = await firebaseReservationService.createReservation(reservation);
     
     // 予約完了時のポイント付与（予約金額の5%）
-    if (reservation.price) {
+    if (reservation.price && reservation.customerId) {
       await pointService.addReservationPoints(reservation.customerId, reservation.price);
     }
     
@@ -162,7 +162,7 @@ class ReservationService {
     await firebaseReservationService.cancelReservation(id, reason);
 
     // ポイントの返却（予約確定済みの場合）
-    if (reservation.status === 'confirmed' && reservation.price) {
+    if (reservation.status === 'confirmed' && reservation.price && reservation.customerId) {
       const pointAmount = Math.floor(reservation.price * 0.05);
       await pointService.usePoints(
         reservation.customerId,
@@ -182,7 +182,7 @@ class ReservationService {
     await firebaseReservationService.updateReservationStatus(id, 'completed');
     
     // 累計利用金額を更新
-    if (reservation.price) {
+    if (reservation.price && reservation.customerId) {
       await userService.updateTotalSpent(reservation.customerId, reservation.price);
     }
   }

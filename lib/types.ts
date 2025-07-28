@@ -53,7 +53,7 @@ export interface PointTransaction {
 // Reservation types
 export interface Reservation {
   id: string;
-  customerId: string;
+  customerId: string | null; // null許可：未登録ユーザーの予約対応
   customerName: string;
   customerEmail: string;
   customerPhone: string;

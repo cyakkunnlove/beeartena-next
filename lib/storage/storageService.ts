@@ -273,17 +273,19 @@ class StorageService {
       // If completed, add points
       if (updates.status === 'completed' && reservations[index].status !== 'completed') {
         const reservation = reservations[index];
-        const pointsEarned = Math.floor(reservation.price * 0.05); // 5% points
-        const currentPoints = this.getPoints(reservation.customerId);
-        
-        this.addPointTransaction({
-          userId: reservation.customerId,
-          type: 'earned',
-          amount: pointsEarned,
-          balance: (currentPoints?.currentPoints || 0) + pointsEarned,
-          description: `${reservation.serviceName}の施術`,
-          referenceId: reservation.id,
-        });
+        if (reservation.customerId) {
+          const pointsEarned = Math.floor(reservation.price * 0.05); // 5% points
+          const currentPoints = this.getPoints(reservation.customerId);
+          
+          this.addPointTransaction({
+            userId: reservation.customerId,
+            type: 'earned',
+            amount: pointsEarned,
+            balance: (currentPoints?.currentPoints || 0) + pointsEarned,
+            description: `${reservation.serviceName}の施術`,
+            referenceId: reservation.id,
+          });
+        }
       }
     }
   }
@@ -379,7 +381,7 @@ class StorageService {
       // If completed, add points
       if (status === 'completed' && oldStatus !== 'completed') {
         const reservation = reservations[index];
-        if (reservation.customerId !== 'guest') {
+        if (reservation.customerId && reservation.customerId !== 'guest') {
           const pointsEarned = Math.floor(reservation.price * 0.05); // 5% points
           this.addPoints(reservation.customerId, pointsEarned, 'earned', `${reservation.serviceName}の施術完了`);
         }
