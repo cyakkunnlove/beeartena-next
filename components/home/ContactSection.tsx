@@ -18,7 +18,7 @@ export default function ContactSection() {
     message: '',
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
+  const [_isLoading, _setIsLoading] = useState(false)
   const toast = useToastContext()
 
   const handleFieldChange = (name: string) => (value: string) => {

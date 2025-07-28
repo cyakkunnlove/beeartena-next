@@ -64,6 +64,14 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <div
           className="fixed inset-0 bg-gray-600 bg-opacity-75"
           onClick={() => setSidebarOpen(false)}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') {
+              setSidebarOpen(false)
+            }
+          }}
+          role="button"
+          tabIndex={0}
+          aria-label="サイドバーを閉じる"
         />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex items-center justify-between px-4 py-5">

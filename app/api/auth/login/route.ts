@@ -10,7 +10,7 @@ import {
 } from '@/lib/api/middleware'
 import { authService } from '@/lib/auth/authService'
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 

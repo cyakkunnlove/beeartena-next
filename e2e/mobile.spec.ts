@@ -4,8 +4,8 @@ test.use({
   ...devices['iPhone 12'],
 })
 
-test.describe('Mobile Experience', () => {
-  test('should show mobile navigation', async ({ page }) => {
+test.describe('Mobile Experience @smoke', () => {
+  test('should show mobile navigation @critical', async ({ page }) => {
     await page.goto('/')
 
     // Bottom navigation should be visible on mobile
@@ -41,7 +41,7 @@ test.describe('Mobile Experience', () => {
     // Check menu items
     await expect(page.locator('[data-testid="mobile-menu"] text=メニュー')).toBeVisible()
     await expect(page.locator('[data-testid="mobile-menu"] text=料金')).toBeVisible()
-    await expect(page.locator('[data-testid="mobile-menu"] text=アクセス')).toBeVisible()
+    await expect(page.locator('[data-testid="mobile-menu"] text=サロン情報')).toBeVisible()
 
     // Close menu
     await page.click('[data-testid="mobile-menu-close"]')
@@ -68,11 +68,11 @@ test.describe('Mobile Experience', () => {
     await page.goto('/login')
 
     // Check input types for mobile keyboards
-    const emailInput = page.locator('input[name="email"]')
+    const emailInput = page.locator('input[id="email"]')
     await expect(emailInput).toHaveAttribute('type', 'email')
     await expect(emailInput).toHaveAttribute('autocomplete', 'email')
 
-    const phoneInput = page.locator('input[name="phone"]')
+    const phoneInput = page.locator('input[id="phone"]')
     await expect(phoneInput).toHaveAttribute('type', 'tel')
     await expect(phoneInput).toHaveAttribute('autocomplete', 'tel')
   })

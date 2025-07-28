@@ -134,7 +134,7 @@ export default function CustomerDetailPage() {
 
   const stats = calculateStats()
 
-  const getTierColor = (tier: string) => {
+  const _getTierColor = (tier: string) => {
     switch (tier) {
       case 'bronze':
         return 'text-orange-600 bg-orange-50'

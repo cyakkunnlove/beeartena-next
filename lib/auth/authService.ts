@@ -1,5 +1,3 @@
-import bcrypt from 'bcryptjs'
-
 import { firebaseAuth } from '@/lib/firebase/auth'
 import { userService } from '@/lib/firebase/users'
 import { User } from '@/lib/types'

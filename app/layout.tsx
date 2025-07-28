@@ -1,11 +1,13 @@
+// eslint-disable-next-line import/order
 import type { Metadata, Viewport } from 'next'
 
-import './globals.css'
+import SkipLink from '@/components/a11y/SkipLink'
 import LayoutWrapper from '@/components/layout/LayoutWrapper'
-import { AuthProvider } from '@/lib/auth/AuthContext'
 import PageTransition from '@/components/layout/PageTransition'
 import StructuredData from '@/components/seo/StructuredData'
-import SkipLink from '@/components/a11y/SkipLink'
+import { AuthProvider } from '@/lib/auth/AuthContext'
+
+import './globals.css'
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://beeartena.vercel.app'),

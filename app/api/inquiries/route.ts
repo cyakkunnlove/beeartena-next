@@ -5,13 +5,12 @@ import {
   successResponse,
   validateRequestBody,
   setCorsHeaders,
-  verifyAuth,
   requireAdmin,
   rateLimit,
 } from '@/lib/api/middleware'
 import { inquiryService } from '@/lib/firebase/inquiries'
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 

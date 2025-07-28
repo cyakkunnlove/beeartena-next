@@ -4,11 +4,11 @@ import { errorResponse, successResponse, setCorsHeaders } from '@/lib/api/middle
 import { authService } from '@/lib/auth/authService'
 import { birthdayPointsService } from '@/lib/services/birthdayPoints'
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 
-export async function POST(request: NextRequest) {
+export async function POST(_request: NextRequest) {
   try {
     // 管理者権限チェック
     const user = await authService.getCurrentUser()

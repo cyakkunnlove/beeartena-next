@@ -9,7 +9,6 @@ import Calendar from '@/components/reservation/Calendar'
 import ReservationForm from '@/components/reservation/ReservationForm'
 import ServiceSelection from '@/components/reservation/ServiceSelection'
 import TimeSlots from '@/components/reservation/TimeSlots'
-import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationService } from '@/lib/reservationService'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
@@ -22,9 +21,9 @@ function ReservationContent() {
   const [selectedService, setSelectedService] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [_isSubmitting, setIsSubmitting] = useState(false)
   const [pointsToUse, setPointsToUse] = useState(0)
-  const [shouldAutoSubmit, setShouldAutoSubmit] = useState(false)
+  const [_shouldAutoSubmit, _setShouldAutoSubmit] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -119,7 +118,7 @@ function ReservationContent() {
 
     try {
       const service = serviceData[selectedService as keyof typeof serviceData]
-      const finalPrice = service.price - pointsToUse
+      const _finalPrice = service.price - pointsToUse
 
       const reservationData = {
         serviceType: selectedService as '2D' | '3D' | '4D',

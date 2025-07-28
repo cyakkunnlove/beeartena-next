@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { errorResponse, successResponse, setCorsHeaders, requireAdmin } from '@/lib/api/middleware'
+import { errorResponse, successResponse, setCorsHeaders } from '@/lib/api/middleware'
 import { userService } from '@/lib/firebase/users'
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 

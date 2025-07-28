@@ -1,6 +1,6 @@
 'use client'
 
-import { CalendarIcon, TrashIcon } from '@heroicons/react/24/outline'
+import { TrashIcon } from '@heroicons/react/24/outline'
 import { motion } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
@@ -263,10 +263,11 @@ export default function AdminSettings() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="slot-duration" className="block text-sm font-medium text-gray-700 mb-2">
                     1予約あたりの時間（分）
                   </label>
                   <input
+                    id="slot-duration"
                     type="number"
                     value={settings.slotDuration}
                     onChange={(e) =>
@@ -279,10 +280,11 @@ export default function AdminSettings() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label htmlFor="max-capacity" className="block text-sm font-medium text-gray-700 mb-2">
                     1時間枠あたりの最大予約数
                   </label>
                   <input
+                    id="max-capacity"
                     type="number"
                     value={settings.maxCapacityPerSlot}
                     onChange={(e) =>

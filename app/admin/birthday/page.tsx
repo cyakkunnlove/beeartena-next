@@ -111,7 +111,7 @@ export default function BirthdayManagementPage() {
   }
 
   const formatBirthday = (birthday: string) => {
-    const [year, month, day] = birthday.split('-')
+    const [_year, month, day] = birthday.split('-')
     return `${month}月${day}日`
   }
 

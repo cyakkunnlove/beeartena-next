@@ -320,8 +320,8 @@ export default function PointsManagementPage() {
                   </p>
                 </div>
 
-                <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">タイプ</label>
+                <fieldset className="mb-4">
+                  <legend className="block text-sm font-medium text-gray-700 mb-1">タイプ</legend>
                   <div className="flex gap-4">
                     <button
                       onClick={() => setTransactionType('add')}
@@ -344,11 +344,12 @@ export default function PointsManagementPage() {
                       ポイント使用
                     </button>
                   </div>
-                </div>
+                </fieldset>
 
                 <div className="mb-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ポイント数</label>
+                  <label htmlFor="point-amount" className="block text-sm font-medium text-gray-700 mb-1">ポイント数</label>
                   <input
+                    id="point-amount"
                     type="number"
                     value={pointAmount}
                     onChange={(e) => setPointAmount(e.target.value)}
@@ -360,8 +361,9 @@ export default function PointsManagementPage() {
                 </div>
 
                 <div className="mb-6">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">理由</label>
+                  <label htmlFor="point-reason" className="block text-sm font-medium text-gray-700 mb-1">理由</label>
                   <textarea
+                    id="point-reason"
                     value={pointReason}
                     onChange={(e) => setPointReason(e.target.value)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-primary"

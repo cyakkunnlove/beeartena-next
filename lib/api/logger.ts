@@ -86,7 +86,7 @@ class Logger {
     })
   }
 
-  private sendToLoggingService(logEntry: any): void {
+  private sendToLoggingService(_logEntry: any): void {
     // Implement sending to external logging service
     // Example: CloudWatch, Datadog, LogRocket, etc.
   }

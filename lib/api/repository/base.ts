@@ -11,15 +11,10 @@ import {
   orderBy,
   limit,
   startAfter,
-  DocumentData,
   QueryConstraint,
   WhereFilterOp,
   OrderByDirection,
   CollectionReference,
-  DocumentReference,
-  Query,
-  QuerySnapshot,
-  DocumentSnapshot,
 } from 'firebase/firestore'
 
 import { cache } from '@/lib/api/cache'

@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Visual Regression Tests', () => {
-  test('homepage visual test', async ({ page }) => {
+test.describe('Visual Regression Tests @visual', () => {
+  test('homepage visual test @smoke', async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
 
@@ -27,8 +27,7 @@ test.describe('Visual Regression Tests', () => {
     await expect(page).toHaveScreenshot('reservation-service-selection.png')
 
     // Select service and proceed
-    await page.click('text=カット')
-    await page.click('button:has-text("次へ")')
+    await page.click('text=2D眉毛')
 
     // Date selection screen
     await expect(page).toHaveScreenshot('reservation-date-selection.png')
@@ -56,11 +55,11 @@ test.describe('Visual Regression Tests', () => {
   })
 
   test('components visual test', async ({ page }) => {
-    // Create a test page with components
-    await page.goto('/test/components')
+    // Go to homepage for button testing
+    await page.goto('/')
 
     // Button states
-    const button = page.locator('[data-testid="test-button"]')
+    const button = page.locator('button').first()
     await expect(button).toHaveScreenshot('button-normal.png')
 
     await button.hover()

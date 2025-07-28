@@ -1,6 +1,3 @@
-import Image from 'next/image'
-import Link from 'next/link'
-
 import CareSection from '@/components/home/CareSection'
 import ContactSection from '@/components/home/ContactSection'
 import FAQSection from '@/components/home/FAQSection'

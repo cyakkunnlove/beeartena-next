@@ -4,12 +4,11 @@ import {
   errorResponse,
   successResponse,
   setCorsHeaders,
-  requireAdmin,
   requireUserOrAdmin,
 } from '@/lib/api/middleware'
 import { userService } from '@/lib/firebase/users'
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 
@@ -42,7 +41,7 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
     const body = await request.json()
 
     // roleとpointsは更新不可
-    const { role, points, id: _id, ...updates } = body
+    const { role: _role, points: _points, id: _id, ...updates } = body
 
     await userService.updateUser(id, updates)
     const updatedUser = await userService.getUser(id)

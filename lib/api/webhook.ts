@@ -154,7 +154,7 @@ class WebhookService {
   }
 
   // Get webhooks for specific event type
-  private async getWebhooksForEvent(eventType: string): Promise<Webhook[]> {
+  private async getWebhooksForEvent(_eventType: string): Promise<Webhook[]> {
     // This would query your database
     // For now, returning mock data
     return []
@@ -208,13 +208,13 @@ class WebhookService {
   }
 
   // Delete webhook
-  async deleteWebhook(id: string): Promise<void> {
+  async deleteWebhook(_id: string): Promise<void> {
     // Delete from database
     // await db.collection('webhooks').doc(id).delete();
   }
 
   // Get webhook by ID
-  async getWebhook(id: string): Promise<Webhook | null> {
+  async getWebhook(_id: string): Promise<Webhook | null> {
     // Query database
     return null
   }

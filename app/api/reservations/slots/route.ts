@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { errorResponse, successResponse, setCorsHeaders } from '@/lib/api/middleware'
 import { reservationService } from '@/lib/reservationService'
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 

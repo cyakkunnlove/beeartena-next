@@ -20,7 +20,15 @@ export default defineConfig({
   /* Opt out of parallel tests on CI. */
   workers: process.env.CI ? 1 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: process.env.CI ? 
+    [['html'], ['junit', { outputFile: 'test-results/junit.xml' }]] : 
+    'html',
+  
+  /* Configure test timeout */
+  timeout: 30 * 1000,
+  expect: {
+    timeout: 5000
+  },
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
@@ -35,6 +43,21 @@ export default defineConfig({
 
   /* Configure projects for major browsers */
   projects: [
+    // Smoke tests - run frequently
+    {
+      name: 'smoke-chromium',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@smoke/,
+    },
+
+    // Critical tests - essential functionality
+    {
+      name: 'critical-chromium',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@critical/,
+    },
+
+    // Full test suite
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
@@ -58,6 +81,20 @@ export default defineConfig({
     {
       name: 'Mobile Safari',
       use: { ...devices['iPhone 12'] },
+    },
+
+    // Visual regression tests
+    {
+      name: 'visual',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@visual/,
+    },
+
+    // Accessibility tests
+    {
+      name: 'a11y',
+      use: { ...devices['Desktop Chrome'] },
+      grep: /@a11y/,
     },
   ],
 

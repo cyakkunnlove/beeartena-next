@@ -70,8 +70,9 @@ export default function ReservationEditModal({
               <h3 className="font-semibold text-gray-700 mb-2">お客様情報</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
+                  <label htmlFor="customer-name" className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
                   <input
+                    id="customer-name"
                     type="text"
                     value={editedReservation.customerName}
                     onChange={(e) =>
@@ -84,8 +85,9 @@ export default function ReservationEditModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
+                  <label htmlFor="customer-phone" className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
                   <input
+                    id="customer-phone"
                     type="tel"
                     value={editedReservation.customerPhone}
                     onChange={(e) =>
@@ -98,10 +100,11 @@ export default function ReservationEditModal({
                   />
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label htmlFor="customer-email" className="block text-sm font-medium text-gray-700 mb-1">
                     メールアドレス
                   </label>
                   <input
+                    id="customer-email"
                     type="email"
                     value={editedReservation.customerEmail}
                     onChange={(e) =>
@@ -121,8 +124,9 @@ export default function ReservationEditModal({
               <h3 className="font-semibold text-gray-700 mb-2">予約内容</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
+                  <label htmlFor="reservation-date" className="block text-sm font-medium text-gray-700 mb-1">日付</label>
                   <input
+                    id="reservation-date"
                     type="date"
                     value={editedReservation.date}
                     onChange={(e) => handleDateChange(e.target.value)}
@@ -131,8 +135,9 @@ export default function ReservationEditModal({
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">時間</label>
+                  <label htmlFor="reservation-time" className="block text-sm font-medium text-gray-700 mb-1">時間</label>
                   <select
+                    id="reservation-time"
                     value={editedReservation.time}
                     onChange={(e) =>
                       setEditedReservation({
@@ -153,8 +158,9 @@ export default function ReservationEditModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">サービス</label>
+                  <label htmlFor="service-type" className="block text-sm font-medium text-gray-700 mb-1">サービス</label>
                   <select
+                    id="service-type"
                     value={editedReservation.serviceType}
                     onChange={(e) => {
                       const serviceType = e.target.value as '2D' | '3D' | '4D'
@@ -180,8 +186,9 @@ export default function ReservationEditModal({
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">ステータス</label>
+                  <label htmlFor="reservation-status" className="block text-sm font-medium text-gray-700 mb-1">ステータス</label>
                   <select
+                    id="reservation-status"
                     value={editedReservation.status}
                     onChange={(e) =>
                       setEditedReservation({
@@ -202,8 +209,9 @@ export default function ReservationEditModal({
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
+              <label htmlFor="reservation-notes" className="block text-sm font-medium text-gray-700 mb-1">備考</label>
               <textarea
+                id="reservation-notes"
                 value={editedReservation.notes || ''}
                 onChange={(e) =>
                   setEditedReservation({

@@ -27,7 +27,7 @@ export async function generateToken(user: User): Promise<string> {
 export const signJWT = generateToken
 
 // JWT検証用（テスト用のプレースホルダー）
-export async function verifyJWT(token: string): Promise<any> {
+export async function verifyJWT(_token: string): Promise<any> {
   // TODO: 実装
   return { userId: 'test-user-id', email: 'test@example.com', role: 'customer' }
 }

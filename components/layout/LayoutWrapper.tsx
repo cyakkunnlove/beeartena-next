@@ -26,7 +26,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const pathname = usePathname()
   const isAdminPage = pathname?.startsWith('/admin')
   const toast = useToast()
-  const { updateAvailable, updateServiceWorker } = useServiceWorker()
+  const { updateAvailable, updateServiceWorker: _updateServiceWorker } = useServiceWorker()
 
   // サービスワーカーのアップデート通知
   if (updateAvailable) {
