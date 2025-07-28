@@ -48,7 +48,12 @@ jest.mock('framer-motion', () => ({
 
 // Mock window.location
 delete (window as any).location
-window.location = { href: '/' } as any
+window.location = { 
+  href: '/',
+  assign: jest.fn(),
+  replace: jest.fn(),
+  reload: jest.fn()
+} as any
 
 describe('Header Component', () => {
   const mockLogout = jest.fn()
@@ -73,12 +78,19 @@ describe('Header Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    mockLogout.mockReset()
+    mockLogout.mockResolvedValue(undefined)
     ;(usePathname as jest.Mock).mockReturnValue(mockPathname)
     ;(useAuth as jest.Mock).mockReturnValue({
       user: null,
       logout: mockLogout,
     })
     window.location.href = '/'
+  })
+
+  afterEach(() => {
+    jest.clearAllMocks()
+    mockLogout.mockReset()
   })
 
   describe('Rendering', () => {
@@ -146,7 +158,7 @@ describe('Header Component', () => {
       render(<Header />)
 
       expect(screen.getByText('マイページ')).toBeInTheDocument()
-      expect(screen.getAllByText('ログアウト')).toHaveLength(2) // Desktop and mobile
+      expect(screen.getAllByText('ログアウト')).toHaveLength(1) // Only desktop, mobile menu is not rendered
       expect(screen.queryByText('会員登録/ログイン')).not.toBeInTheDocument()
     })
 
@@ -170,9 +182,9 @@ describe('Header Component', () => {
       const mobileMenuButton = screen.getByLabelText('メニューを開く')
       expect(mobileMenuButton).toBeInTheDocument()
 
-      // Mobile menu should be hidden initially
-      const mobileMenu = screen.getByRole('list').parentElement
-      expect(mobileMenu).toHaveClass('md:hidden')
+      // Mobile menu items should not be rendered initially
+      const mobileMenuItems = screen.queryAllByText('安心プラン')
+      expect(mobileMenuItems).toHaveLength(1) // Only desktop menu item
     })
 
     it('should toggle mobile menu on button click', async () => {
@@ -181,6 +193,9 @@ describe('Header Component', () => {
 
       const menuButton = screen.getByLabelText('メニューを開く')
 
+      // Initially only desktop menu items should be present
+      expect(screen.getAllByText('トップ')).toHaveLength(1)
+
       // Open menu
       await user.click(menuButton)
 
@@ -188,11 +203,13 @@ describe('Header Component', () => {
       const mobileLinks = screen.getAllByText('トップ')
       expect(mobileLinks).toHaveLength(2) // Desktop and mobile
 
-      // Close menu
+      // Close menu  
       await user.click(menuButton)
 
-      // Menu should still be in DOM but with exit animation
-      expect(screen.getAllByText('トップ')).toHaveLength(2)
+      // Wait for animation to complete
+      await waitFor(() => {
+        expect(screen.getAllByText('トップ')).toHaveLength(1)
+      })
     })
 
     it('should show hamburger menu animation', () => {
@@ -384,9 +401,10 @@ describe('Header Component', () => {
 
       render(<Header />)
 
-      // Open mobile menu
-      fireEvent.click(screen.getByLabelText('メニューを開く'))
-
+      // Open mobile menu first to render mobile logout button
+      const menuButton = screen.getByLabelText('メニューを開く')
+      fireEvent.click(menuButton)
+      
       const mobileLogoutButton = screen.getAllByText('ログアウト')[1]
       expect(mobileLogoutButton).toHaveClass('block', 'w-full', 'text-left')
     })
@@ -402,14 +420,16 @@ describe('Header Component', () => {
 
     it('should support keyboard navigation', async () => {
       const user = userEvent.setup()
-      render(<Header />)
+      const { container } = render(<Header />)
 
       // Tab through elements
       await user.tab()
-      expect(screen.getByAltText('BEE ART ENA').closest('a')).toHaveFocus()
+      const logoLink = screen.getByAltText('BEE ART ENA').closest('a')
+      expect(logoLink).toHaveFocus()
 
       await user.tab()
-      expect(screen.getAllByText('トップ')[0].closest('a')).toHaveFocus()
+      const topLink = screen.getAllByText('トップ')[0]
+      expect(topLink).toHaveFocus()
     })
 
     it('should handle Enter key on logout button', async () => {

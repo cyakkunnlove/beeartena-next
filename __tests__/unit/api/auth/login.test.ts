@@ -135,7 +135,7 @@ describe('Login API Route', () => {
 
       const response = await POST(mockRequest)
 
-      expect(middleware.errorResponse).toHaveBeenCalledWith('Invalid credentials', 401)
+      expect(middleware.errorResponse).toHaveBeenCalledWith('ログインに失敗しました', 401)
       expect(generateToken).not.toHaveBeenCalled()
     })
 
@@ -169,7 +169,7 @@ describe('Login API Route', () => {
 
       const response = await POST(mockRequest)
 
-      expect(middleware.errorResponse).toHaveBeenCalledWith('Token generation failed', 401)
+      expect(middleware.errorResponse).toHaveBeenCalledWith('ログインに失敗しました', 401)
     })
 
     it('should handle different email formats', async () => {

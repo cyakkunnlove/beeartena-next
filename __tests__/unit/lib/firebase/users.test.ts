@@ -46,9 +46,22 @@ describe('UserService', () => {
     updatedAt: new Date('2025-01-01'),
   }
 
+  // Mock document reference
+  const mockDocRef = { id: 'mock-doc-ref' }
+
   beforeEach(() => {
     jest.clearAllMocks()
     process.env = { ...originalEnv }
+    // Mock doc function to return a reference
+    ;(doc as jest.Mock).mockReturnValue(mockDocRef)
+    // Mock collection function
+    ;(collection as jest.Mock).mockReturnValue({ id: 'users' })
+    // Mock query function
+    ;(query as jest.Mock).mockReturnValue({ type: 'query' })
+    // Mock where function
+    ;(where as jest.Mock).mockReturnValue({ type: 'where' })
+    // Mock orderBy function
+    ;(orderBy as jest.Mock).mockReturnValue({ type: 'orderBy' })
   })
 
   afterEach(() => {
@@ -91,11 +104,12 @@ describe('UserService', () => {
 
     it('should create a new user', async () => {
       ;(setDoc as jest.Mock).mockResolvedValue(undefined)
+      ;(Timestamp.fromDate as jest.Mock).mockReturnValue({ seconds: 123, nanoseconds: 456 })
 
       await userService.createUser(mockUser)
 
       expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(),
+        mockDocRef,
         expect.objectContaining({
           ...mockUser,
           createdAt: expect.any(Object),
@@ -118,7 +132,7 @@ describe('UserService', () => {
 
       expect(Timestamp.fromDate).toHaveBeenCalledWith(mockUser.createdAt)
       expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(),
+        mockDocRef,
         expect.objectContaining({
           createdAt: mockTimestamp,
         }),

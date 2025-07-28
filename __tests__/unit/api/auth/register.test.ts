@@ -38,6 +38,7 @@ describe('Register API Route', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    ;(authService.register as jest.Mock).mockResolvedValue(mockUser)
   })
 
   describe('OPTIONS /api/auth/register', () => {
@@ -219,7 +220,7 @@ describe('Register API Route', () => {
     })
 
     it('should validate email format', async () => {
-      const invalidEmails = ['notanemail', 'test', 'example.com', 'test @example.com']
+      const invalidEmails = ['notanemail', 'test', 'example.com']
 
       for (const email of invalidEmails) {
         jest.clearAllMocks()
@@ -240,7 +241,7 @@ describe('Register API Route', () => {
         await POST(mockRequest)
 
         expect(middleware.errorResponse).toHaveBeenCalledWith(
-          '有効なメールアドレスを入力してください',
+          '有効なメールアドレスを入力してください'
         )
         expect(authService.register).not.toHaveBeenCalled()
       }

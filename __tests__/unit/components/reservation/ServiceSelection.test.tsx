@@ -32,8 +32,7 @@ describe('ServiceSelection Component', () => {
       expect(screen.getByText('2D')).toBeInTheDocument()
       expect(screen.getByText('パウダーブロウ')).toBeInTheDocument()
       expect(screen.getByText('ふんわりパウダー眉')).toBeInTheDocument()
-      expect(screen.getByText('¥20,000')).toBeInTheDocument()
-
+      
       expect(screen.getByText('3D')).toBeInTheDocument()
       expect(screen.getByText('フェザーブロウ')).toBeInTheDocument()
       expect(screen.getByText('立体的な毛流れ眉')).toBeInTheDocument()
@@ -41,6 +40,10 @@ describe('ServiceSelection Component', () => {
       expect(screen.getByText('4D')).toBeInTheDocument()
       expect(screen.getByText('パウダー&フェザー')).toBeInTheDocument()
       expect(screen.getByText('2D+3Dのいいとこ取り')).toBeInTheDocument()
+      
+      // Check prices - there might be multiple elements with the same price
+      const prices20k = screen.getAllByText('¥20,000')
+      expect(prices20k.length).toBeGreaterThanOrEqual(1)
       expect(screen.getByText('¥25,000')).toBeInTheDocument()
     })
 
@@ -210,21 +213,23 @@ describe('ServiceSelection Component', () => {
     it('should format prices with thousand separators', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="" />)
 
-      expect(screen.getByText('¥20,000')).toBeInTheDocument()
-      expect(screen.getByText('¥25,000')).toBeInTheDocument()
+      // Component displays prices with yen symbol
+      expect(screen.getAllByText('¥20,000')).toHaveLength(2) // 2D and 3D services
+      expect(screen.getByText('¥25,000')).toBeInTheDocument() // 4D service
     })
 
     it('should display all service information', () => {
       render(<ServiceSelection onSelect={mockOnSelect} selected="" />)
 
       const services = [
-        { id: '2D', name: 'パウダーブロウ', description: 'ふんわりパウダー眉', price: '¥20,000' },
-        { id: '3D', name: 'フェザーブロウ', description: '立体的な毛流れ眉', price: '¥20,000' },
+        { id: '2D', name: 'パウダーブロウ', description: 'ふんわりパウダー眉', price: '¥20,000', duration: '約2時間' },
+        { id: '3D', name: 'フェザーブロウ', description: '立体的な毛流れ眉', price: '¥20,000', duration: '約2時間' },
         {
           id: '4D',
           name: 'パウダー&フェザー',
           description: '2D+3Dのいいとこ取り',
           price: '¥25,000',
+          duration: '約2時間',
         },
       ]
 
@@ -232,7 +237,10 @@ describe('ServiceSelection Component', () => {
         expect(screen.getByText(service.id)).toBeInTheDocument()
         expect(screen.getByText(service.name)).toBeInTheDocument()
         expect(screen.getByText(service.description)).toBeInTheDocument()
-        expect(screen.getByText(service.price)).toBeInTheDocument()
+        // Use getAllByText for prices since multiple services have the same price
+        const priceElements = screen.getAllByText(service.price)
+        expect(priceElements.length).toBeGreaterThan(0)
+        expect(screen.getAllByText(service.duration).length).toBeGreaterThan(0)
       })
     })
 

@@ -364,7 +364,7 @@ describe('AuthService', () => {
   describe('checkAdminRole', () => {
     it('should return true for admin users', async () => {
       const adminUser = { ...mockUser, role: 'admin' as const }
-      ;(authService.getCurrentUser as jest.Mock).mockResolvedValue(adminUser)
+      jest.spyOn(authService, 'getCurrentUser').mockResolvedValue(adminUser)
 
       const result = await authService.checkAdminRole()
 
@@ -372,7 +372,7 @@ describe('AuthService', () => {
     })
 
     it('should return false for customer users', async () => {
-      ;(authService.getCurrentUser as jest.Mock).mockResolvedValue(mockUser)
+      jest.spyOn(authService, 'getCurrentUser').mockResolvedValue(mockUser)
 
       const result = await authService.checkAdminRole()
 
@@ -380,7 +380,7 @@ describe('AuthService', () => {
     })
 
     it('should return false when no user is authenticated', async () => {
-      ;(authService.getCurrentUser as jest.Mock).mockResolvedValue(null)
+      jest.spyOn(authService, 'getCurrentUser').mockResolvedValue(null)
 
       const result = await authService.checkAdminRole()
 
@@ -388,7 +388,7 @@ describe('AuthService', () => {
     })
 
     it('should handle errors when checking admin role', async () => {
-      ;(authService.getCurrentUser as jest.Mock).mockRejectedValue(new Error('Auth error'))
+      jest.spyOn(authService, 'getCurrentUser').mockRejectedValue(new Error('Auth error'))
 
       await expect(authService.checkAdminRole()).rejects.toThrow('Auth error')
     })

@@ -66,6 +66,7 @@ export default function ServiceSelection({ onSelect, selected }: ServiceSelectio
       {services.map((service, index) => (
         <motion.button
           key={service.id}
+          type="button"
           onClick={() => onSelect(service.id)}
           variants={itemVariants}
           whileHover={{ scale: 1.03 }}

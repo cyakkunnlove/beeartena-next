@@ -41,6 +41,10 @@ describe('ReservationService - Comprehensive Tests', () => {
     localStorageMock.clear()
     jest.useFakeTimers()
     jest.setSystemTime(new Date('2025-07-01T10:00:00'))
+    
+    // Reset to default settings since we clear localStorage
+    const settings = reservationService.getSettings()
+    reservationService.saveSettings(settings)
   })
 
   afterEach(() => {
@@ -251,18 +255,20 @@ describe('ReservationService - Comprehensive Tests', () => {
     })
 
     it('should toggle blocked dates', () => {
-      // Create a fresh instance for this test
-      const ReservationServiceClass = Object.getPrototypeOf(reservationService).constructor
-      const service = new ReservationServiceClass()
       const date = '2025-08-15'
+      
+      // Clear any existing blocked dates
+      const settings = reservationService.getSettings()
+      settings.blockedDates = []
+      reservationService.saveSettings(settings)
 
       // Add blocked date
-      service.toggleBlockedDate(date)
-      expect(service.getSettings().blockedDates).toContain(date)
+      reservationService.toggleBlockedDate(date)
+      expect(reservationService.getSettings().blockedDates).toContain(date)
 
       // Remove blocked date
-      service.toggleBlockedDate(date)
-      expect(service.getSettings().blockedDates).not.toContain(date)
+      reservationService.toggleBlockedDate(date)
+      expect(reservationService.getSettings().blockedDates).not.toContain(date)
     })
 
     it('should handle toggling blocked dates when array is undefined', () => {
@@ -460,6 +466,25 @@ describe('ReservationService - Comprehensive Tests', () => {
 
   describe('Time Slot Management', () => {
     describe('getTimeSlotsForDate', () => {
+      beforeEach(() => {
+        // Reset settings to default before each test
+        const defaultSettings = {
+          slotDuration: 120,
+          maxCapacityPerSlot: 1,
+          businessHours: [
+            { dayOfWeek: 0, open: '', close: '', isOpen: false },
+            { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true },
+            { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true },
+            { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true },
+            { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true },
+            { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true },
+            { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true },
+          ],
+          blockedDates: [],
+        }
+        reservationService.saveSettings(defaultSettings)
+      })
+
       it('should return empty array for Sunday (closed)', async () => {
         const sundayDate = '2025-08-03'
         ;(firebaseReservationService.getReservationsByDate as jest.Mock).mockResolvedValue([])
@@ -518,6 +543,7 @@ describe('ReservationService - Comprehensive Tests', () => {
 
         const slots = await reservationService.getTimeSlotsForDate(date)
 
+        expect(slots).toHaveLength(2) // Should have evening slots
         expect(slots[0].currentBookings).toBe(2)
         expect(slots[0].available).toBe(true) // Still has capacity
         expect(slots[0].maxCapacity).toBe(3)

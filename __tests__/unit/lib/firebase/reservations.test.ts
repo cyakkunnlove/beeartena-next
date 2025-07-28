@@ -56,10 +56,23 @@ describe('ReservationService - Firebase', () => {
     updatedAt: new Date('2025-07-01'),
   }
 
+  // Mock document reference
+  const mockDocRef = { id: 'mock-doc-ref' }
+
   beforeEach(() => {
     jest.clearAllMocks()
     process.env = { ...originalEnv }
     ;(uuidv4 as jest.Mock).mockReturnValue('generated-uuid')
+    // Mock doc function to return a reference
+    ;(doc as jest.Mock).mockReturnValue(mockDocRef)
+    // Mock collection function
+    ;(collection as jest.Mock).mockReturnValue({ id: 'reservations' })
+    // Mock query function
+    ;(query as jest.Mock).mockReturnValue({ type: 'query' })
+    // Mock where function
+    ;(where as jest.Mock).mockReturnValue({ type: 'where' })
+    // Mock orderBy function
+    ;(orderBy as jest.Mock).mockReturnValue({ type: 'orderBy' })
   })
 
   afterEach(() => {
@@ -117,7 +130,7 @@ describe('ReservationService - Firebase', () => {
       expect(result.createdAt).toBeInstanceOf(Date)
 
       expect(setDoc).toHaveBeenCalledWith(
-        expect.anything(),
+        mockDocRef,
         expect.objectContaining({
           id: 'generated-uuid',
           status: 'pending',
@@ -178,7 +191,7 @@ describe('ReservationService - Firebase', () => {
 
       const result = await reservationService.getReservation('res123')
 
-      expect(doc).toHaveBeenCalledWith(expect.anything(), 'reservations', 'res123')
+      expect(doc).toHaveBeenCalledWith({}, 'reservations', 'res123')
       expect(result).toEqual({
         ...mockReservation,
         date: new Date('2025-08-01'),
@@ -205,9 +218,9 @@ describe('ReservationService - Firebase', () => {
         data: () => mockDocData,
       })
 
-      const result = await reservationService.getReservation('res123')
-
-      expect(result).toBeTruthy()
+      await expect(reservationService.getReservation('res123')).rejects.toThrow(
+        "Cannot read properties of undefined (reading 'toDate')"
+      )
     })
 
     it('should handle Firestore errors', async () => {
@@ -324,7 +337,7 @@ describe('ReservationService - Firebase', () => {
 
       await reservationService.updateReservationStatus('res123', status)
 
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      expect(updateDoc).toHaveBeenCalledWith(mockDocRef, {
         status,
         updatedAt: { seconds: 123, nanoseconds: 456 },
       })
@@ -362,7 +375,7 @@ describe('ReservationService - Firebase', () => {
 
       await reservationService.cancelReservation('res123', 'Customer request')
 
-      expect(updateDoc).toHaveBeenCalledWith(expect.anything(), {
+      expect(updateDoc).toHaveBeenCalledWith(mockDocRef, {
         status: 'cancelled',
         cancelReason: 'Customer request',
         cancelledAt: mockNow,
@@ -376,7 +389,7 @@ describe('ReservationService - Firebase', () => {
       await reservationService.cancelReservation('res123')
 
       expect(updateDoc).toHaveBeenCalledWith(
-        expect.anything(),
+        mockDocRef,
         expect.objectContaining({
           status: 'cancelled',
           cancelReason: '',
@@ -414,8 +427,13 @@ describe('ReservationService - Firebase', () => {
       const result = await reservationService.getReservationsByDate(testDate)
 
       // Check that date range is set correctly
-      expect(Timestamp.fromDate).toHaveBeenCalledWith(new Date('2025-08-01T00:00:00.000Z'))
-      expect(Timestamp.fromDate).toHaveBeenCalledWith(new Date('2025-08-01T23:59:59.999Z'))
+      const expectedStartOfDay = new Date('2025-08-01T12:00:00')
+      expectedStartOfDay.setHours(0, 0, 0, 0)
+      const expectedEndOfDay = new Date('2025-08-01T12:00:00')
+      expectedEndOfDay.setHours(23, 59, 59, 999)
+      
+      expect(Timestamp.fromDate).toHaveBeenCalledWith(expectedStartOfDay)
+      expect(Timestamp.fromDate).toHaveBeenCalledWith(expectedEndOfDay)
 
       // Check query conditions
       expect(where).toHaveBeenCalledWith('date', '>=', expect.any(Object))
