@@ -151,7 +151,7 @@ class Queue {
 
   // Process a single job
   private async processJob(jobId: string): Promise<void> {
-    let job = await this.getJob(jobId)
+    const job = await this.getJob(jobId)
     if (!job) return
 
     const handler = this.handlers.get(job.type)

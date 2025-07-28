@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, fireEvent, screen } from '@testing-library/react'
+import { render, fireEvent, screen, act } from '@testing-library/react'
 import ReservationForm from '@/components/reservation/ReservationForm'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import '@testing-library/jest-dom'
@@ -40,13 +40,13 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     expect(screen.getByLabelText(/お名前/)).toBeInTheDocument()
     expect(screen.getByLabelText(/メールアドレス/)).toBeInTheDocument()
     expect(screen.getByLabelText(/電話番号/)).toBeInTheDocument()
-    expect(screen.getByLabelText(/備考/)).toBeInTheDocument()
+    expect(screen.getByLabelText(/ご要望・ご質問/)).toBeInTheDocument()
     expect(screen.getByText('予約を確定する')).toBeInTheDocument()
   })
 
@@ -54,23 +54,31 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     const nameInput = screen.getByLabelText(/お名前/)
-    fireEvent.change(nameInput, { target: { value: 'テスト太郎' } })
+    act(() => {
+      fireEvent.change(nameInput, { target: { value: 'テスト太郎' } })
+    })
     expect(mockOnChange).toHaveBeenCalledWith('name', 'テスト太郎')
 
     const emailInput = screen.getByLabelText(/メールアドレス/)
-    fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    act(() => {
+      fireEvent.change(emailInput, { target: { value: 'test@example.com' } })
+    })
     expect(mockOnChange).toHaveBeenCalledWith('email', 'test@example.com')
 
     const phoneInput = screen.getByLabelText(/電話番号/)
-    fireEvent.change(phoneInput, { target: { value: '090-1234-5678' } })
+    act(() => {
+      fireEvent.change(phoneInput, { target: { value: '090-1234-5678' } })
+    })
     expect(mockOnChange).toHaveBeenCalledWith('phone', '090-1234-5678')
 
-    const notesInput = screen.getByLabelText(/備考/)
-    fireEvent.change(notesInput, { target: { value: 'テストメモ' } })
+    const notesInput = screen.getByLabelText(/ご要望・ご質問/)
+    act(() => {
+      fireEvent.change(notesInput, { target: { value: 'テストメモ' } })
+    })
     expect(mockOnChange).toHaveBeenCalledWith('notes', 'テストメモ')
   })
 
@@ -78,24 +86,20 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={true} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
-    expect(
-      screen.getByText(/会員情報から自動入力されています/)
-    ).toBeInTheDocument()
+    expect(screen.getByText(/会員情報から自動入力されています/)).toBeInTheDocument()
   })
 
   it('should not display auto-fill message for non-logged-in users', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={false} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
-    expect(
-      screen.queryByText(/会員情報から自動入力されています/)
-    ).not.toBeInTheDocument()
+    expect(screen.queryByText(/会員情報から自動入力されています/)).not.toBeInTheDocument()
   })
 
   it('should display point usage section for logged-in users with points', () => {
@@ -106,11 +110,11 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={true} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     expect(screen.getByText(/ポイントを使用する/)).toBeInTheDocument()
-    expect(screen.getByText(/利用可能: 1,000 ポイント/)).toBeInTheDocument()
+    expect(screen.getByText(/利用可能: 1,000pt/)).toBeInTheDocument()
   })
 
   it('should handle point usage correctly', () => {
@@ -121,16 +125,20 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={true} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     const pointCheckbox = screen.getByRole('checkbox', { name: /ポイントを使用する/ })
-    fireEvent.click(pointCheckbox)
+    act(() => {
+      fireEvent.click(pointCheckbox)
+    })
 
-    const pointInput = screen.getByLabelText(/使用するポイント数/)
+    const pointInput = screen.getByPlaceholderText('0')
     expect(pointInput).toBeInTheDocument()
 
-    fireEvent.change(pointInput, { target: { value: '1000' } })
+    act(() => {
+      fireEvent.change(pointInput, { target: { value: '1000' } })
+    })
     expect(mockOnPointsUsed).toHaveBeenCalledWith(1000)
   })
 
@@ -142,28 +150,42 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={5000} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     const pointCheckbox = screen.getByRole('checkbox', { name: /ポイントを使用する/ })
-    fireEvent.click(pointCheckbox)
+    act(() => {
+      fireEvent.click(pointCheckbox)
+    })
 
-    const pointInput = screen.getByLabelText(/使用するポイント数/)
+    const pointInput = screen.getByPlaceholderText('0')
     // Try to use more points than available
-    fireEvent.change(pointInput, { target: { value: '2000' } })
-    
+    act(() => {
+      fireEvent.change(pointInput, { target: { value: '2000' } })
+    })
+
     // Should not call onPointsUsed with invalid amount
     expect(mockOnPointsUsed).not.toHaveBeenCalledWith(2000)
   })
 
   it('should display total price correctly', () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: '1', name: 'Test User', points: 1000 },
+    })
+
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} servicePrice={30000} />
-      </AuthProvider>
+        <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={30000} />
+      </AuthProvider>,
     )
 
-    expect(screen.getByText(/料金: ¥30,000/)).toBeInTheDocument()
+    // Enable points usage to see the price breakdown
+    const pointCheckbox = screen.getByRole('checkbox', { name: /ポイントを使用する/ })
+    act(() => {
+      fireEvent.click(pointCheckbox)
+    })
+
+    expect(screen.getByText(/サービス料金: ¥30,000/)).toBeInTheDocument()
   })
 
   it('should display discounted price when points are used', () => {
@@ -174,20 +196,24 @@ describe('ReservationForm Component', () => {
     const { rerender } = render(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={30000} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     const pointCheckbox = screen.getByRole('checkbox', { name: /ポイントを使用する/ })
-    fireEvent.click(pointCheckbox)
+    act(() => {
+      fireEvent.click(pointCheckbox)
+    })
 
-    const pointInput = screen.getByLabelText(/使用するポイント数/)
-    fireEvent.change(pointInput, { target: { value: '1000' } })
+    const pointInput = screen.getByPlaceholderText('0')
+    act(() => {
+      fireEvent.change(pointInput, { target: { value: '1000' } })
+    })
 
     // Simulate parent component updating after onPointsUsed is called
     rerender(
       <AuthProvider>
         <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={30000} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     // Check that callback was called
@@ -195,30 +221,47 @@ describe('ReservationForm Component', () => {
   })
 
   it('should call onSubmit when form is submitted', () => {
+    const filledFormData = {
+      name: 'テスト太郎',
+      email: 'test@example.com',
+      phone: '090-1234-5678',
+      notes: '',
+    }
+
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} />
-      </AuthProvider>
+        <ReservationForm {...defaultProps} formData={filledFormData} />
+      </AuthProvider>,
     )
 
-    const form = screen.getByRole('form', { hidden: true })
-    fireEvent.submit(form)
+    // Check the agreement checkbox first
+    const agreementCheckbox = screen.getByRole('checkbox', { name: /注意事項を確認し、同意します/ })
+    act(() => {
+      fireEvent.click(agreementCheckbox)
+    })
+
+    const submitButton = screen.getByText('予約を確定する')
+    act(() => {
+      fireEvent.click(submitButton)
+    })
 
     expect(mockOnSubmit).toHaveBeenCalled()
   })
 
   it('should prevent default form submission', () => {
-    render(
+    const { container } = render(
       <AuthProvider>
         <ReservationForm {...defaultProps} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
-    const form = screen.getByRole('form', { hidden: true })
+    const form = container.querySelector('form')
     const event = new Event('submit', { bubbles: true, cancelable: true })
     const preventDefault = jest.spyOn(event, 'preventDefault')
 
-    form.dispatchEvent(event)
+    act(() => {
+      form.dispatchEvent(event)
+    })
 
     expect(preventDefault).toHaveBeenCalled()
   })
@@ -234,7 +277,7 @@ describe('ReservationForm Component', () => {
     render(
       <AuthProvider>
         <ReservationForm {...defaultProps} formData={filledFormData} />
-      </AuthProvider>
+      </AuthProvider>,
     )
 
     expect(screen.getByDisplayValue('テスト太郎')).toBeInTheDocument()

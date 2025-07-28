@@ -58,3 +58,69 @@ beforeAll(() => {
 afterAll(() => {
   console.error = originalError
 })
+
+// Mock Web API globals for Next.js App Router
+global.Request = class Request {
+  constructor(url, options = {}) {
+    this.url = url
+    this.method = options.method || 'GET'
+    this.headers = new Map(Object.entries(options.headers || {}))
+    this.body = options.body
+  }
+  
+  async json() {
+    return JSON.parse(this.body)
+  }
+  
+  async text() {
+    return this.body
+  }
+}
+
+global.Response = class Response {
+  constructor(body, options = {}) {
+    this.body = body
+    this.status = options.status || 200
+    this.statusText = options.statusText || 'OK'
+    this.headers = new Map(Object.entries(options.headers || {}))
+  }
+  
+  async json() {
+    return JSON.parse(this.body)
+  }
+  
+  async text() {
+    return this.body
+  }
+}
+
+global.Headers = class Headers {
+  constructor(init = {}) {
+    this._headers = new Map(Object.entries(init))
+  }
+  
+  get(name) {
+    return this._headers.get(name.toLowerCase())
+  }
+  
+  set(name, value) {
+    this._headers.set(name.toLowerCase(), value)
+  }
+}
+
+// Mock NextResponse for Next.js App Router
+global.NextResponse = class NextResponse extends Response {
+  constructor(body, options = {}) {
+    super(body, options)
+  }
+  
+  static json(data, init = {}) {
+    return new NextResponse(JSON.stringify(data), {
+      ...init,
+      headers: {
+        'content-type': 'application/json',
+        ...(init.headers || {}),
+      },
+    })
+  }
+}

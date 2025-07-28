@@ -24,10 +24,7 @@ describe('reservationService', () => {
   describe('getTimeSlotsForDate', () => {
     it('should return available time slots for a given date', async () => {
       const mockDate = '2025-08-01'
-      const mockReservations = [
-        { time: '10:00' },
-        { time: '14:00' },
-      ]
+      const mockReservations = [{ time: '10:00' }, { time: '14:00' }]
 
       const mockQuerySnapshot = {
         docs: mockReservations.map((res) => ({
@@ -167,10 +164,12 @@ describe('reservationService', () => {
 
     it('should handle dates correctly across different timezones', async () => {
       const mockDate = new Date('2025-08-01T15:00:00Z') // UTC time
-      const mockReservations = Array(8).fill(null).map((_, index) => ({
-        date: Timestamp.fromDate(mockDate),
-        time: `${10 + index}:00`,
-      }))
+      const mockReservations = Array(8)
+        .fill(null)
+        .map((_, index) => ({
+          date: Timestamp.fromDate(mockDate),
+          time: `${10 + index}:00`,
+        }))
 
       const mockQuerySnapshot = {
         docs: mockReservations.map((res) => ({

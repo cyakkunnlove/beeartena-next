@@ -65,13 +65,16 @@ function ReservationContent() {
 
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
-    if (user && step === 4 && formData.name === '' && formData.email === '') {
-      setFormData({
-        name: user.name || '',
-        email: user.email || '',
-        phone: user.phone || '',
-        notes: formData.notes || '',
-      })
+    if (user && step === 4) {
+      // フォームデータが初期状態の場合のみ自動入力
+      if (!formData.name && !formData.email && !formData.phone) {
+        setFormData(prevData => ({
+          name: user.name || '',
+          email: user.email || '',
+          phone: user.phone || '',
+          notes: prevData.notes || '',
+        }))
+      }
     }
   }, [user, step])
 

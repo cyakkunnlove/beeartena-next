@@ -3,7 +3,7 @@ import { User, Reservation, PointTransaction as Point, Inquiry } from '@/lib/typ
 import { v4 as uuidv4 } from 'uuid'
 
 // Mock data storage
-let mockUsers: User[] = [
+const mockUsers: User[] = [
   {
     id: 'admin-1',
     email: 'admin@beeartena.jp',
@@ -26,9 +26,9 @@ let mockUsers: User[] = [
   },
 ]
 
-let mockReservations: Reservation[] = []
-let mockPoints: Point[] = []
-let mockInquiries: Inquiry[] = []
+const mockReservations: Reservation[] = []
+const mockPoints: Point[] = []
+const mockInquiries: Inquiry[] = []
 
 // Helper to simulate async behavior
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))

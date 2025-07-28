@@ -6,6 +6,7 @@ if (!admin.apps.length) {
     // 開発環境ではサービスアカウントキーを使用
     if (process.env.NODE_ENV === 'development') {
       try {
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
         const serviceAccount = require('../../scripts/firebase-service-account-key.json')
         admin.initializeApp({
           credential: admin.credential.cert(serviceAccount),

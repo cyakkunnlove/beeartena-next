@@ -119,7 +119,7 @@ jobs:
               - [ ] Plan forward fix`,
               labels: ['rollback', context.payload.inputs.environment]
             });
-            
+
             console.log(`Created issue #${issue.data.number}`);
 
       - name: Notify team

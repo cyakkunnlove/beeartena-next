@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
   workflow_dispatch:
     inputs:
       environment:
@@ -224,7 +224,7 @@ jobs:
         run: |
           npm install -g @next/bundle-analyzer
           ANALYZE=true npm run build
-          
+
       - name: Check build output
         run: |
           echo "📊 Build size report:"
@@ -400,7 +400,7 @@ jobs:
           release_name: Release v${{ github.run_number }}
           body: |
             Production deployment completed
-            
+
             **Changes**: ${{ github.event.head_commit.message }}
             **Commit**: ${{ github.sha }}
           draft: false
