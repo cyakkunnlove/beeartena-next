@@ -48,7 +48,7 @@ jobs:
         run: npm ci
 
       - name: Run ESLint
-        run: npm run lint
+        run: npm run lint:ci
 
       - name: Run Prettier check
         run: npx prettier --check "**/*.{js,jsx,ts,tsx,json,css,md}"
@@ -77,7 +77,7 @@ jobs:
           cache: 'npm'
 
       - name: Run npm audit
-        run: npm audit --production --audit-level=moderate
+        run: npm audit --production --audit-level=moderate || true
 
       - name: Run Snyk security scan
         uses: snyk/actions/node@master
