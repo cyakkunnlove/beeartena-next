@@ -63,6 +63,18 @@ function ReservationContent() {
     }
   }, [searchParams, user])
 
+  // ログインユーザーの情報をフォームに自動入力
+  useEffect(() => {
+    if (user && step === 4 && formData.name === '' && formData.email === '') {
+      setFormData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+        notes: formData.notes || '',
+      })
+    }
+  }, [user, step])
+
   const handleServiceSelect = (service: string) => {
     setSelectedService(service)
     setStep(2)
