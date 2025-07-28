@@ -26,7 +26,7 @@ describe('TimeSlots', () => {
 
   it('should render time slots after loading', async () => {
     const { getByText } = render(
-      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />,
     )
 
     await waitFor(() => {
@@ -39,7 +39,7 @@ describe('TimeSlots', () => {
 
   it('should show loading state initially', () => {
     const { container } = render(
-      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />,
     )
 
     const spinner = container.querySelector('.animate-spin')
@@ -48,7 +48,7 @@ describe('TimeSlots', () => {
 
   it('should call onSelect when time slot is clicked', async () => {
     const { getByText } = render(
-      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />,
     )
 
     await waitFor(() => {
@@ -60,7 +60,7 @@ describe('TimeSlots', () => {
 
   it('should show selected date', async () => {
     const { getByText } = render(
-      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />
+      <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />,
     )
 
     await waitFor(() => {
