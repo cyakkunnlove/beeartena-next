@@ -102,7 +102,12 @@ class ReservationService {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('reservationSettings')
       if (saved) {
-        this.settings = JSON.parse(saved)
+        try {
+          this.settings = JSON.parse(saved)
+        } catch (error) {
+          // If parsing fails, use default settings
+          console.warn('Failed to parse reservation settings from localStorage:', error)
+        }
       }
     }
   }
