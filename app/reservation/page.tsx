@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useAuth } from '@/lib/auth/AuthContext'
-import { apiClient } from '@/lib/api/client'
-import { reservationService } from '@/lib/reservationService'
-import Calendar from '@/components/reservation/Calendar'
-import TimeSlots from '@/components/reservation/TimeSlots'
-import ServiceSelection from '@/components/reservation/ServiceSelection'
-import ReservationForm from '@/components/reservation/ReservationForm'
-import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
 import { motion, AnimatePresence } from 'framer-motion'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+
+import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
+import Calendar from '@/components/reservation/Calendar'
+import ReservationForm from '@/components/reservation/ReservationForm'
+import ServiceSelection from '@/components/reservation/ServiceSelection'
+import TimeSlots from '@/components/reservation/TimeSlots'
+import { apiClient } from '@/lib/api/client'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { reservationService } from '@/lib/reservationService'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 
 function ReservationContent() {

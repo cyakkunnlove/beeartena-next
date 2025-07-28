@@ -11,10 +11,12 @@ import {
   Timestamp,
   addDoc,
 } from 'firebase/firestore'
-import { db } from './config'
-import { Reservation } from '../types'
 import { v4 as uuidv4 } from 'uuid'
+
 import { mockReservationService } from '../mock/mockFirebase'
+import { Reservation } from '../types'
+
+import { db } from './config'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {

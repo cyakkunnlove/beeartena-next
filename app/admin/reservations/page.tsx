@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/lib/auth/AuthContext'
-import { storageService } from '@/lib/storage/storageService'
-import { reservationService } from '@/lib/reservationService'
-import { Reservation } from '@/lib/types'
+import { useEffect, useState } from 'react'
+
 import ReservationCalendar from '@/components/admin/ReservationCalendar'
 import ReservationEditModal from '@/components/admin/ReservationEditModal'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { reservationService } from '@/lib/reservationService'
+import { storageService } from '@/lib/storage/storageService'
+import { Reservation } from '@/lib/types'
 
 export default function AdminReservations() {
   const router = useRouter()
@@ -191,8 +192,8 @@ export default function AdminReservations() {
             <ReservationCalendar
               reservations={reservations}
               onEventClick={(reservation) => setSelectedReservation(reservation)}
-              onDateClick={(date) => {
-                /* Date clicked: ${date} */
+              onDateClick={(_date) => {
+                /* Date clicked */
               }}
             />
           </div>

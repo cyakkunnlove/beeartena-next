@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs'
-import { User } from '@/lib/types'
+
 import { firebaseAuth } from '@/lib/firebase/auth'
 import { userService } from '@/lib/firebase/users'
+import { User } from '@/lib/types'
 
 const SESSION_KEY = 'beeartena_session'
 

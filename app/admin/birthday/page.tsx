@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth/AuthContext'
-import { User } from '@/lib/types'
-import { apiClient } from '@/lib/api/client'
 import { CakeIcon, GiftIcon } from '@heroicons/react/24/outline'
+import { useState, useEffect } from 'react'
+
+import { useAuth } from '@/lib/auth/AuthContext'
 import { userService } from '@/lib/firebase/users'
 import { mockUserService } from '@/lib/mock/mockFirebase'
+import { User } from '@/lib/types'
 
 export default function BirthdayManagementPage() {
   const { user: currentUser } = useAuth()

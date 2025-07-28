@@ -1,7 +1,7 @@
-import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
-import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { pointService } from '@/lib/firebase/points'
+import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { userService } from '@/lib/firebase/users'
+import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
 
 // Test helper functions
 export function isTimeSlotAvailable(

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+import { errorResponse, successResponse, setCorsHeaders } from '@/lib/api/middleware'
 import { authService } from '@/lib/auth/authService'
 import { birthdayPointsService } from '@/lib/services/birthdayPoints'
-import { errorResponse, successResponse, setCorsHeaders } from '@/lib/api/middleware'
 
 export async function OPTIONS(request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))

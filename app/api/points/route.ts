@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { pointService } from '@/lib/firebase/points'
+
 import {
   errorResponse,
   successResponse,
@@ -7,6 +7,7 @@ import {
   verifyAuth,
   requireAdmin,
 } from '@/lib/api/middleware'
+import { pointService } from '@/lib/firebase/points'
 
 export async function OPTIONS(request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))

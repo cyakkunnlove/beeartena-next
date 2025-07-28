@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { ZodSchema, z } from 'zod'
-import { verifyAuth } from '@/lib/api/middleware'
-import { rateLimit } from '@/lib/api/rateLimiter'
+
 import { cache } from '@/lib/api/cache'
 import { logger } from '@/lib/api/logger'
+import { verifyAuth } from '@/lib/api/middleware'
+import { rateLimit } from '@/lib/api/rateLimiter'
 
 // API Response types
 export interface ApiSuccessResponse<T = any> {

@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { useAuth } from '@/lib/auth/AuthContext'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect, Suspense } from 'react'
+
 import DatePicker from '@/components/ui/DatePicker'
+import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 
 function RegisterContent() {

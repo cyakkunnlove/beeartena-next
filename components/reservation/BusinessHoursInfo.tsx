@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+
 import { reservationService } from '@/lib/reservationService'
 
 export default function BusinessHoursInfo() {

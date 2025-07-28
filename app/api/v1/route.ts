@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { swaggerDocument } from '@/lib/api/swagger'
 
 // API v1 root endpoint

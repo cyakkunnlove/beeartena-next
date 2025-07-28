@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authService } from '@/lib/auth/authService'
+
 import { successResponse, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
+import { authService } from '@/lib/auth/authService'
 
 export async function OPTIONS(request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))

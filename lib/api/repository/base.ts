@@ -21,8 +21,9 @@ import {
   QuerySnapshot,
   DocumentSnapshot,
 } from 'firebase/firestore'
-import { db } from '@/lib/firebase/config'
+
 import { cache } from '@/lib/api/cache'
+import { db } from '@/lib/firebase/config'
 
 export interface QueryOptions {
   where?: Array<{

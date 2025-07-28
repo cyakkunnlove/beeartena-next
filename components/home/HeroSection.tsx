@@ -1,10 +1,11 @@
 'use client'
 
-import Link from 'next/link'
 import { motion } from 'framer-motion'
+import Link from 'next/link'
+
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer'
 import SlideTransition from '@/components/layout/SlideTransition'
 import LazyImage from '@/components/ui/LazyImage'
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer'
 
 export default function HeroSection() {
   return (

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Reservation } from '@/lib/types'
+import { useState } from 'react'
+
 import { reservationService } from '@/lib/reservationService'
+import { Reservation } from '@/lib/types'
 
 interface ReservationEditModalProps {
   reservation: Reservation | null

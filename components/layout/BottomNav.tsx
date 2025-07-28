@@ -1,8 +1,9 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { motion } from 'framer-motion'
+
 import { useAuth } from '@/lib/auth/AuthContext'
 
 export default function BottomNav() {

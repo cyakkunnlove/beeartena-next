@@ -10,9 +10,11 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore'
-import { db } from './config'
-import { User } from '../types'
+
 import { mockUserService } from '../mock/mockFirebase'
+import { User } from '../types'
+
+import { db } from './config'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {

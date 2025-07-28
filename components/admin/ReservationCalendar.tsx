@@ -1,11 +1,12 @@
 'use client'
 
+import moment from 'moment'
 import { useState, useCallback, useMemo } from 'react'
 import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar'
-import moment from 'moment'
+
 import 'moment/locale/ja'
-import { Reservation } from '@/lib/types'
 import { reservationService } from '@/lib/reservationService'
+import { Reservation } from '@/lib/types'
 
 moment.locale('ja')
 const localizer = momentLocalizer(moment)

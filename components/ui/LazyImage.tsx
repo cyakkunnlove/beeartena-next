@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
+import React, { useState, useEffect, useRef } from 'react'
+
 import Skeleton from './Skeleton'
 
 interface LazyImageProps {

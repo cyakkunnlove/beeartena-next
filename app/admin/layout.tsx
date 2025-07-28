@@ -1,10 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter, usePathname } from 'next/navigation'
-import { useAuth } from '@/lib/auth/AuthContext'
-import Link from 'next/link'
 import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
+import Link from 'next/link'
+import { useRouter, usePathname } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
+import { useAuth } from '@/lib/auth/AuthContext'
+
 
 interface NavItem {
   name: string

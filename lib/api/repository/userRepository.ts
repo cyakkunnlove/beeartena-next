@@ -1,6 +1,7 @@
-import { BaseRepository } from './base'
-import { User } from '@/lib/types'
 import { cache } from '@/lib/api/cache'
+import { User } from '@/lib/types'
+
+import { BaseRepository } from './base'
 
 export class UserRepository extends BaseRepository<User> {
   constructor() {

@@ -10,10 +10,12 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore'
-import { db } from './config'
-import { Inquiry } from '../types'
 import { v4 as uuidv4 } from 'uuid'
+
 import { mockInquiryService } from '../mock/mockFirebase'
+import { Inquiry } from '../types'
+
+import { db } from './config'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {

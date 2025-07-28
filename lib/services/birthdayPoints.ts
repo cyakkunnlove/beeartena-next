@@ -1,7 +1,7 @@
-import { User, PointTransaction } from '@/lib/types'
-import { mockPointService, mockUserService } from '@/lib/mock/mockFirebase'
 import { pointService } from '@/lib/firebase/points'
 import { userService } from '@/lib/firebase/users'
+import { mockPointService, mockUserService } from '@/lib/mock/mockFirebase'
+import { User, PointTransaction } from '@/lib/types'
 
 const BIRTHDAY_POINTS = 1000
 

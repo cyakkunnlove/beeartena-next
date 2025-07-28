@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
 import { XMarkIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
+import React, { useState, useEffect } from 'react'
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>

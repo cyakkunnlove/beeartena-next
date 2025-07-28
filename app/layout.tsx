@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+
 import './globals.css'
 import LayoutWrapper from '@/components/layout/LayoutWrapper'
 import { AuthProvider } from '@/lib/auth/AuthContext'

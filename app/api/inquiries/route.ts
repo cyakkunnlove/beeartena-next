@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { inquiryService } from '@/lib/firebase/inquiries'
+
 import {
   errorResponse,
   successResponse,
@@ -9,6 +9,7 @@ import {
   requireAdmin,
   rateLimit,
 } from '@/lib/api/middleware'
+import { inquiryService } from '@/lib/firebase/inquiries'
 
 export async function OPTIONS(request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))

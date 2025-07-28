@@ -1,6 +1,7 @@
-import { User, Customer, Points, PointTransaction, Reservation, Inquiry } from '@/lib/types'
-import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
+import { v4 as uuidv4 } from 'uuid'
+
+import { User, Customer, Points, PointTransaction, Reservation, Inquiry } from '@/lib/types'
 
 const STORAGE_KEYS = {
   USERS: 'beeartena_users',

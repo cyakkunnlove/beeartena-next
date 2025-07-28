@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+
 import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer } from '@/lib/types'

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authService } from '@/lib/auth/authService'
+
 import { generateToken } from '@/lib/api/jwt'
 import {
   errorResponse,
@@ -8,6 +8,7 @@ import {
   rateLimit,
   setCorsHeaders,
 } from '@/lib/api/middleware'
+import { authService } from '@/lib/auth/authService'
 
 export async function OPTIONS(request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))

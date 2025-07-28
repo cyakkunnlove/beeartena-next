@@ -1,4 +1,3 @@
-import React, { useEffect, useState } from 'react'
 import {
   CheckCircleIcon,
   ExclamationCircleIcon,
@@ -6,6 +5,7 @@ import {
   XMarkIcon,
   XCircleIcon,
 } from '@heroicons/react/24/outline'
+import React, { useEffect, useState } from 'react'
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning'
 

@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server'
 import Redis from 'ioredis'
+import { NextRequest } from 'next/server'
 
 // Redis client for rate limiting
 const redis = new Redis({

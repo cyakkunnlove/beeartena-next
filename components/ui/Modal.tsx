@@ -1,8 +1,8 @@
 'use client'
 
+import { XMarkIcon } from '@heroicons/react/24/outline'
 import React, { useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ModalProps {
   isOpen: boolean

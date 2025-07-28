@@ -1,6 +1,7 @@
 // Mock Firebase implementation for development without Firebase setup
-import { User, Reservation, PointTransaction as Point, Inquiry } from '@/lib/types'
 import { v4 as uuidv4 } from 'uuid'
+
+import { User, Reservation, PointTransaction as Point, Inquiry } from '@/lib/types'
 
 // Mock data storage
 const mockUsers: User[] = [

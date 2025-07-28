@@ -12,10 +12,12 @@ import {
   runTransaction,
   increment,
 } from 'firebase/firestore'
-import { db } from './config'
-import { PointTransaction as Point } from '../types'
 import { v4 as uuidv4 } from 'uuid'
+
 import { mockPointService } from '../mock/mockFirebase'
+import { PointTransaction as Point } from '../types'
+
+import { db } from './config'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {

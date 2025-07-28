@@ -1,11 +1,13 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+
 import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer, PointTransaction } from '@/lib/types'
-import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+
 
 export default function PointsManagementPage() {
   const router = useRouter()

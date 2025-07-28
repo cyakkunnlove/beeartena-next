@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { useAuth } from '@/lib/auth/AuthContext'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import {
   BarChart,
   Bar,
@@ -18,6 +17,8 @@ import {
   Legend,
   ResponsiveContainer,
 } from 'recharts'
+
+import { useAuth } from '@/lib/auth/AuthContext'
 
 export default function AnalyticsPage() {
   const { user } = useAuth()

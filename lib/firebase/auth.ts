@@ -6,10 +6,12 @@ import {
   User as FirebaseUser,
   updateProfile,
 } from 'firebase/auth'
-import { auth, db } from './config'
 import { doc, setDoc, getDoc, updateDoc } from 'firebase/firestore'
-import { User as AppUser } from '../types'
+
 import { mockAuth } from '../mock/mockFirebase'
+import { User as AppUser } from '../types'
+
+import { auth, db } from './config'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {

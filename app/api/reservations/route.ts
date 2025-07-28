@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { reservationService } from '@/lib/reservationService'
+
 import {
   errorResponse,
   successResponse,
@@ -8,6 +8,7 @@ import {
   verifyAuth,
   requireAdmin,
 } from '@/lib/api/middleware'
+import { reservationService } from '@/lib/reservationService'
 
 export async function OPTIONS(request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
