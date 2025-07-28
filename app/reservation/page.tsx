@@ -23,6 +23,7 @@ function ReservationContent() {
   const [selectedTime, setSelectedTime] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pointsToUse, setPointsToUse] = useState(0);
+  const [shouldAutoSubmit, setShouldAutoSubmit] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -45,13 +46,22 @@ function ReservationContent() {
         setSelectedDate(savedReservation.date);
         setSelectedTime(savedReservation.time);
         setFormData(savedReservation.formData);
-        setStep(4); // 確認画面へ
+        setStep(savedReservation.step || 4); // 保存されたステップまたは確認画面へ
+        if (savedReservation.pointsToUse !== undefined) {
+          setPointsToUse(savedReservation.pointsToUse);
+        }
         
-        // データ復元後はクリア
-        reservationStorage.clear();
+        // 予約確定ボタンを押していた場合は、自動的に予約処理を実行
+        if (savedReservation.isReadyToSubmit && user) {
+          reservationStorage.clear(); // 先にクリア
+          handleFormSubmit(savedReservation.formData);
+        } else {
+          // データ復元後はクリア
+          reservationStorage.clear();
+        }
       }
     }
-  }, [searchParams]);
+  }, [searchParams, user]);
 
   const handleServiceSelect = (service: string) => {
     setSelectedService(service);
@@ -74,13 +84,16 @@ function ReservationContent() {
 
     // 未ログインユーザーの場合
     if (!user) {
-      // 予約情報を保存
+      // 予約情報を保存（現在のステップとポイント情報も含む）
       reservationStorage.save({
         serviceId: selectedService,
         serviceName: serviceData[selectedService as keyof typeof serviceData].name,
         date: selectedDate,
         time: selectedTime,
         formData: data,
+        step: 4, // 予約確認画面のステップ
+        pointsToUse: pointsToUse,
+        isReadyToSubmit: true, // 予約確定ボタンを押した状態
       });
       
       // 会員登録ページへリダイレクト

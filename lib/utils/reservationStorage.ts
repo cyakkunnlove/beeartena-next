@@ -15,6 +15,9 @@ export interface PendingReservation {
     phone: string;
     notes: string;
   };
+  step: number;
+  pointsToUse?: number;
+  isReadyToSubmit?: boolean; // 予約確定ボタンを押した状態かどうか
   timestamp: number;
 }
 
