@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { swaggerDocument } from '@/lib/api/swagger';
+import { NextRequest, NextResponse } from 'next/server'
+import { swaggerDocument } from '@/lib/api/swagger'
 
 // API v1 root endpoint
 export async function GET(request: NextRequest) {
@@ -57,5 +57,5 @@ export async function GET(request: NextRequest) {
       },
       timestamp: new Date().toISOString(),
     },
-  });
+  })
 }

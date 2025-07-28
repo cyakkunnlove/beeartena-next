@@ -1,4 +1,4 @@
-import { OpenAPIV3 } from 'openapi-types';
+import { OpenAPIV3 } from 'openapi-types'
 
 export const swaggerDocument: OpenAPIV3.Document = {
   openapi: '3.0.0',
@@ -77,10 +77,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
           price: { type: 'number', example: 8000 },
           date: { type: 'string', format: 'date', example: '2024-01-20' },
           time: { type: 'string', example: '14:00' },
-          status: { 
-            type: 'string', 
+          status: {
+            type: 'string',
             enum: ['pending', 'confirmed', 'completed', 'cancelled'],
-            example: 'confirmed'
+            example: 'confirmed',
           },
           notes: { type: 'string', nullable: true },
           createdAt: { type: 'string', format: 'date-time' },
@@ -93,10 +93,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
           userId: { type: 'string', example: 'user123' },
           currentPoints: { type: 'number', example: 1500 },
           lifetimePoints: { type: 'number', example: 5000 },
-          tier: { 
-            type: 'string', 
+          tier: {
+            type: 'string',
             enum: ['bronze', 'silver', 'gold', 'platinum'],
-            example: 'silver'
+            example: 'silver',
           },
           tierExpiry: { type: 'string', format: 'date-time', nullable: true },
         },
@@ -106,10 +106,10 @@ export const swaggerDocument: OpenAPIV3.Document = {
         properties: {
           id: { type: 'string', example: 'pt123' },
           userId: { type: 'string', example: 'user123' },
-          type: { 
-            type: 'string', 
+          type: {
+            type: 'string',
             enum: ['earned', 'used', 'manual', 'expired', 'adjusted', 'redeemed'],
-            example: 'earned'
+            example: 'earned',
           },
           amount: { type: 'number', example: 100 },
           balance: { type: 'number', example: 1600 },
@@ -416,4 +416,4 @@ export const swaggerDocument: OpenAPIV3.Document = {
       },
     },
   },
-};
+}

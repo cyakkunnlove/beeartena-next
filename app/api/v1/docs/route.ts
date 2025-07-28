@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { swaggerDocument } from '@/lib/api/swagger';
+import { NextRequest, NextResponse } from 'next/server'
+import { swaggerDocument } from '@/lib/api/swagger'
 
 // Swagger UI HTML
 const swaggerUIHtml = `
@@ -52,16 +52,16 @@ const swaggerUIHtml = `
   </script>
 </body>
 </html>
-`;
+`
 
 // GET /api/v1/docs - Swagger UI
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const format = searchParams.get('format');
+  const { searchParams } = new URL(request.url)
+  const format = searchParams.get('format')
 
   // Return raw OpenAPI spec if requested
   if (format === 'json') {
-    return NextResponse.json(swaggerDocument);
+    return NextResponse.json(swaggerDocument)
   }
 
   // Return Swagger UI HTML
@@ -69,5 +69,5 @@ export async function GET(request: NextRequest) {
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
     },
-  });
+  })
 }

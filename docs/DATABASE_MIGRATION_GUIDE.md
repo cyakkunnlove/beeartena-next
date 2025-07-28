@@ -32,13 +32,13 @@
 ```javascript
 // 以下のような設定が表示されます
 const firebaseConfig = {
-  apiKey: "your-api-key",
-  authDomain: "your-auth-domain",
-  projectId: "your-project-id",
-  storageBucket: "your-storage-bucket",
-  messagingSenderId: "your-messaging-sender-id",
-  appId: "your-app-id"
-};
+  apiKey: 'your-api-key',
+  authDomain: 'your-auth-domain',
+  projectId: 'your-project-id',
+  storageBucket: 'your-storage-bucket',
+  messagingSenderId: 'your-messaging-sender-id',
+  appId: 'your-app-id',
+}
 ```
 
 ### 3. 環境変数の設定
@@ -84,44 +84,44 @@ service cloud.firestore {
   match /databases/{database}/documents {
     // ユーザー情報
     match /users/{userId} {
-      allow read: if request.auth != null && 
-        (request.auth.uid == userId || 
+      allow read: if request.auth != null &&
+        (request.auth.uid == userId ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
       allow create: if request.auth != null && request.auth.uid == userId;
-      allow update: if request.auth != null && 
-        (request.auth.uid == userId || 
+      allow update: if request.auth != null &&
+        (request.auth.uid == userId ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
       allow delete: if false;
     }
-    
+
     // 予約情報
     match /reservations/{reservationId} {
-      allow read: if request.auth != null && 
-        (request.auth.uid == resource.data.customerId || 
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.customerId ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
       allow create: if request.auth != null;
-      allow update: if request.auth != null && 
-        (request.auth.uid == resource.data.customerId || 
+      allow update: if request.auth != null &&
+        (request.auth.uid == resource.data.customerId ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-      allow delete: if request.auth != null && 
+      allow delete: if request.auth != null &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
-    
+
     // ポイント履歴
     match /pointTransactions/{transactionId} {
-      allow read: if request.auth != null && 
-        (request.auth.uid == resource.data.userId || 
+      allow read: if request.auth != null &&
+        (request.auth.uid == resource.data.userId ||
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin');
-      allow create: if request.auth != null && 
+      allow create: if request.auth != null &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
       allow update: if false;
       allow delete: if false;
     }
-    
+
     // 設定情報（管理者のみ）
     match /settings/{document} {
       allow read: if true;
-      allow write: if request.auth != null && 
+      allow write: if request.auth != null &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
@@ -146,11 +146,11 @@ service firebase.storage {
       allow read: if true;
       allow write: if request.auth != null && request.auth.uid == userId;
     }
-    
+
     // 施術画像（管理者のみ）
     match /treatments/{filename} {
       allow read: if true;
-      allow write: if request.auth != null && 
+      allow write: if request.auth != null &&
         firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
   }
@@ -164,22 +164,22 @@ Firebase Admin SDKを使用して初期データを投入します。
 `scripts/initialize-firebase.js`を作成：
 
 ```javascript
-const admin = require('firebase-admin');
-const serviceAccount = require('./path-to-service-account-key.json');
+const admin = require('firebase-admin')
+const serviceAccount = require('./path-to-service-account-key.json')
 
 admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount)
-});
+  credential: admin.credential.cert(serviceAccount),
+})
 
-const db = admin.firestore();
+const db = admin.firestore()
 
 async function initializeDatabase() {
   // 管理者ユーザーの作成
   const adminUser = await admin.auth().createUser({
     email: 'admin@beeartena.com',
     password: 'your-secure-password',
-    displayName: '管理者'
-  });
+    displayName: '管理者',
+  })
 
   // 管理者権限の設定
   await db.collection('users').doc(adminUser.uid).set({
@@ -188,29 +188,32 @@ async function initializeDatabase() {
     name: '管理者',
     role: 'admin',
     createdAt: admin.firestore.FieldValue.serverTimestamp(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  });
+    updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+  })
 
   // 予約設定の初期化
-  await db.collection('settings').doc('reservation').set({
-    businessHours: [
-      { dayOfWeek: 0, open: '10:00', close: '18:00', isOpen: false },
-      { dayOfWeek: 1, open: '10:00', close: '18:00', isOpen: true },
-      { dayOfWeek: 2, open: '10:00', close: '18:00', isOpen: true },
-      { dayOfWeek: 3, open: '10:00', close: '18:00', isOpen: true },
-      { dayOfWeek: 4, open: '10:00', close: '18:00', isOpen: true },
-      { dayOfWeek: 5, open: '10:00', close: '18:00', isOpen: true },
-      { dayOfWeek: 6, open: '10:00', close: '18:00', isOpen: false }
-    ],
-    slotDuration: 60,
-    maxCapacityPerSlot: 1,
-    blockedDates: []
-  });
+  await db
+    .collection('settings')
+    .doc('reservation')
+    .set({
+      businessHours: [
+        { dayOfWeek: 0, open: '10:00', close: '18:00', isOpen: false },
+        { dayOfWeek: 1, open: '10:00', close: '18:00', isOpen: true },
+        { dayOfWeek: 2, open: '10:00', close: '18:00', isOpen: true },
+        { dayOfWeek: 3, open: '10:00', close: '18:00', isOpen: true },
+        { dayOfWeek: 4, open: '10:00', close: '18:00', isOpen: true },
+        { dayOfWeek: 5, open: '10:00', close: '18:00', isOpen: true },
+        { dayOfWeek: 6, open: '10:00', close: '18:00', isOpen: false },
+      ],
+      slotDuration: 60,
+      maxCapacityPerSlot: 1,
+      blockedDates: [],
+    })
 
-  console.log('初期データの投入が完了しました');
+  console.log('初期データの投入が完了しました')
 }
 
-initializeDatabase().catch(console.error);
+initializeDatabase().catch(console.error)
 ```
 
 ### 9. コードの修正
@@ -227,7 +230,7 @@ const firebaseConfig = {
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
-};
+}
 ```
 
 #### 9.2 サービス層の切り替え
@@ -236,12 +239,14 @@ const firebaseConfig = {
 
 ```typescript
 // 例：lib/services/userService.ts
-import { userService as firebaseUserService } from '@/lib/firebase/users';
-import { mockUserService } from '@/lib/mock/mockFirebase';
+import { userService as firebaseUserService } from '@/lib/firebase/users'
+import { mockUserService } from '@/lib/mock/mockFirebase'
 
-const isFirebaseEnabled = process.env.NEXT_PUBLIC_USE_FIREBASE === 'true';
+const isFirebaseEnabled = process.env.NEXT_PUBLIC_USE_FIREBASE === 'true'
 
-export const userService = isFirebaseEnabled ? firebaseUserService : mockUserService;
+export const userService = isFirebaseEnabled
+  ? firebaseUserService
+  : mockUserService
 ```
 
 ### 10. データ移行スクリプト
@@ -254,38 +259,47 @@ export const userService = isFirebaseEnabled ? firebaseUserService : mockUserSer
 // ブラウザのコンソールで実行
 async function migrateToFirebase() {
   // localStorageからデータを取得
-  const users = JSON.parse(localStorage.getItem('users') || '[]');
-  const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
-  const points = JSON.parse(localStorage.getItem('points') || '[]');
-  
+  const users = JSON.parse(localStorage.getItem('users') || '[]')
+  const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+  const points = JSON.parse(localStorage.getItem('points') || '[]')
+
   // Firebaseに接続（事前に認証が必要）
-  const { auth, firestore } = window.firebase;
-  
+  const { auth, firestore } = window.firebase
+
   // データの移行
   for (const user of users) {
-    await firestore.collection('users').doc(user.id).set({
-      ...user,
-      createdAt: new Date(user.createdAt),
-      updatedAt: new Date(user.updatedAt)
-    });
+    await firestore
+      .collection('users')
+      .doc(user.id)
+      .set({
+        ...user,
+        createdAt: new Date(user.createdAt),
+        updatedAt: new Date(user.updatedAt),
+      })
   }
-  
+
   for (const reservation of reservations) {
-    await firestore.collection('reservations').doc(reservation.id).set({
-      ...reservation,
-      createdAt: new Date(reservation.createdAt),
-      updatedAt: new Date(reservation.updatedAt)
-    });
+    await firestore
+      .collection('reservations')
+      .doc(reservation.id)
+      .set({
+        ...reservation,
+        createdAt: new Date(reservation.createdAt),
+        updatedAt: new Date(reservation.updatedAt),
+      })
   }
-  
+
   for (const point of points) {
-    await firestore.collection('pointTransactions').doc(point.id).set({
-      ...point,
-      createdAt: new Date(point.createdAt)
-    });
+    await firestore
+      .collection('pointTransactions')
+      .doc(point.id)
+      .set({
+        ...point,
+        createdAt: new Date(point.createdAt),
+      })
   }
-  
-  console.log('データ移行が完了しました');
+
+  console.log('データ移行が完了しました')
 }
 ```
 
@@ -308,16 +322,19 @@ git push origin main
 ### よくある問題と解決方法
 
 #### 1. 認証エラー
+
 - Firebase設定が正しいか確認
 - APIキーの有効化を確認
 - ドメインの許可リストを確認
 
 #### 2. Firestoreアクセスエラー
+
 - セキュリティルールを確認
 - インデックスの作成が必要な場合がある
 - クォータ制限を確認
 
 #### 3. パフォーマンス問題
+
 - 複合インデックスの作成
 - データの非正規化を検討
 - キャッシュ戦略の見直し

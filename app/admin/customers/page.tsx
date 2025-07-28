@@ -1,61 +1,74 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { storageService } from '@/lib/storage/storageService';
-import { Customer } from '@/lib/types';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
+import { Customer } from '@/lib/types'
 
 export default function AdminCustomers() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const router = useRouter()
+  const { user } = useAuth()
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/');
-      return;
+      router.push('/')
+      return
     }
 
-    loadCustomers();
-  }, [user, router]);
+    loadCustomers()
+  }, [user, router])
 
   const loadCustomers = () => {
-    const allCustomers = storageService.getAllCustomers();
-    setCustomers(allCustomers.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
-  };
+    const allCustomers = storageService.getAllCustomers()
+    setCustomers(
+      allCustomers.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
+    )
+  }
 
-  const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.phone.includes(searchTerm)
-  );
+  const filteredCustomers = customers.filter(
+    (customer) =>
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.phone.includes(searchTerm),
+  )
 
   const getTierColor = (tier: string) => {
     switch (tier) {
-      case 'bronze': return 'text-orange-600 bg-orange-50';
-      case 'silver': return 'text-gray-600 bg-gray-50';
-      case 'gold': return 'text-yellow-600 bg-yellow-50';
-      case 'platinum': return 'text-purple-600 bg-purple-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'bronze':
+        return 'text-orange-600 bg-orange-50'
+      case 'silver':
+        return 'text-gray-600 bg-gray-50'
+      case 'gold':
+        return 'text-yellow-600 bg-yellow-50'
+      case 'platinum':
+        return 'text-purple-600 bg-purple-50'
+      default:
+        return 'text-gray-600 bg-gray-50'
     }
-  };
+  }
 
   const getTierName = (tier: string) => {
     switch (tier) {
-      case 'bronze': return 'ブロンズ';
-      case 'silver': return 'シルバー';
-      case 'gold': return 'ゴールド';
-      case 'platinum': return 'プラチナ';
-      default: return tier;
+      case 'bronze':
+        return 'ブロンズ'
+      case 'silver':
+        return 'シルバー'
+      case 'gold':
+        return 'ゴールド'
+      case 'platinum':
+        return 'プラチナ'
+      default:
+        return tier
     }
-  };
+  }
 
   if (!user || user.role !== 'admin') {
-    return null;
+    return null
   }
 
   return (
@@ -94,16 +107,20 @@ export default function AdminCustomers() {
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
             <p className="text-sm text-gray-600">ブロンズ会員</p>
-            <p className="text-2xl font-bold">{customers.filter(c => (c.tier || 'bronze') === 'bronze').length}</p>
+            <p className="text-2xl font-bold">
+              {customers.filter((c) => (c.tier || 'bronze') === 'bronze').length}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
             <p className="text-sm text-gray-600">シルバー会員</p>
-            <p className="text-2xl font-bold">{customers.filter(c => c.tier === 'silver').length}</p>
+            <p className="text-2xl font-bold">
+              {customers.filter((c) => c.tier === 'silver').length}
+            </p>
           </div>
           <div className="bg-white rounded-lg shadow-md p-4">
             <p className="text-sm text-gray-600">ゴールド会員以上</p>
             <p className="text-2xl font-bold">
-              {customers.filter(c => c.tier === 'gold' || c.tier === 'platinum').length}
+              {customers.filter((c) => c.tier === 'gold' || c.tier === 'platinum').length}
             </p>
           </div>
         </div>
@@ -160,7 +177,9 @@ export default function AdminCustomers() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getTierColor(customer.tier || 'bronze')}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-sm font-medium ${getTierColor(customer.tier || 'bronze')}`}
+                        >
                           {getTierName(customer.tier || 'bronze')}
                         </span>
                       </td>
@@ -168,7 +187,9 @@ export default function AdminCustomers() {
                         <p className="font-medium">{(customer.points || 0).toLocaleString()}pt</p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <p className="font-medium">¥{(customer.totalSpent || 0).toLocaleString()}</p>
+                        <p className="font-medium">
+                          ¥{(customer.totalSpent || 0).toLocaleString()}
+                        </p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <p className="text-sm">
@@ -200,5 +221,5 @@ export default function AdminCustomers() {
         </div>
       </div>
     </div>
-  );
+  )
 }

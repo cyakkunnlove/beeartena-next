@@ -2,11 +2,13 @@
 
 ## 概要
 
-BEE ART ENAは、岐阜県恵那市で営業するタトゥーメイクサロンのWebアプリケーションです。予約管理、顧客管理、ポイントシステムなどの機能を提供し、サロンの業務効率化と顧客満足度向上を目指しています。
+BEE ART
+ENAは、岐阜県恵那市で営業するタトゥーメイクサロンのWebアプリケーションです。予約管理、顧客管理、ポイントシステムなどの機能を提供し、サロンの業務効率化と顧客満足度向上を目指しています。
 
 ## 技術スタック
 
 ### フロントエンド
+
 - **Next.js 15.4.1** - React フレームワーク
 - **TypeScript** - 型安全性の確保
 - **Tailwind CSS** - ユーティリティファーストCSS
@@ -14,6 +16,7 @@ BEE ART ENAは、岐阜県恵那市で営業するタトゥーメイクサロン
 - **Recharts** - データ可視化
 
 ### 認証・データ管理
+
 - **Firebase** (準備済み、現在はモック使用)
   - Authentication - ユーザー認証
   - Firestore - データベース
@@ -21,6 +24,7 @@ BEE ART ENAは、岐阜県恵那市で営業するタトゥーメイクサロン
 - **ローカルストレージ** - 開発環境でのデータ永続化
 
 ### デプロイメント
+
 - **Vercel** - ホスティング・自動デプロイ
 - **GitHub** - バージョン管理
 
@@ -51,65 +55,70 @@ beeartena-next/
 ### データモデル
 
 #### User（ユーザー）
+
 ```typescript
 interface User {
-  id: string;
-  email: string;
-  name: string;
-  phone: string;
-  role: 'customer' | 'admin';
-  points?: number;
-  birthday?: string; // YYYY-MM-DD format
-  lastBirthdayPointsYear?: number;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  email: string
+  name: string
+  phone: string
+  role: 'customer' | 'admin'
+  points?: number
+  birthday?: string // YYYY-MM-DD format
+  lastBirthdayPointsYear?: number
+  createdAt: Date
+  updatedAt: Date
 }
 ```
 
 #### Reservation（予約）
+
 ```typescript
 interface Reservation {
-  id: string;
-  customerId: string;
-  customerName: string;
-  customerEmail: string;
-  customerPhone: string;
-  serviceType: '2D' | '3D' | '4D';
-  serviceName: string;
-  price: number;
-  date: string;
-  time: string;
-  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
-  notes?: string;
-  createdAt: Date;
-  updatedAt: Date;
+  id: string
+  customerId: string
+  customerName: string
+  customerEmail: string
+  customerPhone: string
+  serviceType: '2D' | '3D' | '4D'
+  serviceName: string
+  price: number
+  date: string
+  time: string
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
+  notes?: string
+  createdAt: Date
+  updatedAt: Date
 }
 ```
 
 #### PointTransaction（ポイント取引）
+
 ```typescript
 interface PointTransaction {
-  id: string;
-  userId: string;
-  type: 'earned' | 'used' | 'manual' | 'expired' | 'adjusted' | 'redeemed';
-  amount: number;
-  balance?: number;
-  description?: string;
-  reason?: string;
-  referenceId?: string;
-  createdAt: string | Date;
+  id: string
+  userId: string
+  type: 'earned' | 'used' | 'manual' | 'expired' | 'adjusted' | 'redeemed'
+  amount: number
+  balance?: number
+  description?: string
+  reason?: string
+  referenceId?: string
+  createdAt: string | Date
 }
 ```
 
 ## 主要機能
 
 ### 1. ユーザー認証
+
 - 会員登録（メール・パスワード）
 - ログイン/ログアウト
 - パスワードリセット（準備中）
 - ロールベースアクセス制御（customer/admin）
 
 ### 2. 予約システム
+
 - サービス選択（2D/3D/4Dタトゥーメイク）
 - 日時選択（営業時間・休業日考慮）
 - オンライン予約
@@ -117,12 +126,14 @@ interface PointTransaction {
 - ステータス管理（承認待ち→確定→完了）
 
 ### 3. ポイントシステム
+
 - 利用額の5%ポイント還元
 - 誕生日に1,000ポイント付与
 - ポイント履歴管理
 - 予約時のポイント利用
 
 ### 4. 管理者機能
+
 - ダッシュボード（売上・予約統計）
 - 顧客管理（情報編集・ティア管理）
 - 予約管理（承認・キャンセル）
@@ -132,6 +143,7 @@ interface PointTransaction {
 - 営業設定（営業時間・休業日）
 
 ### 5. 休業日設定
+
 - 定休日の一括設定
 - 期間指定での休業日設定
 - 特定月への定休日適用
@@ -141,6 +153,7 @@ interface PointTransaction {
 ## セキュリティ
 
 ### 実装済み
+
 - JWTトークンによる認証
 - ロールベースアクセス制御
 - APIレート制限
@@ -149,6 +162,7 @@ interface PointTransaction {
 - 環境変数による機密情報管理
 
 ### 今後の実装予定
+
 - CSRF対策
 - セキュリティヘッダー設定
 - データ暗号化
@@ -157,6 +171,7 @@ interface PointTransaction {
 ## パフォーマンス最適化
 
 ### 実装済み
+
 - 画像最適化（Next.js Image）
 - コード分割（動的インポート）
 - キャッシュ戦略
@@ -164,6 +179,7 @@ interface PointTransaction {
 - Lazy Loading
 
 ### 今後の最適化
+
 - データベースインデックス
 - CDN活用
 - Service Worker
@@ -172,6 +188,7 @@ interface PointTransaction {
 ## アクセシビリティ
 
 ### 実装済み
+
 - セマンティックHTML
 - ARIA属性
 - キーボードナビゲーション
@@ -212,6 +229,7 @@ git push origin main
 ## テスト
 
 現在、テストフレームワークは未実装です。今後以下を追加予定：
+
 - Jest - ユニットテスト
 - React Testing Library - コンポーネントテスト
 - Cypress - E2Eテスト
@@ -219,6 +237,7 @@ git push origin main
 ## 今後の課題
 
 ### 技術的改善
+
 1. TypeScriptの型定義強化
 2. エラーハンドリングの統一
 3. ログシステムの実装
@@ -226,6 +245,7 @@ git push origin main
 5. パフォーマンスモニタリング
 
 ### 機能追加
+
 1. プッシュ通知
 2. メール通知
 3. LINE連携
@@ -233,6 +253,7 @@ git push origin main
 5. 多言語対応
 
 ### インフラ改善
+
 1. CI/CDパイプラインの強化
 2. ステージング環境の構築
 3. バックアップ戦略

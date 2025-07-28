@@ -1,8 +1,8 @@
-import Link from 'next/link';
-import Image from 'next/image';
+import Link from 'next/link'
+import Image from 'next/image'
 
 interface FooterProps {
-  className?: string;
+  className?: string
 }
 
 export default function Footer({ className = '' }: FooterProps) {
@@ -24,10 +24,26 @@ export default function Footer({ className = '' }: FooterProps) {
           <div>
             <h4 className="text-xl font-semibold mb-4">クイックリンク</h4>
             <ul className="space-y-2">
-              <li><Link href="/pricing" className="hover:text-primary transition-colors">メニュー・料金</Link></li>
-              <li><Link href="/reservation" className="hover:text-primary transition-colors">予約</Link></li>
-              <li><Link href="/#faq" className="hover:text-primary transition-colors">FAQ</Link></li>
-              <li><Link href="/privacy-policy" className="hover:text-primary transition-colors">プライバシーポリシー</Link></li>
+              <li>
+                <Link href="/pricing" className="hover:text-primary transition-colors">
+                  メニュー・料金
+                </Link>
+              </li>
+              <li>
+                <Link href="/reservation" className="hover:text-primary transition-colors">
+                  予約
+                </Link>
+              </li>
+              <li>
+                <Link href="/#faq" className="hover:text-primary transition-colors">
+                  FAQ
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy-policy" className="hover:text-primary transition-colors">
+                  プライバシーポリシー
+                </Link>
+              </li>
             </ul>
           </div>
 
@@ -82,5 +98,5 @@ export default function Footer({ className = '' }: FooterProps) {
         </div>
       </div>
     </footer>
-  );
+  )
 }

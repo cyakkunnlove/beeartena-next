@@ -1,44 +1,45 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { storageService } from '@/lib/storage/storageService';
-import { Inquiry } from '@/lib/types';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
+import { Inquiry } from '@/lib/types'
 
 export default function AdminInquiries() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [inquiries, setInquiries] = useState<Inquiry[]>([]);
-  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all');
+  const router = useRouter()
+  const { user } = useAuth()
+  const [inquiries, setInquiries] = useState<Inquiry[]>([])
+  const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/');
-      return;
+      router.push('/')
+      return
     }
 
-    loadInquiries();
-  }, [user, router]);
+    loadInquiries()
+  }, [user, router])
 
   const loadInquiries = () => {
-    const allInquiries = storageService.getAllInquiries();
-    setInquiries(allInquiries.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
-  };
+    const allInquiries = storageService.getAllInquiries()
+    setInquiries(
+      allInquiries.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
+    )
+  }
 
   const handleStatusUpdate = (inquiryId: string, status: 'read' | 'unread') => {
-    storageService.updateInquiryStatus(inquiryId, status);
-    loadInquiries();
-  };
+    storageService.updateInquiryStatus(inquiryId, status)
+    loadInquiries()
+  }
 
-  const filteredInquiries = filter === 'all' 
-    ? inquiries 
-    : inquiries.filter(i => i.status === filter);
+  const filteredInquiries =
+    filter === 'all' ? inquiries : inquiries.filter((i) => i.status === filter)
 
   if (!user || user.role !== 'admin') {
-    return null;
+    return null
   }
 
   return (
@@ -74,7 +75,7 @@ export default function AdminInquiries() {
                 {status === 'all' ? '全て' : status === 'unread' ? '未読' : '既読'}
                 {status !== 'all' && (
                   <span className="ml-2 bg-white/20 px-2 py-0.5 rounded-full text-sm">
-                    {inquiries.filter(i => i.status === status).length}
+                    {inquiries.filter((i) => i.status === status).length}
                   </span>
                 )}
               </button>
@@ -90,8 +91,8 @@ export default function AdminInquiries() {
             </div>
           ) : (
             filteredInquiries.map((inquiry) => (
-              <div 
-                key={inquiry.id} 
+              <div
+                key={inquiry.id}
                 className={`bg-white rounded-lg shadow-md p-6 ${
                   inquiry.status === 'unread' ? 'border-l-4 border-primary' : ''
                 }`}
@@ -100,11 +101,13 @@ export default function AdminInquiries() {
                   <div className="flex-1">
                     <div className="flex items-center gap-4 mb-2">
                       <h3 className="font-semibold text-lg">{inquiry.name}</h3>
-                      <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        inquiry.status === 'unread' 
-                          ? 'bg-yellow-100 text-yellow-800' 
-                          : 'bg-gray-100 text-gray-600'
-                      }`}>
+                      <span
+                        className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          inquiry.status === 'unread'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-gray-100 text-gray-600'
+                        }`}
+                      >
                         {inquiry.status === 'unread' ? '未読' : '既読'}
                       </span>
                     </div>
@@ -155,5 +158,5 @@ export default function AdminInquiries() {
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,20 +1,20 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 interface ReservationFormProps {
   formData: {
-    name: string;
-    email: string;
-    phone: string;
-    notes: string;
-  };
-  onChange: (field: string, value: string) => void;
-  onSubmit: () => void;
-  isLoggedIn: boolean;
-  servicePrice: number;
-  onPointsUsed: (points: number) => void;
+    name: string
+    email: string
+    phone: string
+    notes: string
+  }
+  onChange: (field: string, value: string) => void
+  onSubmit: () => void
+  isLoggedIn: boolean
+  servicePrice: number
+  onPointsUsed: (points: number) => void
 }
 
 export default function ReservationForm({
@@ -25,32 +25,32 @@ export default function ReservationForm({
   servicePrice,
   onPointsUsed,
 }: ReservationFormProps) {
-  const { user } = useAuth();
-  const [usePoints, setUsePoints] = useState(false);
-  const [pointsToUse, setPointsToUse] = useState('');
-  const availablePoints = user?.points || 0;
-  const maxPoints = Math.min(availablePoints, servicePrice);
+  const { user } = useAuth()
+  const [usePoints, setUsePoints] = useState(false)
+  const [pointsToUse, setPointsToUse] = useState('')
+  const availablePoints = user?.points || 0
+  const maxPoints = Math.min(availablePoints, servicePrice)
 
   useEffect(() => {
     // ポイント使用をリセット
     if (!usePoints) {
-      setPointsToUse('');
-      onPointsUsed(0);
+      setPointsToUse('')
+      onPointsUsed(0)
     }
-  }, [usePoints, onPointsUsed]);
+  }, [usePoints, onPointsUsed])
 
   const handlePointsChange = (value: string) => {
-    const points = parseInt(value) || 0;
+    const points = parseInt(value) || 0
     if (points >= 0 && points <= maxPoints) {
-      setPointsToUse(value);
-      onPointsUsed(points);
+      setPointsToUse(value)
+      onPointsUsed(points)
     }
-  };
+  }
 
   const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSubmit();
-  };
+    e.preventDefault()
+    onSubmit()
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -91,9 +91,7 @@ export default function ReservationForm({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="example@email.com"
         />
-        <p className="mt-1 text-xs text-gray-500">
-          予約確認メールをお送りします
-        </p>
+        <p className="mt-1 text-xs text-gray-500">予約確認メールをお送りします</p>
       </div>
 
       <div>
@@ -109,9 +107,7 @@ export default function ReservationForm({
           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           placeholder="090-1234-5678"
         />
-        <p className="mt-1 text-xs text-gray-500">
-          予約確認のご連絡をさせていただく場合があります
-        </p>
+        <p className="mt-1 text-xs text-gray-500">予約確認のご連絡をさせていただく場合があります</p>
       </div>
 
       <div>
@@ -145,7 +141,7 @@ export default function ReservationForm({
               利用可能: {availablePoints.toLocaleString()}pt
             </span>
           </div>
-          
+
           {usePoints && (
             <div className="space-y-3">
               <div className="flex items-center gap-3">
@@ -167,7 +163,7 @@ export default function ReservationForm({
                   全て使用
                 </button>
               </div>
-              
+
               <div className="text-sm text-gray-600">
                 <p>サービス料金: ¥{servicePrice.toLocaleString()}</p>
                 <p>ポイント利用: -{parseInt(pointsToUse) || 0}pt</p>
@@ -203,34 +199,24 @@ export default function ReservationForm({
       </div>
 
       <div className="flex items-start gap-2">
-        <input
-          type="checkbox"
-          id="agreement"
-          required
-          className="mt-1"
-        />
+        <input type="checkbox" id="agreement" required className="mt-1" />
         <label htmlFor="agreement" className="text-sm text-gray-600">
           注意事項を確認し、同意します <span className="text-red-500">*</span>
         </label>
       </div>
 
-      <button
-        type="submit"
-        className="w-full btn btn-primary"
-      >
+      <button type="submit" className="w-full btn btn-primary">
         予約を確定する
       </button>
 
       {!isLoggedIn && (
         <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-2">
-            会員登録でポイントが貯まります
-          </p>
+          <p className="text-sm text-gray-600 mb-2">会員登録でポイントが貯まります</p>
           <a href="/register" className="text-primary hover:text-dark-gold text-sm font-medium">
             会員登録はこちら →
           </a>
         </div>
       )}
     </form>
-  );
+  )
 }

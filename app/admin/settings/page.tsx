@@ -1,13 +1,13 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { reservationService } from '@/lib/reservationService';
-import { BusinessHours, ReservationSettings } from '@/lib/types';
-import { motion } from 'framer-motion';
-import SlideTransition from '@/components/layout/SlideTransition';
-import { CalendarIcon, TrashIcon } from '@heroicons/react/24/outline';
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { reservationService } from '@/lib/reservationService'
+import { BusinessHours, ReservationSettings } from '@/lib/types'
+import { motion } from 'framer-motion'
+import SlideTransition from '@/components/layout/SlideTransition'
+import { CalendarIcon, TrashIcon } from '@heroicons/react/24/outline'
 
 const DAYS_OF_WEEK = [
   { value: 0, label: '日曜日' },
@@ -17,217 +17,221 @@ const DAYS_OF_WEEK = [
   { value: 4, label: '木曜日' },
   { value: 5, label: '金曜日' },
   { value: 6, label: '土曜日' },
-];
+]
 
 export default function AdminSettings() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [settings, setSettings] = useState<ReservationSettings | null>(null);
-  const [blockedDate, setBlockedDate] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
-  
+  const router = useRouter()
+  const { user } = useAuth()
+  const [settings, setSettings] = useState<ReservationSettings | null>(null)
+  const [blockedDate, setBlockedDate] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
+
   // 定休日設定
-  const [regularClosedDays, setRegularClosedDays] = useState<number[]>([]);
-  
+  const [regularClosedDays, setRegularClosedDays] = useState<number[]>([])
+
   // 期間休業設定
-  const [periodStart, setPeriodStart] = useState('');
-  const [periodEnd, setPeriodEnd] = useState('');
-  
+  const [periodStart, setPeriodStart] = useState('')
+  const [periodEnd, setPeriodEnd] = useState('')
+
   // カレンダー表示
-  const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [calendarMonth, setCalendarMonth] = useState(new Date())
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/');
-      return;
+      router.push('/')
+      return
     }
 
     // Load current settings
-    const currentSettings = reservationService.getSettings();
-    setSettings(currentSettings);
-    
+    const currentSettings = reservationService.getSettings()
+    setSettings(currentSettings)
+
     // 定休日を営業時間から抽出
     const closedDays = currentSettings.businessHours
-      .filter(h => !h.isOpen)
-      .map(h => h.dayOfWeek);
-    setRegularClosedDays(closedDays);
-  }, [user, router]);
+      .filter((h) => !h.isOpen)
+      .map((h) => h.dayOfWeek)
+    setRegularClosedDays(closedDays)
+  }, [user, router])
 
-  const handleBusinessHoursChange = (dayOfWeek: number, field: keyof BusinessHours, value: string | boolean) => {
-    if (!settings) return;
+  const handleBusinessHoursChange = (
+    dayOfWeek: number,
+    field: keyof BusinessHours,
+    value: string | boolean,
+  ) => {
+    if (!settings) return
 
-    const updatedHours = [...settings.businessHours];
+    const updatedHours = [...settings.businessHours]
     updatedHours[dayOfWeek] = {
       ...updatedHours[dayOfWeek],
       [field]: value,
-    };
+    }
 
     setSettings({
       ...settings,
       businessHours: updatedHours,
-    });
-  };
+    })
+  }
 
   const handleSlotSettingsChange = (field: keyof ReservationSettings, value: number) => {
-    if (!settings) return;
+    if (!settings) return
 
     setSettings({
       ...settings,
       [field]: value,
-    });
-  };
+    })
+  }
 
   const handleAddBlockedDate = () => {
-    if (!settings || !blockedDate) return;
+    if (!settings || !blockedDate) return
 
-    const updatedBlockedDates = [...(settings.blockedDates || [])];
+    const updatedBlockedDates = [...(settings.blockedDates || [])]
     if (!updatedBlockedDates.includes(blockedDate)) {
-      updatedBlockedDates.push(blockedDate);
-      updatedBlockedDates.sort();
+      updatedBlockedDates.push(blockedDate)
+      updatedBlockedDates.sort()
 
       setSettings({
         ...settings,
         blockedDates: updatedBlockedDates,
-      });
+      })
     }
 
-    setBlockedDate('');
-  };
+    setBlockedDate('')
+  }
 
   const handleRemoveBlockedDate = (date: string) => {
-    if (!settings) return;
+    if (!settings) return
 
-    const updatedBlockedDates = (settings.blockedDates || []).filter(d => d !== date);
+    const updatedBlockedDates = (settings.blockedDates || []).filter((d) => d !== date)
 
     setSettings({
       ...settings,
       blockedDates: updatedBlockedDates,
-    });
-  };
+    })
+  }
 
   // 定休日の一括設定
   const handleRegularClosedDaysChange = (dayOfWeek: number) => {
-    if (!settings) return;
+    if (!settings) return
 
     const updatedClosedDays = regularClosedDays.includes(dayOfWeek)
-      ? regularClosedDays.filter(d => d !== dayOfWeek)
-      : [...regularClosedDays, dayOfWeek];
-    
-    setRegularClosedDays(updatedClosedDays);
-    
+      ? regularClosedDays.filter((d) => d !== dayOfWeek)
+      : [...regularClosedDays, dayOfWeek]
+
+    setRegularClosedDays(updatedClosedDays)
+
     // 営業時間も更新
-    const updatedHours = [...settings.businessHours];
+    const updatedHours = [...settings.businessHours]
     updatedHours[dayOfWeek] = {
       ...updatedHours[dayOfWeek],
       isOpen: !updatedClosedDays.includes(dayOfWeek),
-    };
-    
+    }
+
     setSettings({
       ...settings,
       businessHours: updatedHours,
-    });
-  };
+    })
+  }
 
   // 期間での休業日設定
   const handlePeriodClosedDates = () => {
-    if (!settings || !periodStart || !periodEnd) return;
+    if (!settings || !periodStart || !periodEnd) return
 
-    const start = new Date(periodStart);
-    const end = new Date(periodEnd);
-    const updatedBlockedDates = [...(settings.blockedDates || [])];
+    const start = new Date(periodStart)
+    const end = new Date(periodEnd)
+    const updatedBlockedDates = [...(settings.blockedDates || [])]
 
     for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-      const dateStr = d.toISOString().split('T')[0];
+      const dateStr = d.toISOString().split('T')[0]
       if (!updatedBlockedDates.includes(dateStr)) {
-        updatedBlockedDates.push(dateStr);
+        updatedBlockedDates.push(dateStr)
       }
     }
 
-    updatedBlockedDates.sort();
+    updatedBlockedDates.sort()
     setSettings({
       ...settings,
       blockedDates: updatedBlockedDates,
-    });
+    })
 
-    setPeriodStart('');
-    setPeriodEnd('');
-  };
+    setPeriodStart('')
+    setPeriodEnd('')
+  }
 
   // 特定月の定休日を一括設定
   const applyRegularClosedDaysToMonth = (year: number, month: number) => {
-    if (!settings || regularClosedDays.length === 0) return;
+    if (!settings || regularClosedDays.length === 0) return
 
-    const updatedBlockedDates = [...(settings.blockedDates || [])];
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const updatedBlockedDates = [...(settings.blockedDates || [])]
+    const daysInMonth = new Date(year, month + 1, 0).getDate()
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day);
-      const dayOfWeek = date.getDay();
-      
+      const date = new Date(year, month, day)
+      const dayOfWeek = date.getDay()
+
       if (regularClosedDays.includes(dayOfWeek)) {
-        const dateStr = date.toISOString().split('T')[0];
+        const dateStr = date.toISOString().split('T')[0]
         if (!updatedBlockedDates.includes(dateStr)) {
-          updatedBlockedDates.push(dateStr);
+          updatedBlockedDates.push(dateStr)
         }
       }
     }
 
-    updatedBlockedDates.sort();
+    updatedBlockedDates.sort()
     setSettings({
       ...settings,
       blockedDates: updatedBlockedDates,
-    });
-  };
+    })
+  }
 
   const handleSave = () => {
-    if (!settings) return;
+    if (!settings) return
 
-    setIsSaving(true);
-    reservationService.saveSettings(settings);
-    
+    setIsSaving(true)
+    reservationService.saveSettings(settings)
+
     setTimeout(() => {
-      setIsSaving(false);
-      alert('設定を保存しました');
-    }, 500);
-  };
+      setIsSaving(false)
+      alert('設定を保存しました')
+    }, 500)
+  }
 
   // カレンダー表示用のヘルパー関数
   const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
+    const year = date.getFullYear()
+    const month = date.getMonth()
+    const firstDay = new Date(year, month, 1)
+    const lastDay = new Date(year, month + 1, 0)
+    const daysInMonth = lastDay.getDate()
+    const startingDayOfWeek = firstDay.getDay()
 
-    const days = [];
-    
+    const days = []
+
     // 前月の日付で埋める
     for (let i = 0; i < startingDayOfWeek; i++) {
-      days.push(null);
+      days.push(null)
     }
-    
+
     // 今月の日付
     for (let i = 1; i <= daysInMonth; i++) {
-      days.push(new Date(year, month, i));
+      days.push(new Date(year, month, i))
     }
 
-    return days;
-  };
+    return days
+  }
 
   const isBlockedDate = (date: Date | null) => {
-    if (!date || !settings) return false;
-    const dateStr = date.toISOString().split('T')[0];
-    return settings.blockedDates?.includes(dateStr) || false;
-  };
+    if (!date || !settings) return false
+    const dateStr = date.toISOString().split('T')[0]
+    return settings.blockedDates?.includes(dateStr) || false
+  }
 
   const isRegularClosedDay = (date: Date | null) => {
-    if (!date) return false;
-    return regularClosedDays.includes(date.getDay());
-  };
+    if (!date) return false
+    return regularClosedDays.includes(date.getDay())
+  }
 
   if (!user || user.role !== 'admin' || !settings) {
-    return null;
+    return null
   }
 
   return (
@@ -252,7 +256,7 @@ export default function AdminSettings() {
           <SlideTransition>
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold mb-4">基本設定</h2>
-              
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -261,13 +265,15 @@ export default function AdminSettings() {
                   <input
                     type="number"
                     value={settings.slotDuration}
-                    onChange={(e) => handleSlotSettingsChange('slotDuration', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSlotSettingsChange('slotDuration', parseInt(e.target.value))
+                    }
                     className="w-full px-4 py-2 border rounded-lg"
                     min="30"
                     step="30"
                   />
                 </div>
-                
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     1時間枠あたりの最大予約数
@@ -275,7 +281,9 @@ export default function AdminSettings() {
                   <input
                     type="number"
                     value={settings.maxCapacityPerSlot}
-                    onChange={(e) => handleSlotSettingsChange('maxCapacityPerSlot', parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleSlotSettingsChange('maxCapacityPerSlot', parseInt(e.target.value))
+                    }
                     className="w-full px-4 py-2 border rounded-lg"
                     min="1"
                     max="10"
@@ -292,7 +300,7 @@ export default function AdminSettings() {
               <p className="text-sm text-gray-600 mb-4">
                 毎週の定休日を設定します。選択した曜日は自動的に休業日となります。
               </p>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                 {DAYS_OF_WEEK.map((day) => (
                   <label
@@ -320,10 +328,10 @@ export default function AdminSettings() {
           <SlideTransition delay={0.2}>
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold mb-4">営業時間詳細</h2>
-              
+
               <div className="space-y-4">
                 {DAYS_OF_WEEK.map((day) => {
-                  const hours = settings.businessHours[day.value];
+                  const hours = settings.businessHours[day.value]
                   return (
                     <motion.div
                       key={day.value}
@@ -331,25 +339,29 @@ export default function AdminSettings() {
                         !hours.isOpen ? 'bg-gray-50' : ''
                       }`}
                       whileHover={{ scale: 1.01 }}
-                      transition={{ type: "spring", stiffness: 300 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
                     >
                       <div className="w-24">
                         <span className="font-medium">{day.label}</span>
                       </div>
-                      
+
                       {hours.isOpen ? (
                         <>
                           <input
                             type="time"
                             value={hours.open}
-                            onChange={(e) => handleBusinessHoursChange(day.value, 'open', e.target.value)}
+                            onChange={(e) =>
+                              handleBusinessHoursChange(day.value, 'open', e.target.value)
+                            }
                             className="px-3 py-1 border rounded"
                           />
                           <span>〜</span>
                           <input
                             type="time"
                             value={hours.close}
-                            onChange={(e) => handleBusinessHoursChange(day.value, 'close', e.target.value)}
+                            onChange={(e) =>
+                              handleBusinessHoursChange(day.value, 'close', e.target.value)
+                            }
                             className="px-3 py-1 border rounded"
                           />
                         </>
@@ -357,7 +369,7 @@ export default function AdminSettings() {
                         <span className="text-red-600 font-medium">定休日</span>
                       )}
                     </motion.div>
-                  );
+                  )
                 })}
               </div>
             </div>
@@ -367,7 +379,7 @@ export default function AdminSettings() {
           <SlideTransition delay={0.3}>
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-xl font-bold mb-4">特別休業日設定</h2>
-              
+
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* 個別日付設定 */}
                 <div>
@@ -426,13 +438,18 @@ export default function AdminSettings() {
                       type="month"
                       value={`${calendarMonth.getFullYear()}-${String(calendarMonth.getMonth() + 1).padStart(2, '0')}`}
                       onChange={(e) => {
-                        const [year, month] = e.target.value.split('-');
-                        setCalendarMonth(new Date(parseInt(year), parseInt(month) - 1));
+                        const [year, month] = e.target.value.split('-')
+                        setCalendarMonth(new Date(parseInt(year), parseInt(month) - 1))
                       }}
                       className="flex-1 px-4 py-2 border rounded-lg"
                     />
                     <motion.button
-                      onClick={() => applyRegularClosedDaysToMonth(calendarMonth.getFullYear(), calendarMonth.getMonth())}
+                      onClick={() =>
+                        applyRegularClosedDaysToMonth(
+                          calendarMonth.getFullYear(),
+                          calendarMonth.getMonth(),
+                        )
+                      }
                       className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-dark-gold"
                       whileTap={{ scale: 0.95 }}
                       disabled={regularClosedDays.length === 0}
@@ -448,7 +465,11 @@ export default function AdminSettings() {
                   <div className="border rounded-lg p-4">
                     <div className="flex justify-between items-center mb-4">
                       <button
-                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1))}
+                        onClick={() =>
+                          setCalendarMonth(
+                            new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() - 1),
+                          )
+                        }
                         className="p-1 hover:bg-gray-100 rounded"
                       >
                         ←
@@ -457,7 +478,11 @@ export default function AdminSettings() {
                         {calendarMonth.getFullYear()}年{calendarMonth.getMonth() + 1}月
                       </h4>
                       <button
-                        onClick={() => setCalendarMonth(new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1))}
+                        onClick={() =>
+                          setCalendarMonth(
+                            new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1),
+                          )
+                        }
                         className="p-1 hover:bg-gray-100 rounded"
                       >
                         →
@@ -478,8 +503,8 @@ export default function AdminSettings() {
                               ? isBlockedDate(date)
                                 ? 'bg-red-100 text-red-700 font-medium'
                                 : isRegularClosedDay(date)
-                                ? 'bg-gray-100 text-gray-500'
-                                : ''
+                                  ? 'bg-gray-100 text-gray-500'
+                                  : ''
                               : ''
                           }`}
                         >
@@ -533,7 +558,7 @@ export default function AdminSettings() {
           </SlideTransition>
 
           {/* 保存ボタン */}
-          <motion.div 
+          <motion.div
             className="flex justify-end"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -542,9 +567,7 @@ export default function AdminSettings() {
             <motion.button
               onClick={handleSave}
               className={`px-8 py-3 rounded-lg font-medium text-white ${
-                isSaving 
-                  ? 'bg-gray-400 cursor-not-allowed' 
-                  : 'bg-primary hover:bg-dark-gold'
+                isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-primary hover:bg-dark-gold'
               }`}
               whileTap={{ scale: 0.95 }}
               disabled={isSaving}
@@ -555,5 +578,5 @@ export default function AdminSettings() {
         </div>
       </div>
     </div>
-  );
+  )
 }

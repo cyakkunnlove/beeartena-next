@@ -1,22 +1,27 @@
 # ⚠️ セキュリティ通知 - 緊急対応が必要
 
 ## 問題
+
 GitHubから、公開リポジトリにAPIキーが含まれているとの警告を受けました。
 
 ## 実施した対応
+
 1. APIキーを含むドキュメントの編集（FIREBASE_CONFIG_MISSING.md）
 2. `.env.local` は `.gitignore` に含まれているため安全
 
 ## 🚨 今すぐ実施が必要な作業
 
 ### 1. Firebase APIキーの無効化と再生成
-1. [Firebase Console](https://console.firebase.google.com/project/beeart-ena/settings/general) にアクセス
+
+1. [Firebase Console](https://console.firebase.google.com/project/beeart-ena/settings/general)
+   にアクセス
 2. プロジェクトの設定 → 全般
 3. WebアプリのAPIキーを確認
 4. Google Cloud Console で該当のAPIキーを無効化
 5. 新しいAPIキーを生成
 
 ### 2. ローカルの `.env.local` を更新
+
 ```bash
 # .env.localを編集
 nano .env.local
@@ -26,6 +31,7 @@ NEXT_PUBLIC_FIREBASE_API_KEY=新しいAPIキー
 ```
 
 ### 3. Vercelの環境変数を更新
+
 1. [Vercel Dashboard](https://vercel.com) にアクセス
 2. プロジェクト設定 → Environment Variables
 3. `NEXT_PUBLIC_FIREBASE_API_KEY` を新しい値に更新

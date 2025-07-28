@@ -1,13 +1,13 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import Link from 'next/link';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import Link from 'next/link'
 
 export default function AdminDashboard() {
-  const router = useRouter();
-  const { user } = useAuth();
+  const router = useRouter()
+  const { user } = useAuth()
   const [stats, setStats] = useState({
     totalCustomers: 0,
     totalReservations: 0,
@@ -17,49 +17,51 @@ export default function AdminDashboard() {
     monthlyRevenue: 0,
     unreadInquiries: 0,
     activeCustomers: 0,
-  });
+  })
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/');
-      return;
+      router.push('/')
+      return
     }
 
     // Calculate stats from localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
-    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
-    
-    const today = new Date().toISOString().split('T')[0];
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    const thirtyDaysAgo = new Date();
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const users = JSON.parse(localStorage.getItem('users') || '[]')
+    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]')
 
-    const customers = users.filter((u: any) => u.role === 'customer');
-    const todayRes = reservations.filter((r: any) => r.date === today);
-    const pendingRes = reservations.filter((r: any) => r.status === 'pending');
-    const unreadInq = inquiries.filter((i: any) => i.status === 'unread');
-    
+    const today = new Date().toISOString().split('T')[0]
+    const currentMonth = new Date().getMonth()
+    const currentYear = new Date().getFullYear()
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+
+    const customers = users.filter((u: any) => u.role === 'customer')
+    const todayRes = reservations.filter((r: any) => r.date === today)
+    const pendingRes = reservations.filter((r: any) => r.status === 'pending')
+    const unreadInq = inquiries.filter((i: any) => i.status === 'unread')
+
     // アクティブ顧客（過去30日以内に予約があった顧客）
     const activeCustomerIds = new Set(
       reservations
         .filter((r: any) => new Date(r.date) >= thirtyDaysAgo)
-        .map((r: any) => r.customerId)
-    );
-    
+        .map((r: any) => r.customerId),
+    )
+
     const monthlyRev = reservations
       .filter((r: any) => {
-        const resDate = new Date(r.date);
-        return resDate.getMonth() === currentMonth && 
-               resDate.getFullYear() === currentYear &&
-               r.status !== 'cancelled';
+        const resDate = new Date(r.date)
+        return (
+          resDate.getMonth() === currentMonth &&
+          resDate.getFullYear() === currentYear &&
+          r.status !== 'cancelled'
+        )
       })
-      .reduce((sum: number, r: any) => sum + r.price, 0);
+      .reduce((sum: number, r: any) => sum + r.price, 0)
 
     const totalRev = reservations
       .filter((r: any) => r.status !== 'cancelled')
-      .reduce((sum: number, r: any) => sum + r.price, 0);
+      .reduce((sum: number, r: any) => sum + r.price, 0)
 
     setStats({
       totalCustomers: customers.length,
@@ -70,11 +72,11 @@ export default function AdminDashboard() {
       monthlyRevenue: monthlyRev,
       unreadInquiries: unreadInq.length,
       activeCustomers: activeCustomerIds.size,
-    });
-  }, [user, router]);
+    })
+  }, [user, router])
 
   if (!user || user.role !== 'admin') {
-    return null;
+    return null
   }
 
   const statCards = [
@@ -114,7 +116,7 @@ export default function AdminDashboard() {
       icon: '💴',
       color: 'bg-indigo-500',
     },
-  ];
+  ]
 
   const quickActions = [
     {
@@ -147,7 +149,7 @@ export default function AdminDashboard() {
       href: '/admin/settings',
       icon: '⚙️',
     },
-  ];
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -229,5 +231,5 @@ export default function AdminDashboard() {
         </div>
       </div>
     </div>
-  );
+  )
 }

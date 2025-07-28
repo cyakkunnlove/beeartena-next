@@ -1,32 +1,34 @@
-import { 
-  collection, 
-  doc, 
-  setDoc, 
-  getDoc, 
-  getDocs, 
-  updateDoc, 
-  query, 
-  where, 
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  getDocs,
+  updateDoc,
+  query,
+  where,
   orderBy,
   Timestamp,
-  addDoc
-} from 'firebase/firestore';
-import { db } from './config';
-import { Reservation } from '../types';
-import { v4 as uuidv4 } from 'uuid';
-import { mockReservationService } from '../mock/mockFirebase';
+  addDoc,
+} from 'firebase/firestore'
+import { db } from './config'
+import { Reservation } from '../types'
+import { v4 as uuidv4 } from 'uuid'
+import { mockReservationService } from '../mock/mockFirebase'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  return apiKey && apiKey !== 'test-api-key' && apiKey !== '';
-};
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+  return apiKey && apiKey !== 'test-api-key' && apiKey !== ''
+}
 
 export const reservationService = {
   // 予約作成
-  async createReservation(reservation: Omit<Reservation, 'id' | 'createdAt'>): Promise<Reservation> {
+  async createReservation(
+    reservation: Omit<Reservation, 'id' | 'createdAt'>,
+  ): Promise<Reservation> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.createReservation(reservation);
+      return mockReservationService.createReservation(reservation)
     }
 
     try {
@@ -34,115 +36,115 @@ export const reservationService = {
         ...reservation,
         id: uuidv4(),
         createdAt: new Date(),
-        status: 'pending' as const
-      };
+        status: 'pending' as const,
+      }
 
       await setDoc(doc(db, 'reservations', newReservation.id), {
         ...newReservation,
         date: Timestamp.fromDate(new Date(newReservation.date)),
-        createdAt: Timestamp.fromDate(newReservation.createdAt)
-      });
+        createdAt: Timestamp.fromDate(newReservation.createdAt),
+      })
 
-      return newReservation;
+      return newReservation
     } catch (error: any) {
-      throw new Error(error.message || '予約の作成に失敗しました');
+      throw new Error(error.message || '予約の作成に失敗しました')
     }
   },
 
   // 予約取得（ID指定）
   async getReservation(id: string): Promise<Reservation | null> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.getReservation(id);
+      return mockReservationService.getReservation(id)
     }
 
     try {
-      const docRef = await getDoc(doc(db, 'reservations', id));
-      if (!docRef.exists()) return null;
+      const docRef = await getDoc(doc(db, 'reservations', id))
+      if (!docRef.exists()) return null
 
-      const data = docRef.data();
+      const data = docRef.data()
       return {
         ...data,
         date: data.date.toDate(),
-        createdAt: data.createdAt.toDate()
-      } as Reservation;
+        createdAt: data.createdAt.toDate(),
+      } as Reservation
     } catch (error: any) {
-      throw new Error(error.message || '予約の取得に失敗しました');
+      throw new Error(error.message || '予約の取得に失敗しました')
     }
   },
 
   // ユーザーの予約一覧取得
   async getUserReservations(userId: string): Promise<Reservation[]> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.getUserReservations(userId);
+      return mockReservationService.getUserReservations(userId)
     }
 
     try {
       const q = query(
         collection(db, 'reservations'),
         where('customerId', '==', userId),
-        orderBy('date', 'desc')
-      );
+        orderBy('date', 'desc'),
+      )
 
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data();
+      const querySnapshot = await getDocs(q)
+      return querySnapshot.docs.map((doc) => {
+        const data = doc.data()
         return {
           ...data,
           date: data.date.toDate(),
-          createdAt: data.createdAt.toDate()
-        } as Reservation;
-      });
+          createdAt: data.createdAt.toDate(),
+        } as Reservation
+      })
     } catch (error: any) {
-      throw new Error(error.message || '予約一覧の取得に失敗しました');
+      throw new Error(error.message || '予約一覧の取得に失敗しました')
     }
   },
 
   // 全予約取得（管理者用）
   async getAllReservations(): Promise<Reservation[]> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.getAllReservations();
+      return mockReservationService.getAllReservations()
     }
 
     try {
-      const q = query(
-        collection(db, 'reservations'),
-        orderBy('date', 'desc')
-      );
+      const q = query(collection(db, 'reservations'), orderBy('date', 'desc'))
 
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data();
+      const querySnapshot = await getDocs(q)
+      return querySnapshot.docs.map((doc) => {
+        const data = doc.data()
         return {
           ...data,
           date: data.date.toDate(),
-          createdAt: data.createdAt.toDate()
-        } as Reservation;
-      });
+          createdAt: data.createdAt.toDate(),
+        } as Reservation
+      })
     } catch (error: any) {
-      throw new Error(error.message || '予約一覧の取得に失敗しました');
+      throw new Error(error.message || '予約一覧の取得に失敗しました')
     }
   },
 
   // 予約状態更新
-  async updateReservationStatus(id: string, status: 'pending' | 'confirmed' | 'cancelled' | 'completed'): Promise<void> {
+  async updateReservationStatus(
+    id: string,
+    status: 'pending' | 'confirmed' | 'cancelled' | 'completed',
+  ): Promise<void> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.updateReservationStatus(id, status);
+      return mockReservationService.updateReservationStatus(id, status)
     }
 
     try {
       await updateDoc(doc(db, 'reservations', id), {
         status,
-        updatedAt: Timestamp.now()
-      });
+        updatedAt: Timestamp.now(),
+      })
     } catch (error: any) {
-      throw new Error(error.message || '予約状態の更新に失敗しました');
+      throw new Error(error.message || '予約状態の更新に失敗しました')
     }
   },
 
   // 予約キャンセル
   async cancelReservation(id: string, reason?: string): Promise<void> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.cancelReservation(id, reason);
+      return mockReservationService.cancelReservation(id, reason)
     }
 
     try {
@@ -150,44 +152,44 @@ export const reservationService = {
         status: 'cancelled',
         cancelReason: reason || '',
         cancelledAt: Timestamp.now(),
-        updatedAt: Timestamp.now()
-      });
+        updatedAt: Timestamp.now(),
+      })
     } catch (error: any) {
-      throw new Error(error.message || '予約のキャンセルに失敗しました');
+      throw new Error(error.message || '予約のキャンセルに失敗しました')
     }
   },
 
   // 日付で予約検索
   async getReservationsByDate(date: Date): Promise<Reservation[]> {
     if (!isFirebaseConfigured()) {
-      return mockReservationService.getReservationsByDate(date);
+      return mockReservationService.getReservationsByDate(date)
     }
 
     try {
-      const startOfDay = new Date(date);
-      startOfDay.setHours(0, 0, 0, 0);
-      
-      const endOfDay = new Date(date);
-      endOfDay.setHours(23, 59, 59, 999);
+      const startOfDay = new Date(date)
+      startOfDay.setHours(0, 0, 0, 0)
+
+      const endOfDay = new Date(date)
+      endOfDay.setHours(23, 59, 59, 999)
 
       const q = query(
         collection(db, 'reservations'),
         where('date', '>=', Timestamp.fromDate(startOfDay)),
         where('date', '<=', Timestamp.fromDate(endOfDay)),
-        where('status', '!=', 'cancelled')
-      );
+        where('status', '!=', 'cancelled'),
+      )
 
-      const querySnapshot = await getDocs(q);
-      return querySnapshot.docs.map(doc => {
-        const data = doc.data();
+      const querySnapshot = await getDocs(q)
+      return querySnapshot.docs.map((doc) => {
+        const data = doc.data()
         return {
           ...data,
           date: data.date.toDate(),
-          createdAt: data.createdAt.toDate()
-        } as Reservation;
-      });
+          createdAt: data.createdAt.toDate(),
+        } as Reservation
+      })
     } catch (error: any) {
-      throw new Error(error.message || '予約の検索に失敗しました');
+      throw new Error(error.message || '予約の検索に失敗しました')
     }
-  }
-};
+  },
+}

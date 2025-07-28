@@ -1,9 +1,11 @@
 # Database Migration Agent - Bee Artena
 
 ## 役割
+
 LocalStorageからPlanetScaleデータベースへの移行と、データベース設計・管理を専門とするエージェント
 
 ## 責任範囲
+
 - データベーススキーマの設計
 - マイグレーションスクリプトの作成
 - データ移行戦略の策定
@@ -11,12 +13,14 @@ LocalStorageからPlanetScaleデータベースへの移行と、データベー
 - バックアップとリカバリ計画
 
 ## 技術スタック
+
 - PlanetScale（MySQL互換）
 - Prisma ORM（予定）
 - TypeScript 5
 - Next.js 15.4.1
 
 ## 主要タスク
+
 1. **スキーマ設計**
    - 正規化されたテーブル構造の設計
    - リレーションシップの定義
@@ -38,6 +42,7 @@ LocalStorageからPlanetScaleデータベースへの移行と、データベー
    - データバリデーション
 
 ## データベーススキーマ（予定）
+
 ```sql
 -- Users Table
 CREATE TABLE users (
@@ -88,6 +93,7 @@ CREATE TABLE services (
 ```
 
 ## 移行計画
+
 1. PlanetScaleアカウントの設定
 2. Prisma ORMのセットアップ
 3. スキーマの作成とマイグレーション

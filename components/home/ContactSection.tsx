@@ -1,12 +1,12 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { storageService } from '@/lib/storage/storageService';
-import FormField from '@/components/form/FormField';
-import { useToastContext } from '@/components/layout/LayoutWrapper';
-import Skeleton, { CardSkeleton } from '@/components/ui/Skeleton';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import { useState } from 'react'
+import Link from 'next/link'
+import { storageService } from '@/lib/storage/storageService'
+import FormField from '@/components/form/FormField'
+import { useToastContext } from '@/components/layout/LayoutWrapper'
+import Skeleton, { CardSkeleton } from '@/components/ui/Skeleton'
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer'
 
 export default function ContactSection() {
   const [formData, setFormData] = useState({
@@ -15,21 +15,21 @@ export default function ContactSection() {
     phone: '',
     inquiryType: '',
     message: '',
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const toast = useToastContext();
+  })
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const toast = useToastContext()
 
   const handleFieldChange = (name: string) => (value: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
-    }));
-  };
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
+    e.preventDefault()
+    setIsSubmitting(true)
 
     try {
       // Save inquiry to local storage
@@ -39,31 +39,31 @@ export default function ContactSection() {
         phone: formData.phone || undefined,
         type: formData.inquiryType as any,
         message: formData.message,
-      });
+      })
 
       toast.showToast({
         type: 'success',
         title: 'お問い合わせを受け付けました',
         message: 'ご連絡ありがとうございます。',
-      });
-      
+      })
+
       setFormData({
         name: '',
         email: '',
         phone: '',
         inquiryType: '',
         message: '',
-      });
+      })
     } catch (error) {
       toast.showToast({
         type: 'error',
         title: '送信に失敗しました',
         message: 'もう一度お試しください。',
-      });
+      })
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   if (isLoading) {
     return (
@@ -79,7 +79,7 @@ export default function ContactSection() {
           </div>
         </ResponsiveContainer>
       </section>
-    );
+    )
   }
 
   return (
@@ -107,10 +107,18 @@ export default function ContactSection() {
             <div className="bg-gray-50 rounded-xl p-6">
               <h3 className="text-xl font-bold mb-4">お問い合わせ方法</h3>
               <div className="space-y-4">
-                <Link href="/reservation" className="flex items-center gap-4 text-primary hover:text-dark-gold transition-colors">
+                <Link
+                  href="/reservation"
+                  className="flex items-center gap-4 text-primary hover:text-dark-gold transition-colors"
+                >
                   <div className="bg-primary/10 p-3 rounded-lg">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
                     </svg>
                   </div>
                   <div>
@@ -127,7 +135,12 @@ export default function ContactSection() {
                 >
                   <div className="bg-primary/10 p-3 rounded-lg">
                     <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"
+                      />
                     </svg>
                   </div>
                   <div>
@@ -233,5 +246,5 @@ export default function ContactSection() {
         </div>
       </ResponsiveContainer>
     </section>
-  );
+  )
 }

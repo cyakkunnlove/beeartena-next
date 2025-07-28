@@ -1,5 +1,5 @@
-import { NextRequest } from 'next/server';
-import Redis from 'ioredis';
+import { NextRequest } from 'next/server'
+import Redis from 'ioredis'
 
 // Redis client for rate limiting
 const redis = new Redis({
@@ -8,68 +8,62 @@ const redis = new Redis({
   password: process.env.REDIS_PASSWORD,
   db: parseInt(process.env.REDIS_DB || '0'),
   retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000);
-    return delay;
+    const delay = Math.min(times * 50, 2000)
+    return delay
   },
-});
+})
 
 export interface RateLimitOptions {
-  limit: number;
-  window: number; // in seconds
+  limit: number
+  window: number // in seconds
 }
 
 export interface RateLimitResult {
-  allowed: boolean;
-  limit: number;
-  remaining: number;
-  reset: number;
+  allowed: boolean
+  limit: number
+  remaining: number
+  reset: number
 }
 
 class RateLimiter {
-  private fallbackStore = new Map<string, { count: number; reset: number }>();
+  private fallbackStore = new Map<string, { count: number; reset: number }>()
 
-  async check(
-    req: NextRequest,
-    options: RateLimitOptions
-  ): Promise<boolean> {
-    const identifier = this.getIdentifier(req);
-    const key = `rate_limit:${identifier}`;
-    const now = Date.now();
-    const window = options.window * 1000; // Convert to milliseconds
-    const reset = now + window;
+  async check(req: NextRequest, options: RateLimitOptions): Promise<boolean> {
+    const identifier = this.getIdentifier(req)
+    const key = `rate_limit:${identifier}`
+    const now = Date.now()
+    const window = options.window * 1000 // Convert to milliseconds
+    const reset = now + window
 
     try {
       // Try Redis first
-      const result = await this.checkRedis(key, options, now, reset);
-      return !result.allowed;
+      const result = await this.checkRedis(key, options, now, reset)
+      return !result.allowed
     } catch (error) {
       // Fallback to in-memory store if Redis fails
-      console.error('Redis rate limit error:', error);
-      return this.checkFallback(key, options, now);
+      console.error('Redis rate limit error:', error)
+      return this.checkFallback(key, options, now)
     }
   }
 
-  async getRateLimitInfo(
-    req: NextRequest,
-    options: RateLimitOptions
-  ): Promise<RateLimitResult> {
-    const identifier = this.getIdentifier(req);
-    const key = `rate_limit:${identifier}`;
-    const now = Date.now();
-    const window = options.window * 1000;
-    const reset = now + window;
+  async getRateLimitInfo(req: NextRequest, options: RateLimitOptions): Promise<RateLimitResult> {
+    const identifier = this.getIdentifier(req)
+    const key = `rate_limit:${identifier}`
+    const now = Date.now()
+    const window = options.window * 1000
+    const reset = now + window
 
     try {
-      return await this.checkRedis(key, options, now, reset);
+      return await this.checkRedis(key, options, now, reset)
     } catch (error) {
-      console.error('Redis rate limit error:', error);
+      console.error('Redis rate limit error:', error)
       // Return a default response on error
       return {
         allowed: true,
         limit: options.limit,
         remaining: options.limit,
         reset: Math.floor(reset / 1000),
-      };
+      }
     }
   }
 
@@ -77,115 +71,111 @@ class RateLimiter {
     key: string,
     options: RateLimitOptions,
     now: number,
-    reset: number
+    reset: number,
   ): Promise<RateLimitResult> {
-    const multi = redis.multi();
-    
+    const multi = redis.multi()
+
     // Increment counter
-    multi.incr(key);
+    multi.incr(key)
     // Set expiry if key is new
-    multi.expire(key, options.window);
+    multi.expire(key, options.window)
     // Get current count
-    multi.get(key);
+    multi.get(key)
     // Get TTL
-    multi.ttl(key);
-    
-    const results = await multi.exec();
-    
+    multi.ttl(key)
+
+    const results = await multi.exec()
+
     if (!results) {
-      throw new Error('Redis transaction failed');
+      throw new Error('Redis transaction failed')
     }
 
-    const count = parseInt(results[2][1] as string) || 0;
-    const ttl = results[3][1] as number;
-    const resetTime = ttl > 0 ? Math.floor((now + ttl * 1000) / 1000) : Math.floor(reset / 1000);
-    
+    const count = parseInt(results[2][1] as string) || 0
+    const ttl = results[3][1] as number
+    const resetTime = ttl > 0 ? Math.floor((now + ttl * 1000) / 1000) : Math.floor(reset / 1000)
+
     return {
       allowed: count <= options.limit,
       limit: options.limit,
       remaining: Math.max(0, options.limit - count),
       reset: resetTime,
-    };
+    }
   }
 
-  private checkFallback(
-    key: string,
-    options: RateLimitOptions,
-    now: number
-  ): boolean {
-    const record = this.fallbackStore.get(key);
-    
+  private checkFallback(key: string, options: RateLimitOptions, now: number): boolean {
+    const record = this.fallbackStore.get(key)
+
     if (!record || now > record.reset) {
       this.fallbackStore.set(key, {
         count: 1,
         reset: now + options.window * 1000,
-      });
-      return false;
+      })
+      return false
     }
-    
-    record.count++;
-    return record.count > options.limit;
+
+    record.count++
+    return record.count > options.limit
   }
 
   private getIdentifier(req: NextRequest): string {
     // Try to get user ID from auth token first
-    const authHeader = req.headers.get('authorization');
+    const authHeader = req.headers.get('authorization')
     if (authHeader) {
       // Extract user ID from token (simplified - in real implementation, verify token)
-      const token = authHeader.replace('Bearer ', '');
-      const userId = this.extractUserIdFromToken(token);
+      const token = authHeader.replace('Bearer ', '')
+      const userId = this.extractUserIdFromToken(token)
       if (userId) {
-        return `user:${userId}`;
+        return `user:${userId}`
       }
     }
 
     // Fall back to IP address
-    const forwarded = req.headers.get('x-forwarded-for');
-    const realIp = req.headers.get('x-real-ip');
-    const ip = forwarded?.split(',')[0] || realIp || 'unknown';
-    
-    return `ip:${ip}`;
+    const forwarded = req.headers.get('x-forwarded-for')
+    const realIp = req.headers.get('x-real-ip')
+    const ip = forwarded?.split(',')[0] || realIp || 'unknown'
+
+    return `ip:${ip}`
   }
 
   private extractUserIdFromToken(token: string): string | null {
     try {
       // Decode JWT without verification (for rate limiting purposes only)
-      const parts = token.split('.');
-      if (parts.length !== 3) return null;
-      
-      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString());
-      return payload.userId || null;
+      const parts = token.split('.')
+      if (parts.length !== 3) return null
+
+      const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString())
+      return payload.userId || null
     } catch {
-      return null;
+      return null
     }
   }
 
   // Utility method to reset rate limit for a specific identifier
   async reset(identifier: string): Promise<void> {
-    const key = `rate_limit:${identifier}`;
+    const key = `rate_limit:${identifier}`
     try {
-      await redis.del(key);
+      await redis.del(key)
     } catch (error) {
-      console.error('Failed to reset rate limit:', error);
+      console.error('Failed to reset rate limit:', error)
     }
-    this.fallbackStore.delete(key);
+    this.fallbackStore.delete(key)
   }
 
   // Clean up old entries from fallback store
   cleanupFallbackStore(): void {
-    const now = Date.now();
+    const now = Date.now()
     for (const [key, record] of this.fallbackStore.entries()) {
       if (now > record.reset) {
-        this.fallbackStore.delete(key);
+        this.fallbackStore.delete(key)
       }
     }
   }
 }
 
 // Export singleton instance
-export const rateLimit = new RateLimiter();
+export const rateLimit = new RateLimiter()
 
 // Clean up fallback store periodically
 setInterval(() => {
-  rateLimit.cleanupFallbackStore();
-}, 60000); // Every minute
+  rateLimit.cleanupFallbackStore()
+}, 60000) // Every minute

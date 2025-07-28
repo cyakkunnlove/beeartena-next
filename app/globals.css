@@ -7,7 +7,7 @@
   .pb-safe {
     padding-bottom: max(0px, env(safe-area-inset-bottom));
   }
-  
+
   .pt-safe {
     padding-top: max(0px, env(safe-area-inset-top));
   }
@@ -17,12 +17,12 @@
 @import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 :root {
-  --primary: #D4AF37;
-  --dark-gold: #B8941F;
-  --light-gold: #E6D285;
-  --light-bg: #F8F5F0;
-  --light-accent: #FFF9E6;
-  --text-dark: #2D2D2D;
+  --primary: #d4af37;
+  --dark-gold: #b8941f;
+  --light-gold: #e6d285;
+  --light-bg: #f8f5f0;
+  --light-accent: #fff9e6;
+  --text-dark: #2d2d2d;
 }
 
 * {
@@ -109,7 +109,8 @@ body {
 }
 
 @keyframes float {
-  0%, 100% {
+  0%,
+  100% {
     transform: translateY(0);
   }
   50% {
@@ -156,10 +157,10 @@ body {
 }
 
 /* Form elements */
-input[type="text"],
-input[type="email"],
-input[type="tel"],
-input[type="password"],
+input[type='text'],
+input[type='email'],
+input[type='tel'],
+input[type='password'],
 textarea,
 select {
   @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent transition-all duration-300;
@@ -224,8 +225,12 @@ select {
 }
 
 @keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
 }
 
 /* Responsive utilities */
@@ -246,12 +251,12 @@ select {
   .no-print {
     display: none !important;
   }
-  
+
   body {
     font-size: 12pt;
     line-height: 1.5;
   }
-  
+
   a {
     text-decoration: none;
     color: inherit;

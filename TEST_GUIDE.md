@@ -2,7 +2,8 @@
 
 ## 概要
 
-このドキュメントは、BEE ART ENAプロジェクトの包括的なテストスイートの使用方法を説明します。
+このドキュメントは、BEE ART
+ENAプロジェクトの包括的なテストスイートの使用方法を説明します。
 
 ## テストカバレッジ目標
 
@@ -155,7 +156,7 @@ describe('Button', () => {
     const { getByRole } = render(
       <Button onClick={handleClick}>Click me</Button>
     )
-    
+
     fireEvent.click(getByRole('button'))
     expect(handleClick).toHaveBeenCalledTimes(1)
   })

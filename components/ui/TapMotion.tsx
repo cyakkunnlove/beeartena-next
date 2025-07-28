@@ -1,12 +1,12 @@
-'use client';
+'use client'
 
-import { motion } from 'framer-motion';
-import { ReactNode } from 'react';
+import { motion } from 'framer-motion'
+import { ReactNode } from 'react'
 
 interface TapMotionProps {
-  children: ReactNode;
-  className?: string;
-  onClick?: () => void;
+  children: ReactNode
+  className?: string
+  onClick?: () => void
 }
 
 export default function TapMotion({ children, className, onClick }: TapMotionProps) {
@@ -19,10 +19,10 @@ export default function TapMotion({ children, className, onClick }: TapMotionPro
       transition={{
         type: 'spring',
         stiffness: 400,
-        damping: 17
+        damping: 17,
       }}
     >
       {children}
     </motion.div>
-  );
+  )
 }

@@ -1,11 +1,11 @@
-import React from 'react';
+import React from 'react'
 
 interface SkeletonProps {
-  className?: string;
-  variant?: 'text' | 'circular' | 'rectangular' | 'rounded';
-  width?: string | number;
-  height?: string | number;
-  animation?: 'pulse' | 'wave' | 'none';
+  className?: string
+  variant?: 'text' | 'circular' | 'rectangular' | 'rounded'
+  width?: string | number
+  height?: string | number
+  animation?: 'pulse' | 'wave' | 'none'
 }
 
 const Skeleton: React.FC<SkeletonProps> = ({
@@ -18,33 +18,33 @@ const Skeleton: React.FC<SkeletonProps> = ({
   const getVariantStyles = () => {
     switch (variant) {
       case 'text':
-        return 'h-4 rounded';
+        return 'h-4 rounded'
       case 'circular':
-        return 'rounded-full';
+        return 'rounded-full'
       case 'rounded':
-        return 'rounded-lg';
+        return 'rounded-lg'
       case 'rectangular':
       default:
-        return 'rounded';
+        return 'rounded'
     }
-  };
+  }
 
   const getAnimationStyles = () => {
     switch (animation) {
       case 'pulse':
-        return 'animate-pulse';
+        return 'animate-pulse'
       case 'wave':
-        return 'animate-shimmer';
+        return 'animate-shimmer'
       case 'none':
       default:
-        return '';
+        return ''
     }
-  };
+  }
 
   const style: React.CSSProperties = {
     width: width || '100%',
     height: height || (variant === 'text' ? '1rem' : '100%'),
-  };
+  }
 
   return (
     <div
@@ -53,8 +53,8 @@ const Skeleton: React.FC<SkeletonProps> = ({
       aria-busy="true"
       aria-label="読み込み中"
     />
-  );
-};
+  )
+}
 
 // Card Skeleton Component
 export const CardSkeleton: React.FC<{ className?: string }> = ({ className = '' }) => (
@@ -67,7 +67,7 @@ export const CardSkeleton: React.FC<{ className?: string }> = ({ className = '' 
       <Skeleton variant="text" width="30%" />
     </div>
   </div>
-);
+)
 
 // Table Row Skeleton
 export const TableRowSkeleton: React.FC = () => (
@@ -85,7 +85,7 @@ export const TableRowSkeleton: React.FC = () => (
       <Skeleton variant="text" width="80%" />
     </td>
   </tr>
-);
+)
 
 // List Item Skeleton
 export const ListItemSkeleton: React.FC = () => (
@@ -96,7 +96,7 @@ export const ListItemSkeleton: React.FC = () => (
       <Skeleton variant="text" width="60%" />
     </div>
   </div>
-);
+)
 
 // Profile Skeleton
 export const ProfileSkeleton: React.FC = () => (
@@ -105,6 +105,6 @@ export const ProfileSkeleton: React.FC = () => (
     <Skeleton variant="text" width={200} className="mb-2" />
     <Skeleton variant="text" width={150} />
   </div>
-);
+)
 
-export default Skeleton;
+export default Skeleton

@@ -1,15 +1,15 @@
-import { User, PointTransaction } from '@/lib/types';
-import { mockPointService, mockUserService } from '@/lib/mock/mockFirebase';
-import { pointService } from '@/lib/firebase/points';
-import { userService } from '@/lib/firebase/users';
+import { User, PointTransaction } from '@/lib/types'
+import { mockPointService, mockUserService } from '@/lib/mock/mockFirebase'
+import { pointService } from '@/lib/firebase/points'
+import { userService } from '@/lib/firebase/users'
 
-const BIRTHDAY_POINTS = 1000;
+const BIRTHDAY_POINTS = 1000
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY;
-  return apiKey && apiKey !== 'test-api-key' && apiKey !== '';
-};
+  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+  return apiKey && apiKey !== 'test-api-key' && apiKey !== ''
+}
 
 class BirthdayPointsService {
   /**
@@ -18,32 +18,31 @@ class BirthdayPointsService {
   async checkAndGrantBirthdayPoints(userId: string): Promise<boolean> {
     try {
       // ユーザー情報を取得
-      const user = isFirebaseConfigured() 
+      const user = isFirebaseConfigured()
         ? await userService.getUser(userId)
-        : await mockUserService.getUser(userId);
-      
+        : await mockUserService.getUser(userId)
+
       if (!user || !user.birthday) {
-        return false;
+        return false
       }
 
       // 誕生日をパース
-      const today = new Date();
-      const birthdayParts = user.birthday.split('-');
-      const birthdayMonth = parseInt(birthdayParts[1]);
-      const birthdayDay = parseInt(birthdayParts[2]);
-      
+      const today = new Date()
+      const birthdayParts = user.birthday.split('-')
+      const birthdayMonth = parseInt(birthdayParts[1])
+      const birthdayDay = parseInt(birthdayParts[2])
+
       // 今日が誕生日かチェック
-      const isBirthday = today.getMonth() + 1 === birthdayMonth && 
-                        today.getDate() === birthdayDay;
-      
+      const isBirthday = today.getMonth() + 1 === birthdayMonth && today.getDate() === birthdayDay
+
       if (!isBirthday) {
-        return false;
+        return false
       }
 
       // 今年すでにポイントを付与したかチェック
-      const currentYear = today.getFullYear();
+      const currentYear = today.getFullYear()
       if (user.lastBirthdayPointsYear === currentYear) {
-        return false;
+        return false
       }
 
       // ポイントを付与
@@ -52,31 +51,31 @@ class BirthdayPointsService {
           userId,
           BIRTHDAY_POINTS,
           `お誕生日おめでとうございます！特別ポイント`,
-          'redeemed'
-        );
+          'redeemed',
+        )
       } else {
         await mockPointService.addPoints(
           userId,
           BIRTHDAY_POINTS,
-          `お誕生日おめでとうございます！特別ポイント`
-        );
+          `お誕生日おめでとうございます！特別ポイント`,
+        )
       }
 
       // lastBirthdayPointsYearを更新
       if (isFirebaseConfigured()) {
         await userService.updateUser(userId, {
-          lastBirthdayPointsYear: currentYear
-        });
+          lastBirthdayPointsYear: currentYear,
+        })
       } else {
         await mockUserService.updateUser(userId, {
-          lastBirthdayPointsYear: currentYear
-        });
+          lastBirthdayPointsYear: currentYear,
+        })
       }
 
-      return true;
+      return true
     } catch (error) {
-      console.error('Birthday points grant error:', error);
-      return false;
+      console.error('Birthday points grant error:', error)
+      return false
     }
   }
 
@@ -84,40 +83,40 @@ class BirthdayPointsService {
    * 全ユーザーの誕生日をチェック（バッチ処理用）
    */
   async checkAllUsersBirthdays(): Promise<{
-    checked: number;
-    granted: number;
-    errors: string[];
+    checked: number
+    granted: number
+    errors: string[]
   }> {
     const results = {
       checked: 0,
       granted: 0,
-      errors: [] as string[]
-    };
+      errors: [] as string[],
+    }
 
     try {
       // 全ユーザーを取得
       const users = isFirebaseConfigured()
         ? await userService.getAllUsers()
-        : await mockUserService.getAllUsers();
+        : await mockUserService.getAllUsers()
 
       // 各ユーザーをチェック
       for (const user of users) {
-        results.checked++;
-        
+        results.checked++
+
         try {
-          const granted = await this.checkAndGrantBirthdayPoints(user.id);
+          const granted = await this.checkAndGrantBirthdayPoints(user.id)
           if (granted) {
-            results.granted++;
+            results.granted++
           }
         } catch (error) {
-          results.errors.push(`User ${user.id}: ${error}`);
+          results.errors.push(`User ${user.id}: ${error}`)
         }
       }
 
-      return results;
+      return results
     } catch (error) {
-      console.error('Birthday batch process error:', error);
-      throw error;
+      console.error('Birthday batch process error:', error)
+      throw error
     }
   }
 
@@ -126,25 +125,24 @@ class BirthdayPointsService {
    */
   async checkBirthdayForDate(userId: string, testDate: Date): Promise<boolean> {
     try {
-      const user = isFirebaseConfigured() 
+      const user = isFirebaseConfigured()
         ? await userService.getUser(userId)
-        : await mockUserService.getUser(userId);
-      
+        : await mockUserService.getUser(userId)
+
       if (!user || !user.birthday) {
-        return false;
+        return false
       }
 
-      const birthdayParts = user.birthday.split('-');
-      const birthdayMonth = parseInt(birthdayParts[1]);
-      const birthdayDay = parseInt(birthdayParts[2]);
-      
-      return testDate.getMonth() + 1 === birthdayMonth && 
-             testDate.getDate() === birthdayDay;
+      const birthdayParts = user.birthday.split('-')
+      const birthdayMonth = parseInt(birthdayParts[1])
+      const birthdayDay = parseInt(birthdayParts[2])
+
+      return testDate.getMonth() + 1 === birthdayMonth && testDate.getDate() === birthdayDay
     } catch (error) {
-      console.error('Birthday check error:', error);
-      return false;
+      console.error('Birthday check error:', error)
+      return false
     }
   }
 }
 
-export const birthdayPointsService = new BirthdayPointsService();
+export const birthdayPointsService = new BirthdayPointsService()

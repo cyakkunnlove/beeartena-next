@@ -1,36 +1,32 @@
-'use client';
+'use client'
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
 
-export default function MypageLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, loading } = useAuth();
+export default function MypageLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { user, loading } = useAuth()
 
   useEffect(() => {
     if (!loading && !user) {
-      router.push('/login');
+      router.push('/login')
     }
-  }, [user, loading, router]);
+  }, [user, loading, router])
 
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <div className="loading-spinner"></div>
       </div>
-    );
+    )
   }
 
   if (!user) {
-    return null;
+    return null
   }
 
   const menuItems = [
@@ -38,7 +34,7 @@ export default function MypageLayout({
     { href: '/mypage/reservations', label: '予約履歴', icon: '📅' },
     { href: '/mypage/points', label: 'ポイント', icon: '⭐' },
     { href: '/mypage/profile', label: 'プロフィール', icon: '👤' },
-  ];
+  ]
 
   return (
     <div className="min-h-[80vh] bg-gray-50 py-8">
@@ -61,9 +57,7 @@ export default function MypageLayout({
                     key={item.href}
                     href={item.href}
                     className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
-                      pathname === item.href
-                        ? 'bg-primary text-white'
-                        : 'hover:bg-gray-100'
+                      pathname === item.href ? 'bg-primary text-white' : 'hover:bg-gray-100'
                     }`}
                   >
                     <span>{item.icon}</span>
@@ -75,11 +69,9 @@ export default function MypageLayout({
           </div>
 
           {/* メインコンテンツ */}
-          <div className="lg:col-span-3">
-            {children}
-          </div>
+          <div className="lg:col-span-3">{children}</div>
         </div>
       </div>
     </div>
-  );
+  )
 }

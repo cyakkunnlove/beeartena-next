@@ -6,7 +6,8 @@
 2. 右上の「+」ボタンから「New repository」を選択
 3. 以下の設定でリポジトリを作成：
    - Repository name: `beeartena-next`
-   - Description: `Bee Artena - アイブロウアートメイク専門サロンのウェブアプリケーション`
+   - Description:
+     `Bee Artena - アイブロウアートメイク専門サロンのウェブアプリケーション`
    - Public を選択
    - その他はデフォルトのまま
 

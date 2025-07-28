@@ -1,22 +1,22 @@
-import React, { useState, useEffect, useRef } from 'react';
-import Image from 'next/image';
-import Skeleton from './Skeleton';
+import React, { useState, useEffect, useRef } from 'react'
+import Image from 'next/image'
+import Skeleton from './Skeleton'
 
 interface LazyImageProps {
-  src: string;
-  alt: string;
-  width?: number;
-  height?: number;
-  className?: string;
-  priority?: boolean;
-  quality?: number;
-  placeholder?: 'blur' | 'empty';
-  blurDataURL?: string;
-  onLoad?: () => void;
-  onError?: () => void;
-  fill?: boolean;
-  sizes?: string;
-  objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down';
+  src: string
+  alt: string
+  width?: number
+  height?: number
+  className?: string
+  priority?: boolean
+  quality?: number
+  placeholder?: 'blur' | 'empty'
+  blurDataURL?: string
+  onLoad?: () => void
+  onError?: () => void
+  fill?: boolean
+  sizes?: string
+  objectFit?: 'contain' | 'cover' | 'fill' | 'none' | 'scale-down'
 }
 
 const LazyImage: React.FC<LazyImageProps> = ({
@@ -35,49 +35,47 @@ const LazyImage: React.FC<LazyImageProps> = ({
   sizes,
   objectFit = 'cover',
 }) => {
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [isInView, setIsInView] = useState(priority);
-  const imgRef = useRef<HTMLDivElement>(null);
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(false)
+  const [isInView, setIsInView] = useState(priority)
+  const imgRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    if (priority || !imgRef.current) return;
+    if (priority || !imgRef.current) return
 
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
           if (entry.isIntersecting) {
-            setIsInView(true);
-            observer.disconnect();
+            setIsInView(true)
+            observer.disconnect()
           }
-        });
+        })
       },
       {
         rootMargin: '50px',
         threshold: 0.01,
-      }
-    );
+      },
+    )
 
-    observer.observe(imgRef.current);
+    observer.observe(imgRef.current)
 
-    return () => observer.disconnect();
-  }, [priority]);
+    return () => observer.disconnect()
+  }, [priority])
 
   const handleLoad = () => {
-    setIsLoading(false);
-    onLoad?.();
-  };
+    setIsLoading(false)
+    onLoad?.()
+  }
 
   const handleError = () => {
-    setIsLoading(false);
-    setError(true);
-    onError?.();
-  };
+    setIsLoading(false)
+    setError(true)
+    onError?.()
+  }
 
   // 画像の縦横比を保持するためのスタイル
-  const aspectRatioStyle = width && height && !fill
-    ? { aspectRatio: `${width} / ${height}` }
-    : {};
+  const aspectRatioStyle = width && height && !fill ? { aspectRatio: `${width} / ${height}` } : {}
 
   if (error) {
     return (
@@ -104,7 +102,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
           <p className="text-sm">画像を読み込めませんでした</p>
         </div>
       </div>
-    );
+    )
   }
 
   return (
@@ -114,7 +112,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
           <Skeleton variant="rectangular" width="100%" height="100%" />
         </div>
       )}
-      
+
       {isInView && (
         <>
           {fill ? (
@@ -150,27 +148,27 @@ const LazyImage: React.FC<LazyImageProps> = ({
         </>
       )}
     </div>
-  );
-};
+  )
+}
 
 // Progressive Image Component for critical images
 export const ProgressiveImage: React.FC<LazyImageProps & { lowQualitySrc?: string }> = ({
   lowQualitySrc,
   ...props
 }) => {
-  const [currentSrc, setCurrentSrc] = useState(lowQualitySrc || props.src);
-  const [isHighQualityLoaded, setIsHighQualityLoaded] = useState(!lowQualitySrc);
+  const [currentSrc, setCurrentSrc] = useState(lowQualitySrc || props.src)
+  const [isHighQualityLoaded, setIsHighQualityLoaded] = useState(!lowQualitySrc)
 
   useEffect(() => {
-    if (!lowQualitySrc) return;
+    if (!lowQualitySrc) return
 
-    const img = new window.Image();
-    img.src = props.src;
+    const img = new window.Image()
+    img.src = props.src
     img.onload = () => {
-      setCurrentSrc(props.src);
-      setIsHighQualityLoaded(true);
-    };
-  }, [props.src, lowQualitySrc]);
+      setCurrentSrc(props.src)
+      setIsHighQualityLoaded(true)
+    }
+  }, [props.src, lowQualitySrc])
 
   return (
     <LazyImage
@@ -178,7 +176,7 @@ export const ProgressiveImage: React.FC<LazyImageProps & { lowQualitySrc?: strin
       src={currentSrc}
       className={`${props.className} ${!isHighQualityLoaded ? 'blur-sm' : ''} transition-all duration-500`}
     />
-  );
-};
+  )
+}
 
-export default LazyImage;
+export default LazyImage

@@ -178,7 +178,7 @@ describe('Auth API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       expect(data.message).toBe('Logged out successfully')
-      
+
       // Check if token cookie is cleared
       const headers = response.headers
       const setCookie = headers.get('set-cookie')

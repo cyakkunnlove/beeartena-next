@@ -11,12 +11,13 @@ npm run firebase:setup
 ## 📋 セットアップ手順
 
 ### 1. Firebaseログイン
-スクリプトを実行すると自動的にブラウザが開きます。
-Googleアカウントでログインしてください。
+
+スクリプトを実行すると自動的にブラウザが開きます。Googleアカウントでログインしてください。
 
 ### 2. プロジェクトID入力
-「BEEART ENA」のプロジェクトIDを入力します。
-例：
+
+「BEEART ENA」のプロジェクトIDを入力します。例：
+
 - `beeartena`
 - `beeart-ena`
 - `beeartena-prod`
@@ -32,17 +33,20 @@ Googleアカウントでログインしてください。
 ### 4. 必要な有効化
 
 #### Firestore
+
 - [Firestore](https://console.firebase.google.com/project/YOUR_PROJECT_ID/firestore)
 - 「データベースを作成」をクリック
 - 本番モードで開始
 - ロケーション：asia-northeast1
 
 #### Authentication
+
 - [Authentication](https://console.firebase.google.com/project/YOUR_PROJECT_ID/authentication)
 - 「Sign-in method」タブ
 - メール/パスワードを有効化
 
 #### 管理者アカウント作成
+
 - Authentication → Users
 - 「ユーザーを追加」
 - Email: `admin@beeartena.jp`

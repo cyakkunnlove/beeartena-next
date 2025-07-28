@@ -136,7 +136,7 @@ npx playwright show-trace trace.zip
 ```javascript
 export const options = {
   stages: [
-    { duration: '30s', target: 10 },  // ユーザー数を調整
+    { duration: '30s', target: 10 }, // ユーザー数を調整
     { duration: '1m', target: 50 },
   ],
 }

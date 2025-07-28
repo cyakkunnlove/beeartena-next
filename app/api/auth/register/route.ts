@@ -1,43 +1,49 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { authService } from '@/lib/auth/authService';
-import { generateToken } from '@/lib/api/jwt';
-import { errorResponse, successResponse, validateRequestBody, rateLimit, setCorsHeaders } from '@/lib/api/middleware';
+import { NextRequest, NextResponse } from 'next/server'
+import { authService } from '@/lib/auth/authService'
+import { generateToken } from '@/lib/api/jwt'
+import {
+  errorResponse,
+  successResponse,
+  validateRequestBody,
+  rateLimit,
+  setCorsHeaders,
+} from '@/lib/api/middleware'
 
 export async function OPTIONS(request: NextRequest) {
-  return setCorsHeaders(NextResponse.json(null, { status: 200 }));
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 
 export async function POST(request: NextRequest) {
   // レート制限チェック
-  const rateLimitResponse = rateLimit(request, 3, 60000); // 1分間に3回まで
-  if (rateLimitResponse) return setCorsHeaders(rateLimitResponse);
+  const rateLimitResponse = rateLimit(request, 3, 60000) // 1分間に3回まで
+  if (rateLimitResponse) return setCorsHeaders(rateLimitResponse)
 
   // リクエストボディの検証
   const { data, error } = await validateRequestBody<{
-    email: string;
-    password: string;
-    name: string;
-    phone: string;
-    birthday?: string;
-  }>(request, ['email', 'password', 'name', 'phone']);
-  
-  if (error) return setCorsHeaders(error);
+    email: string
+    password: string
+    name: string
+    phone: string
+    birthday?: string
+  }>(request, ['email', 'password', 'name', 'phone'])
+
+  if (error) return setCorsHeaders(error)
 
   // バリデーション
   if (!data.email.includes('@')) {
-    return setCorsHeaders(errorResponse('有効なメールアドレスを入力してください'));
+    return setCorsHeaders(errorResponse('有効なメールアドレスを入力してください'))
   }
-  
+
   if (data.password.length < 6) {
-    return setCorsHeaders(errorResponse('パスワードは6文字以上で設定してください'));
+    return setCorsHeaders(errorResponse('パスワードは6文字以上で設定してください'))
   }
 
   try {
     // 誕生日の検証（オプショナル）
     if (data.birthday) {
-      const birthdayDate = new Date(data.birthday);
+      const birthdayDate = new Date(data.birthday)
       if (isNaN(birthdayDate.getTime()) || birthdayDate > new Date()) {
-        return setCorsHeaders(errorResponse('有効な生年月日を入力してください'));
+        return setCorsHeaders(errorResponse('有効な生年月日を入力してください'))
       }
     }
 
@@ -47,17 +53,22 @@ export async function POST(request: NextRequest) {
       data.password,
       data.name,
       data.phone,
-      data.birthday
-    );
-    
-    // JWTトークン生成
-    const token = await generateToken(user);
+      data.birthday,
+    )
 
-    return setCorsHeaders(successResponse({
-      user,
-      token,
-    }, 201));
+    // JWTトークン生成
+    const token = await generateToken(user)
+
+    return setCorsHeaders(
+      successResponse(
+        {
+          user,
+          token,
+        },
+        201,
+      ),
+    )
   } catch (error: any) {
-    return setCorsHeaders(errorResponse(error.message || '登録に失敗しました', 400));
+    return setCorsHeaders(errorResponse(error.message || '登録に失敗しました', 400))
   }
 }

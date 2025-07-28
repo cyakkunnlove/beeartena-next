@@ -1,29 +1,25 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import Link from 'next/link';
-import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
+import { useEffect, useState } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import Link from 'next/link'
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline'
 
 interface NavItem {
-  name: string;
-  href: string;
-  icon: string;
-  badge?: number;
+  name: string
+  href: string
+  icon: string
+  badge?: number
 }
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, logout } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [pendingInquiries, setPendingInquiries] = useState(0);
-  const [pendingReservations, setPendingReservations] = useState(0);
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
+  const pathname = usePathname()
+  const { user, logout } = useAuth()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [pendingInquiries, setPendingInquiries] = useState(0)
+  const [pendingReservations, setPendingReservations] = useState(0)
 
   const navigation: NavItem[] = [
     { name: 'ダッシュボード', href: '/admin', icon: '📊' },
@@ -34,36 +30,39 @@ export default function AdminLayout({
     { name: 'お問い合わせ', href: '/admin/inquiries', icon: '💬', badge: pendingInquiries },
     { name: '売上・統計', href: '/admin/analytics', icon: '📈' },
     { name: '設定', href: '/admin/settings', icon: '⚙️' },
-  ];
+  ]
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/login');
-      return;
+      router.push('/login')
+      return
     }
 
     // バッジの数を計算
-    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]');
-    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
-    
-    setPendingInquiries(inquiries.filter((i: any) => i.status === 'unread').length);
-    setPendingReservations(reservations.filter((r: any) => r.status === 'pending').length);
-  }, [user, router, pathname]);
+    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]')
+    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+
+    setPendingInquiries(inquiries.filter((i: any) => i.status === 'unread').length)
+    setPendingReservations(reservations.filter((r: any) => r.status === 'pending').length)
+  }, [user, router, pathname])
 
   const handleLogout = async () => {
-    await logout();
-    router.push('/');
-  };
+    await logout()
+    router.push('/')
+  }
 
   if (!user || user.role !== 'admin') {
-    return null;
+    return null
   }
 
   return (
     <div className="flex h-screen bg-gray-100 overflow-hidden">
       {/* サイドバー（モバイル） */}
       <div className={`fixed inset-0 z-40 lg:hidden ${sidebarOpen ? '' : 'hidden'}`}>
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setSidebarOpen(false)} />
+        <div
+          className="fixed inset-0 bg-gray-600 bg-opacity-75"
+          onClick={() => setSidebarOpen(false)}
+        />
         <div className="fixed inset-y-0 left-0 flex w-64 flex-col bg-white">
           <div className="flex items-center justify-between px-4 py-5">
             <h2 className="text-xl font-semibold">Bee Artena Admin</h2>
@@ -76,7 +75,7 @@ export default function AdminLayout({
           </div>
           <nav className="flex-1 px-2 py-4">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href
               return (
                 <Link
                   key={item.name}
@@ -96,7 +95,7 @@ export default function AdminLayout({
                     </span>
                   )}
                 </Link>
-              );
+              )
             })}
           </nav>
           <div className="flex-shrink-0 px-4 py-4">
@@ -118,7 +117,7 @@ export default function AdminLayout({
           </div>
           <nav className="flex-1 px-2 py-4 bg-white">
             {navigation.map((item) => {
-              const isActive = pathname === item.href;
+              const isActive = pathname === item.href
               return (
                 <Link
                   key={item.name}
@@ -137,7 +136,7 @@ export default function AdminLayout({
                     </span>
                   )}
                 </Link>
-              );
+              )
             })}
           </nav>
           <div className="flex-shrink-0 px-4 py-4 border-t">
@@ -172,11 +171,9 @@ export default function AdminLayout({
         </div>
 
         <main className="flex-1 overflow-y-auto">
-          <div className="py-6 px-4 sm:px-6 lg:px-8">
-            {children}
-          </div>
+          <div className="py-6 px-4 sm:px-6 lg:px-8">{children}</div>
         </main>
       </div>
     </div>
-  );
+  )
 }

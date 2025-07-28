@@ -1,12 +1,14 @@
 # Vercel環境変数設定ガイド
 
-このドキュメントでは、Bee ArtenaをVercelにデプロイする際に必要な環境変数の設定方法を説明します。
+このドキュメントでは、Bee
+ArtenaをVercelにデプロイする際に必要な環境変数の設定方法を説明します。
 
 ## 必要な環境変数
 
 Vercelのダッシュボードで以下の環境変数を設定してください：
 
 ### Firebase設定
+
 ```
 NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
 NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project.firebaseapp.com
@@ -17,11 +19,13 @@ NEXT_PUBLIC_FIREBASE_APP_ID=your_app_id
 ```
 
 ### セキュリティ設定
+
 ```
 JWT_SECRET=your_secure_jwt_secret_key
 ```
 
 ### API設定
+
 ```
 NEXT_PUBLIC_API_URL=https://your-domain.vercel.app
 ```
@@ -67,17 +71,18 @@ NEXT_PUBLIC_API_URL=https://your-domain.vercel.app
 
 ## モックモードについて
 
-Firebaseの設定が完了していない場合、アプリケーションはモックモードで動作します。
-本番環境では必ずFirebaseの設定を完了させてください。
+Firebaseの設定が完了していない場合、アプリケーションはモックモードで動作します。本番環境では必ずFirebaseの設定を完了させてください。
 
 ## トラブルシューティング
 
 ### 環境変数が反映されない場合
+
 1. Vercelのダッシュボードで変数が正しく設定されているか確認
 2. デプロイメントを再実行
 3. ブラウザのキャッシュをクリア
 
 ### Firebaseエラーが発生する場合
+
 1. Firebaseプロジェクトが正しく作成されているか確認
 2. 認証とFirestoreが有効になっているか確認
 3. セキュリティルールが適切に設定されているか確認

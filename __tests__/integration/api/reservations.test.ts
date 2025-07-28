@@ -1,5 +1,8 @@
 import { createMocks } from 'node-mocks-http'
-import { GET as getReservationsHandler, POST as createReservationHandler } from '@/app/api/reservations/route'
+import {
+  GET as getReservationsHandler,
+  POST as createReservationHandler,
+} from '@/app/api/reservations/route'
 import { GET as getSlotsHandler } from '@/app/api/reservations/slots/route'
 import { signJWT } from '@/lib/api/jwt'
 import { createMockReservation, createMockUser } from '@/test/utils/mockData'
@@ -38,13 +41,16 @@ describe('Reservations API Integration Tests', () => {
     it('should get user reservations with valid token', async () => {
       const token = await signJWT({ userId: mockUser.id })
       const { db } = require('@/lib/firebase/config')
-      
-      db.collection().where().orderBy().get.mockResolvedValue({
-        docs: mockReservations.map(r => ({
-          id: r.id,
-          data: () => r,
-        })),
-      })
+
+      db.collection()
+        .where()
+        .orderBy()
+        .get.mockResolvedValue({
+          docs: mockReservations.map((r) => ({
+            id: r.id,
+            data: () => r,
+          })),
+        })
 
       const { req } = createMocks({
         method: 'GET',
@@ -67,7 +73,7 @@ describe('Reservations API Integration Tests', () => {
     it('should return empty array for user with no reservations', async () => {
       const token = await signJWT({ userId: 'new-user' })
       const { db } = require('@/lib/firebase/config')
-      
+
       db.collection().where().orderBy().get.mockResolvedValue({
         docs: [],
       })
@@ -131,20 +137,20 @@ describe('Reservations API Integration Tests', () => {
         userId: mockUser.id,
         status: 'pending',
       })
-      
+
       expect(db.collection).toHaveBeenCalledWith('reservations')
       expect(db.collection().add).toHaveBeenCalledWith(
         expect.objectContaining({
           ...newReservation,
           userId: mockUser.id,
           status: 'pending',
-        })
+        }),
       )
     })
 
     it('should validate required fields', async () => {
       const token = await signJWT({ userId: mockUser.id })
-      
+
       const { req } = createMocks({
         method: 'POST',
         headers: {
@@ -166,11 +172,13 @@ describe('Reservations API Integration Tests', () => {
     it('should check slot availability', async () => {
       const token = await signJWT({ userId: mockUser.id })
       const { db } = require('@/lib/firebase/config')
-      
+
       // Mock existing reservation at same time
-      db.collection().where().get.mockResolvedValue({
-        docs: [{ id: 'existing', data: () => ({ time: '14:00' }) }],
-      })
+      db.collection()
+        .where()
+        .get.mockResolvedValue({
+          docs: [{ id: 'existing', data: () => ({ time: '14:00' }) }],
+        })
 
       const { req } = createMocks({
         method: 'POST',
@@ -195,14 +203,16 @@ describe('Reservations API Integration Tests', () => {
   describe('GET /api/reservations/slots', () => {
     it('should get available slots for a date', async () => {
       const { db } = require('@/lib/firebase/config')
-      
+
       // Mock some existing reservations
-      db.collection().where().get.mockResolvedValue({
-        docs: [
-          { id: '1', data: () => ({ time: '10:00' }) },
-          { id: '2', data: () => ({ time: '14:00' }) },
-        ],
-      })
+      db.collection()
+        .where()
+        .get.mockResolvedValue({
+          docs: [
+            { id: '1', data: () => ({ time: '10:00' }) },
+            { id: '2', data: () => ({ time: '14:00' }) },
+          ],
+        })
 
       const { req } = createMocks({
         method: 'GET',
@@ -216,11 +226,11 @@ describe('Reservations API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       expect(data).toBeInstanceOf(Array)
-      
+
       // Check that occupied slots are marked as unavailable
       const slot10 = data.find((s: any) => s.time === '10:00')
       const slot11 = data.find((s: any) => s.time === '11:00')
-      
+
       expect(slot10.available).toBe(false)
       expect(slot11.available).toBe(true)
     })

@@ -58,7 +58,7 @@ async function checkCacheHealth(): Promise<boolean> {
 export async function GET() {
   try {
     const startTime = process.hrtime()
-    
+
     // 並行してヘルスチェックを実行
     const [dbHealth, firebaseHealth, cacheHealth] = await Promise.all([
       checkDatabaseHealth(),
@@ -106,12 +106,12 @@ export async function GET() {
     // ステータスコードは健康状態に基づいて設定
     const statusCode = healthStatus.status === 'healthy' ? 200 : 503
 
-    return NextResponse.json(healthStatus, { 
+    return NextResponse.json(healthStatus, {
       status: statusCode,
       headers: {
         'Cache-Control': 'no-cache, no-store, must-revalidate',
         'X-Health-Check': healthStatus.status,
-      }
+      },
     })
   } catch (error) {
     console.error('Health check error:', error)
@@ -121,13 +121,13 @@ export async function GET() {
         timestamp: new Date().toISOString(),
         error: 'Health check failed',
       },
-      { 
+      {
         status: 503,
         headers: {
           'Cache-Control': 'no-cache, no-store, must-revalidate',
           'X-Health-Check': 'unhealthy',
-        }
-      }
+        },
+      },
     )
   }
 }

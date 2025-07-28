@@ -1,4 +1,4 @@
-import Link from 'next/link';
+import Link from 'next/link'
 
 export default function MemberBenefitsSection() {
   const benefits = [
@@ -22,7 +22,7 @@ export default function MemberBenefitsSection() {
       title: '会員ランク制度',
       description: '利用回数に応じてランクアップ。上位ランクほどお得な特典が。',
     },
-  ];
+  ]
 
   return (
     <section id="member-benefits" className="py-20 bg-gradient-to-br from-primary/5 to-white">
@@ -32,7 +32,10 @@ export default function MemberBenefitsSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {benefits.map((benefit, index) => (
-            <div key={index} className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow">
+            <div
+              key={index}
+              className="bg-white rounded-xl p-6 shadow-lg hover:shadow-xl transition-shadow"
+            >
               <div className="text-4xl mb-4">{benefit.icon}</div>
               <h3 className="text-xl font-bold mb-2">{benefit.title}</h3>
               <p className="text-gray-600 text-sm">{benefit.description}</p>
@@ -48,5 +51,5 @@ export default function MemberBenefitsSection() {
         </div>
       </div>
     </section>
-  );
+  )
 }

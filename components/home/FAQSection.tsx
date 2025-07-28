@@ -1,15 +1,17 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
+import { useState } from 'react'
 
 const faqs = [
   {
     question: '痛みはありますか？',
-    answer: '施術前に麻酔クリームを使用しますので、痛みはほとんど感じません。チクチクする程度の感覚です。',
+    answer:
+      '施術前に麻酔クリームを使用しますので、痛みはほとんど感じません。チクチクする程度の感覚です。',
   },
   {
     question: 'どのくらい持続しますか？',
-    answer: '個人差はありますが、通常1〜2年程度持続します。半年〜1年ごとのリタッチで美しい状態を保てます。',
+    answer:
+      '個人差はありますが、通常1〜2年程度持続します。半年〜1年ごとのリタッチで美しい状態を保てます。',
   },
   {
     question: '施術当日のメイクは？',
@@ -25,16 +27,17 @@ const faqs = [
   },
   {
     question: '施術後すぐに仕事はできますか？',
-    answer: 'はい、施術後すぐに通常の生活に戻れます。ただし、激しい運動や長時間の入浴は避けてください。',
+    answer:
+      'はい、施術後すぐに通常の生活に戻れます。ただし、激しい運動や長時間の入浴は避けてください。',
   },
-];
+]
 
 export default function FAQSection() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
+  const [openIndex, setOpenIndex] = useState<number | null>(null)
 
   const toggleFAQ = (index: number) => {
-    setOpenIndex(openIndex === index ? null : index);
-  };
+    setOpenIndex(openIndex === index ? null : index)
+  }
 
   return (
     <section id="faq" className="py-20 bg-gray-50">
@@ -58,11 +61,16 @@ export default function FAQSection() {
                     stroke="currentColor"
                     viewBox="0 0 24 24"
                   >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+                    />
                   </svg>
                 </div>
               </button>
-              
+
               <div
                 className={`overflow-hidden transition-all duration-300 ${
                   openIndex === index ? 'max-h-96' : 'max-h-0'
@@ -84,5 +92,5 @@ export default function FAQSection() {
         </div>
       </div>
     </section>
-  );
+  )
 }

@@ -1,46 +1,46 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/lib/auth/AuthContext';
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login } = useAuth();
+  const router = useRouter()
+  const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  })
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
-    }));
-  };
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-    setIsLoading(true);
+    e.preventDefault()
+    setError('')
+    setIsLoading(true)
 
     try {
-      const user = await login(formData.email, formData.password);
+      const user = await login(formData.email, formData.password)
       // 管理者の場合は管理画面へ、一般ユーザーの場合はマイページへ
       if (user.role === 'admin') {
-        router.push('/admin');
+        router.push('/admin')
       } else {
-        router.push('/mypage');
+        router.push('/mypage')
       }
     } catch (err: any) {
-      setError(err.message || 'ログインに失敗しました');
+      setError(err.message || 'ログインに失敗しました')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-[80vh] flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
@@ -56,11 +56,7 @@ export default function LoginPage() {
         </div>
 
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm">
-              {error}
-            </div>
-          )}
+          {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm">{error}</div>}
 
           <div className="space-y-4">
             <div className="input-group">
@@ -124,15 +120,14 @@ export default function LoginPage() {
         </form>
 
         <div className="bg-gray-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-gray-600 mb-2">
-            管理者アカウント：
-          </p>
+          <p className="text-sm text-gray-600 mb-2">管理者アカウント：</p>
           <p className="text-xs text-gray-500">
-            メール: admin@beeartena.jp<br />
+            メール: admin@beeartena.jp
+            <br />
             パスワード: admin123
           </p>
         </div>
       </div>
     </div>
-  );
+  )
 }

@@ -1,150 +1,150 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { User } from '@/lib/types';
-import { apiClient } from '@/lib/api/client';
-import { CakeIcon, GiftIcon } from '@heroicons/react/24/outline';
-import { userService } from '@/lib/firebase/users';
-import { mockUserService } from '@/lib/mock/mockFirebase';
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { User } from '@/lib/types'
+import { apiClient } from '@/lib/api/client'
+import { CakeIcon, GiftIcon } from '@heroicons/react/24/outline'
+import { userService } from '@/lib/firebase/users'
+import { mockUserService } from '@/lib/mock/mockFirebase'
 
 export default function BirthdayManagementPage() {
-  const { user: currentUser } = useAuth();
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [processingBatch, setProcessingBatch] = useState(false);
-  const [batchResults, setBatchResults] = useState<any>(null);
-  const [filter, setFilter] = useState<'all' | 'today' | 'thisMonth'>('all');
+  const { user: currentUser } = useAuth()
+  const [users, setUsers] = useState<User[]>([])
+  const [loading, setLoading] = useState(true)
+  const [processingBatch, setProcessingBatch] = useState(false)
+  const [batchResults, setBatchResults] = useState<any>(null)
+  const [filter, setFilter] = useState<'all' | 'today' | 'thisMonth'>('all')
 
   useEffect(() => {
     if (currentUser?.role === 'admin') {
-      fetchUsers();
+      fetchUsers()
     }
-  }, [currentUser]);
+  }, [currentUser])
 
   const fetchUsers = async () => {
     try {
       // Firebaseが設定されているか確認（クライアントサイドでは環境変数が展開されている）
-      const isFirebaseConfigured = false; // 現在はモックを使用
+      const isFirebaseConfigured = false // 現在はモックを使用
 
-      let allUsers: User[];
+      let allUsers: User[]
       if (isFirebaseConfigured) {
-        allUsers = await userService.getAllUsers();
+        allUsers = await userService.getAllUsers()
       } else {
-        allUsers = await mockUserService.getAllUsers();
+        allUsers = await mockUserService.getAllUsers()
       }
 
       // カスタマーのみをフィルタリング
-      const customers = allUsers.filter(u => u.role === 'customer');
-      
+      const customers = allUsers.filter((u) => u.role === 'customer')
+
       // 誕生日でソート
       const sortedUsers = customers.sort((a, b) => {
-        if (!a.birthday && !b.birthday) return 0;
-        if (!a.birthday) return 1;
-        if (!b.birthday) return -1;
-        
-        const [, aMonth, aDay] = a.birthday.split('-').map(Number);
-        const [, bMonth, bDay] = b.birthday.split('-').map(Number);
-        
-        if (aMonth !== bMonth) return aMonth - bMonth;
-        return aDay - bDay;
-      });
-      
-      setUsers(sortedUsers);
+        if (!a.birthday && !b.birthday) return 0
+        if (!a.birthday) return 1
+        if (!b.birthday) return -1
+
+        const [, aMonth, aDay] = a.birthday.split('-').map(Number)
+        const [, bMonth, bDay] = b.birthday.split('-').map(Number)
+
+        if (aMonth !== bMonth) return aMonth - bMonth
+        return aDay - bDay
+      })
+
+      setUsers(sortedUsers)
     } catch (error) {
-      console.error('Failed to fetch users:', error);
-      setUsers([]);
+      console.error('Failed to fetch users:', error)
+      setUsers([])
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  };
+  }
 
   const runBirthdayBatch = async () => {
-    setProcessingBatch(true);
-    setBatchResults(null);
-    
+    setProcessingBatch(true)
+    setBatchResults(null)
+
     try {
       const response = await fetch('/api/admin/birthday-points', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('auth_token')}`,
+          Authorization: `Bearer ${localStorage.getItem('auth_token')}`,
         },
-      });
-      
-      const data = await response.json();
-      
+      })
+
+      const data = await response.json()
+
       if (response.ok) {
-        setBatchResults(data.results);
+        setBatchResults(data.results)
         // ユーザーリストを再取得
-        await fetchUsers();
+        await fetchUsers()
       } else {
-        alert(data.error || 'バッチ処理に失敗しました');
+        alert(data.error || 'バッチ処理に失敗しました')
       }
     } catch (error) {
-      console.error('Batch process error:', error);
-      alert('バッチ処理中にエラーが発生しました');
+      console.error('Batch process error:', error)
+      alert('バッチ処理中にエラーが発生しました')
     } finally {
-      setProcessingBatch(false);
+      setProcessingBatch(false)
     }
-  };
+  }
 
   const filterUsers = () => {
-    const today = new Date();
-    const currentMonth = today.getMonth() + 1;
-    const currentDay = today.getDate();
-    
-    return users.filter(user => {
-      if (!user.birthday) return false;
-      
-      const [, month, day] = user.birthday.split('-').map(Number);
-      
+    const today = new Date()
+    const currentMonth = today.getMonth() + 1
+    const currentDay = today.getDate()
+
+    return users.filter((user) => {
+      if (!user.birthday) return false
+
+      const [, month, day] = user.birthday.split('-').map(Number)
+
       switch (filter) {
         case 'today':
-          return month === currentMonth && day === currentDay;
+          return month === currentMonth && day === currentDay
         case 'thisMonth':
-          return month === currentMonth;
+          return month === currentMonth
         default:
-          return true;
+          return true
       }
-    });
-  };
+    })
+  }
 
   const formatBirthday = (birthday: string) => {
-    const [year, month, day] = birthday.split('-');
-    return `${month}月${day}日`;
-  };
+    const [year, month, day] = birthday.split('-')
+    return `${month}月${day}日`
+  }
 
   const getAge = (birthday: string) => {
-    const [year, month, day] = birthday.split('-').map(Number);
-    const birthDate = new Date(year, month - 1, day);
-    const today = new Date();
-    
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const monthDiff = today.getMonth() - birthDate.getMonth();
-    
+    const [year, month, day] = birthday.split('-').map(Number)
+    const birthDate = new Date(year, month - 1, day)
+    const today = new Date()
+
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+
     if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
+      age--
     }
-    
-    return age;
-  };
+
+    return age
+  }
 
   const isBirthdayToday = (birthday: string) => {
-    const today = new Date();
-    const [, month, day] = birthday.split('-').map(Number);
-    return month === today.getMonth() + 1 && day === today.getDate();
-  };
+    const today = new Date()
+    const [, month, day] = birthday.split('-').map(Number)
+    return month === today.getMonth() + 1 && day === today.getDate()
+  }
 
   if (!currentUser || currentUser.role !== 'admin') {
-    return <div className="text-center py-8">アクセス権限がありません</div>;
+    return <div className="text-center py-8">アクセス権限がありません</div>
   }
 
   if (loading) {
-    return <div className="text-center py-8">読み込み中...</div>;
+    return <div className="text-center py-8">読み込み中...</div>
   }
 
-  const filteredUsers = filterUsers();
+  const filteredUsers = filterUsers()
 
   return (
     <div className="space-y-6">
@@ -176,36 +176,34 @@ export default function BirthdayManagementPage() {
           <button
             onClick={() => setFilter('all')}
             className={`px-4 py-2 rounded ${
-              filter === 'all' 
-                ? 'bg-primary text-white' 
-                : 'bg-gray-100 hover:bg-gray-200'
+              filter === 'all' ? 'bg-primary text-white' : 'bg-gray-100 hover:bg-gray-200'
             }`}
           >
-            全て ({users.filter(u => u.birthday).length})
+            全て ({users.filter((u) => u.birthday).length})
           </button>
           <button
             onClick={() => setFilter('today')}
             className={`px-4 py-2 rounded ${
-              filter === 'today' 
-                ? 'bg-primary text-white' 
-                : 'bg-gray-100 hover:bg-gray-200'
+              filter === 'today' ? 'bg-primary text-white' : 'bg-gray-100 hover:bg-gray-200'
             }`}
           >
-            今日 ({users.filter(u => u.birthday && isBirthdayToday(u.birthday)).length})
+            今日 ({users.filter((u) => u.birthday && isBirthdayToday(u.birthday)).length})
           </button>
           <button
             onClick={() => setFilter('thisMonth')}
             className={`px-4 py-2 rounded ${
-              filter === 'thisMonth' 
-                ? 'bg-primary text-white' 
-                : 'bg-gray-100 hover:bg-gray-200'
+              filter === 'thisMonth' ? 'bg-primary text-white' : 'bg-gray-100 hover:bg-gray-200'
             }`}
           >
-            今月 ({users.filter(u => {
-              if (!u.birthday) return false;
-              const [, month] = u.birthday.split('-').map(Number);
-              return month === new Date().getMonth() + 1;
-            }).length})
+            今月 (
+            {
+              users.filter((u) => {
+                if (!u.birthday) return false
+                const [, month] = u.birthday.split('-').map(Number)
+                return month === new Date().getMonth() + 1
+              }).length
+            }
+            )
           </button>
         </div>
 
@@ -268,11 +266,9 @@ export default function BirthdayManagementPage() {
               ))}
             </tbody>
           </table>
-          
+
           {filteredUsers.length === 0 && (
-            <div className="text-center py-8 text-gray-500">
-              該当するユーザーがいません
-            </div>
+            <div className="text-center py-8 text-gray-500">該当するユーザーがいません</div>
           )}
         </div>
       </div>
@@ -287,5 +283,5 @@ export default function BirthdayManagementPage() {
         </ul>
       </div>
     </div>
-  );
+  )
 }

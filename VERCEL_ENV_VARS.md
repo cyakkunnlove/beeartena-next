@@ -38,6 +38,7 @@ NODE_ENV=production
 ## 5. オプション（Redis）
 
 Redisを使用する場合のみ：
+
 ```
 REDIS_URL=redis://your-redis-url
 REDIS_HOST=your-redis-host

@@ -4,8 +4,10 @@ Firebaseの初期データを手動で設定するための手順です。
 
 ## 1. 権限の設定
 
-1. [Google Cloud Console](https://console.developers.google.com/iam-admin/iam/project?project=beeart-ena) にアクセス
-2. サービスアカウント `firebase-adminsdk-fbsvc@beeart-ena.iam.gserviceaccount.com` を探す
+1. [Google Cloud Console](https://console.developers.google.com/iam-admin/iam/project?project=beeart-ena)
+   にアクセス
+2. サービスアカウント
+   `firebase-adminsdk-fbsvc@beeart-ena.iam.gserviceaccount.com` を探す
 3. 以下のロールを追加：
    - `Service Usage Consumer` (serviceusage.serviceUsageConsumer)
    - `Firebase Admin SDK Administrator Service Agent`
@@ -13,25 +15,30 @@ Firebaseの初期データを手動で設定するための手順です。
 
 ## 2. Firebase Authenticationの設定
 
-1. [Firebase Console](https://console.firebase.google.com/project/beeart-ena/authentication/users) にアクセス
+1. [Firebase Console](https://console.firebase.google.com/project/beeart-ena/authentication/users)
+   にアクセス
 2. 「ユーザーを追加」をクリック
 3. 以下のユーザーを作成：
 
 ### 管理者ユーザー
+
 - Email: `admin@beeartena.com`
 - Password: `BeeArtEna2024Admin!`
 
 ### テストユーザー（開発環境用）
+
 - Email: `test@example.com`
 - Password: `testpass123`
 
 ## 3. Firestoreデータの初期化
 
-[Firestore Console](https://console.firebase.google.com/project/beeart-ena/firestore) で以下のコレクションとドキュメントを作成：
+[Firestore Console](https://console.firebase.google.com/project/beeart-ena/firestore)
+で以下のコレクションとドキュメントを作成：
 
 ### users コレクション
 
 管理者ユーザー（ドキュメントID: 作成したユーザーのUID）
+
 ```json
 {
   "id": "[管理者のUID]",
@@ -48,6 +55,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ### settings コレクション
 
 #### reservation ドキュメント
+
 ```json
 {
   "businessHours": [
@@ -67,6 +75,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ```
 
 #### points ドキュメント
+
 ```json
 {
   "earnRate": 0.05,
@@ -79,6 +88,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ### services コレクション
 
 #### 2d-eyebrow ドキュメント
+
 ```json
 {
   "id": "2d-eyebrow",
@@ -94,6 +104,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ```
 
 #### 3d-eyebrow ドキュメント
+
 ```json
 {
   "id": "3d-eyebrow",
@@ -109,6 +120,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ```
 
 #### 4d-eyebrow ドキュメント
+
 ```json
 {
   "id": "4d-eyebrow",
@@ -124,6 +136,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ```
 
 #### 2d-lips ドキュメント
+
 ```json
 {
   "id": "2d-lips",
@@ -139,6 +152,7 @@ Firebaseの初期データを手動で設定するための手順です。
 ```
 
 #### 3d-lips ドキュメント
+
 ```json
 {
   "id": "3d-lips",
@@ -155,7 +169,8 @@ Firebaseの初期データを手動で設定するための手順です。
 
 ## 4. セキュリティルールの設定
 
-初期化が完了したら、[Firestore Rules](https://console.firebase.google.com/project/beeart-ena/firestore/rules) で本番用のセキュリティルールを設定してください。
+初期化が完了したら、[Firestore Rules](https://console.firebase.google.com/project/beeart-ena/firestore/rules)
+で本番用のセキュリティルールを設定してください。
 
 ルールファイル: `/firebase-rules/firestore.rules`
 

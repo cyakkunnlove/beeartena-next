@@ -1,11 +1,11 @@
-'use client';
+'use client'
 
-import Image from 'next/image';
-import Link from 'next/link';
-import PageTransition from '@/components/layout/PageTransition';
-import SlideTransition from '@/components/layout/SlideTransition';
-import MobileButton from '@/components/ui/MobileButton';
-import { motion } from 'framer-motion';
+import Image from 'next/image'
+import Link from 'next/link'
+import PageTransition from '@/components/layout/PageTransition'
+import SlideTransition from '@/components/layout/SlideTransition'
+import MobileButton from '@/components/ui/MobileButton'
+import { motion } from 'framer-motion'
 
 const services = [
   {
@@ -37,12 +37,7 @@ const services = [
     monitorPrice: 18000,
     duration: '約2時間',
     image: '/images/3D.jpg',
-    features: [
-      '毛並みを1本1本再現',
-      '自眉のような自然さ',
-      '立体的な仕上がり',
-      '男性にも人気',
-    ],
+    features: ['毛並みを1本1本再現', '自眉のような自然さ', '立体的な仕上がり', '男性にも人気'],
     process: [
       'カウンセリング（30分）',
       'デザイン決定（30分）',
@@ -72,7 +67,7 @@ const services = [
       'アフターケア説明（10分）',
     ],
   },
-];
+]
 
 const additionalServices = [
   {
@@ -90,7 +85,7 @@ const additionalServices = [
     price: 3000,
     description: 'リタッチ時のカラー変更オプション',
   },
-];
+]
 
 export default function PricingPage() {
   return (
@@ -111,198 +106,197 @@ export default function PricingPage() {
           </div>
         </section>
 
-      {/* サービス詳細 */}
-      <section className="py-16">
-        <div className="container mx-auto px-4">
-          <div className="space-y-16">
-            {services.map((service, index) => (
-              <motion.div
-                key={service.id}
-                initial={{ opacity: 0, y: 50 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: index * 0.1 }}
-                viewport={{ once: true }}
-                className={`bg-white rounded-2xl shadow-xl overflow-hidden ${
-                  service.featured ? 'ring-2 ring-primary' : ''
-                }`}
-              >
-                {service.featured && (
-                  <div className="bg-primary text-white text-center py-2 font-semibold">
-                    人気No.1
-                  </div>
-                )}
-                
-                <div className={`grid grid-cols-1 lg:grid-cols-2 ${
-                  index % 2 === 1 ? 'lg:flex-row-reverse' : ''
-                }`}>
-                  {/* 画像 */}
-                  <div className={`relative h-64 lg:h-auto ${
-                    index % 2 === 1 ? 'lg:order-2' : ''
-                  }`}>
-                    <Image
-                      src={service.image}
-                      alt={service.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
+        {/* サービス詳細 */}
+        <section className="py-16">
+          <div className="container mx-auto px-4">
+            <div className="space-y-16">
+              {services.map((service, index) => (
+                <motion.div
+                  key={service.id}
+                  initial={{ opacity: 0, y: 50 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.5, delay: index * 0.1 }}
+                  viewport={{ once: true }}
+                  className={`bg-white rounded-2xl shadow-xl overflow-hidden ${
+                    service.featured ? 'ring-2 ring-primary' : ''
+                  }`}
+                >
+                  {service.featured && (
+                    <div className="bg-primary text-white text-center py-2 font-semibold">
+                      人気No.1
+                    </div>
+                  )}
 
-                  {/* 内容 */}
-                  <div className="p-8 lg:p-12">
-                    <div className="flex items-start justify-between mb-6">
-                      <div>
-                        <h2 className="text-3xl font-bold mb-2">{service.id} {service.name}</h2>
-                        <p className="text-gray-600">{service.description}</p>
-                      </div>
+                  <div
+                    className={`grid grid-cols-1 lg:grid-cols-2 ${
+                      index % 2 === 1 ? 'lg:flex-row-reverse' : ''
+                    }`}
+                  >
+                    {/* 画像 */}
+                    <div
+                      className={`relative h-64 lg:h-auto ${index % 2 === 1 ? 'lg:order-2' : ''}`}
+                    >
+                      <Image src={service.image} alt={service.name} fill className="object-cover" />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                      <div>
-                        <h3 className="font-semibold mb-3">特徴</h3>
-                        <ul className="space-y-2">
-                          {service.features.map((feature, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-primary">✓</span>
-                              <span className="text-sm">{feature}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-
-                      <div>
-                        <h3 className="font-semibold mb-3">施術の流れ</h3>
-                        <ul className="space-y-2">
-                          {service.process.map((step, i) => (
-                            <li key={i} className="flex items-start gap-2">
-                              <span className="text-primary font-semibold">{i + 1}.</span>
-                              <span className="text-sm">{step}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    </div>
-
-                    <div className="border-t pt-6">
-                      <div className="flex flex-wrap items-end justify-between gap-4">
+                    {/* 内容 */}
+                    <div className="p-8 lg:p-12">
+                      <div className="flex items-start justify-between mb-6">
                         <div>
-                          <p className="text-3xl font-bold text-primary">
-                            ¥{service.price.toLocaleString()}
-                          </p>
-                          <p className="text-lg text-gray-600">
-                            モニター価格 ¥{service.monitorPrice.toLocaleString()}
-                          </p>
-                          <p className="text-sm text-gray-500 mt-1">
-                            所要時間: {service.duration}
-                          </p>
+                          <h2 className="text-3xl font-bold mb-2">
+                            {service.id} {service.name}
+                          </h2>
+                          <p className="text-gray-600">{service.description}</p>
                         </div>
-                        <Link href="/reservation">
-                          <MobileButton variant="primary" fullWidth className="mt-2">
-                            このメニューで予約する
-                          </MobileButton>
-                        </Link>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div>
+                          <h3 className="font-semibold mb-3">特徴</h3>
+                          <ul className="space-y-2">
+                            {service.features.map((feature, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-primary">✓</span>
+                                <span className="text-sm">{feature}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+
+                        <div>
+                          <h3 className="font-semibold mb-3">施術の流れ</h3>
+                          <ul className="space-y-2">
+                            {service.process.map((step, i) => (
+                              <li key={i} className="flex items-start gap-2">
+                                <span className="text-primary font-semibold">{i + 1}.</span>
+                                <span className="text-sm">{step}</span>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+
+                      <div className="border-t pt-6">
+                        <div className="flex flex-wrap items-end justify-between gap-4">
+                          <div>
+                            <p className="text-3xl font-bold text-primary">
+                              ¥{service.price.toLocaleString()}
+                            </p>
+                            <p className="text-lg text-gray-600">
+                              モニター価格 ¥{service.monitorPrice.toLocaleString()}
+                            </p>
+                            <p className="text-sm text-gray-500 mt-1">
+                              所要時間: {service.duration}
+                            </p>
+                          </div>
+                          <Link href="/reservation">
+                            <MobileButton variant="primary" fullWidth className="mt-2">
+                              このメニューで予約する
+                            </MobileButton>
+                          </Link>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </motion.div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* 追加メニュー */}
+        <section className="py-16 bg-white">
+          <div className="container mx-auto px-4">
+            <h2 className="text-3xl font-bold text-center mb-12">追加メニュー</h2>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+              {additionalServices.map((service) => (
+                <div key={service.name} className="bg-gray-50 rounded-xl p-6">
+                  <h3 className="font-semibold text-lg mb-2">{service.name}</h3>
+                  <p className="text-2xl font-bold text-primary mb-3">
+                    ¥{service.price.toLocaleString()}
+                  </p>
+                  <p className="text-sm text-gray-600">{service.description}</p>
                 </div>
-              </motion.div>
-            ))}
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* 追加メニュー */}
-      <section className="py-16 bg-white">
-        <div className="container mx-auto px-4">
-          <h2 className="text-3xl font-bold text-center mb-12">追加メニュー</h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {additionalServices.map((service) => (
-              <div key={service.name} className="bg-gray-50 rounded-xl p-6">
-                <h3 className="font-semibold text-lg mb-2">{service.name}</h3>
-                <p className="text-2xl font-bold text-primary mb-3">
-                  ¥{service.price.toLocaleString()}
-                </p>
-                <p className="text-sm text-gray-600">{service.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+        {/* モニター条件 */}
+        <section className="py-16 bg-gray-50">
+          <div className="container mx-auto px-4">
+            <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
+              <h2 className="text-2xl font-bold mb-6">モニター価格について</h2>
 
-      {/* モニター条件 */}
-      <section className="py-16 bg-gray-50">
-        <div className="container mx-auto px-4">
-          <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
-            <h2 className="text-2xl font-bold mb-6">モニター価格について</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold mb-2">モニター条件</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>施術前後の写真撮影にご協力いただける方</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>SNSやホームページへの写真掲載を許可いただける方</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>アンケートにご協力いただける方</span>
-                  </li>
-                </ul>
-              </div>
+              <div className="space-y-4">
+                <div>
+                  <h3 className="font-semibold mb-2">モニター条件</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span>施術前後の写真撮影にご協力いただける方</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span>SNSやホームページへの写真掲載を許可いただける方</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span>アンケートにご協力いただける方</span>
+                    </li>
+                  </ul>
+                </div>
 
-              <div>
-                <h3 className="font-semibold mb-2">注意事項</h3>
-                <ul className="space-y-2 text-gray-600">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>個人が特定されないよう配慮いたします</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>目元のみの撮影も可能です</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary">•</span>
-                    <span>詳細はカウンセリング時にご相談ください</span>
-                  </li>
-                </ul>
+                <div>
+                  <h3 className="font-semibold mb-2">注意事項</h3>
+                  <ul className="space-y-2 text-gray-600">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span>個人が特定されないよう配慮いたします</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span>目元のみの撮影も可能です</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary">•</span>
+                      <span>詳細はカウンセリング時にご相談ください</span>
+                    </li>
+                  </ul>
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      {/* CTA */}
-      <section className="py-16 bg-gradient-to-r from-primary to-dark-gold text-white">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-6">まずは無料カウンセリングから</h2>
-          <p className="text-lg mb-8 max-w-2xl mx-auto">
-            お客様のご希望をじっくりお伺いし、最適なメニューをご提案いたします。
-            カウンセリングのみのご来店も歓迎です。
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/reservation">
-              <MobileButton variant="secondary" size="large">
-                カウンセリング予約
-              </MobileButton>
-            </Link>
-            <a
-              href="https://line.me/R/ti/p/@174geemy"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <MobileButton variant="primary" size="large" className="bg-green-600 hover:bg-green-700">
-                LINEで相談する
-              </MobileButton>
-            </a>
+        {/* CTA */}
+        <section className="py-16 bg-gradient-to-r from-primary to-dark-gold text-white">
+          <div className="container mx-auto px-4 text-center">
+            <h2 className="text-3xl font-bold mb-6">まずは無料カウンセリングから</h2>
+            <p className="text-lg mb-8 max-w-2xl mx-auto">
+              お客様のご希望をじっくりお伺いし、最適なメニューをご提案いたします。
+              カウンセリングのみのご来店も歓迎です。
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link href="/reservation">
+                <MobileButton variant="secondary" size="large">
+                  カウンセリング予約
+                </MobileButton>
+              </Link>
+              <a href="https://line.me/R/ti/p/@174geemy" target="_blank" rel="noopener noreferrer">
+                <MobileButton
+                  variant="primary"
+                  size="large"
+                  className="bg-green-600 hover:bg-green-700"
+                >
+                  LINEで相談する
+                </MobileButton>
+              </a>
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
       </div>
     </PageTransition>
-  );
+  )
 }

@@ -44,6 +44,7 @@
 ## 6. カスタムドメイン（オプション）
 
 独自ドメインを使用する場合：
+
 1. Vercelプロジェクトの「Settings」→「Domains」
 2. 「Add」をクリックしてドメインを追加
 3. DNS設定の指示に従う
@@ -56,15 +57,18 @@
 ## トラブルシューティング
 
 ### ビルドエラーの場合
+
 - Vercelのビルドログを確認
 - ローカルで `npm run build` が成功することを確認
 
 ### 画像が表示されない場合
+
 - `/public/images/` フォルダの画像が正しくコミットされているか確認
 
 ## セキュリティ注意事項
 
-⚠️ **重要**: GitHubのPersonal Access Tokenが公開されてしまった場合は、すぐに以下の手順で無効化してください：
+⚠️ **重要**: GitHubのPersonal Access
+Tokenが公開されてしまった場合は、すぐに以下の手順で無効化してください：
 
 1. GitHub → Settings → Developer settings → Personal access tokens
 2. 該当のトークンを見つけて「Delete」または「Revoke」

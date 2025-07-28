@@ -1,18 +1,18 @@
-'use client';
+'use client'
 
-import React, { useEffect, useRef } from 'react';
-import { createPortal } from 'react-dom';
-import { XMarkIcon } from '@heroicons/react/24/outline';
+import React, { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
+import { XMarkIcon } from '@heroicons/react/24/outline'
 
 interface ModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  title?: string;
-  children: React.ReactNode;
-  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
-  closeOnOverlay?: boolean;
-  showCloseButton?: boolean;
-  className?: string;
+  isOpen: boolean
+  onClose: () => void
+  title?: string
+  children: React.ReactNode
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
+  closeOnOverlay?: boolean
+  showCloseButton?: boolean
+  className?: string
 }
 
 const Modal: React.FC<ModalProps> = ({
@@ -25,64 +25,64 @@ const Modal: React.FC<ModalProps> = ({
   showCloseButton = true,
   className = '',
 }) => {
-  const modalRef = useRef<HTMLDivElement>(null);
-  const previousActiveElement = useRef<HTMLElement | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null)
+  const previousActiveElement = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
     if (isOpen) {
-      previousActiveElement.current = document.activeElement as HTMLElement;
-      modalRef.current?.focus();
-      document.body.style.overflow = 'hidden';
+      previousActiveElement.current = document.activeElement as HTMLElement
+      modalRef.current?.focus()
+      document.body.style.overflow = 'hidden'
     } else {
-      document.body.style.overflow = '';
-      previousActiveElement.current?.focus();
+      document.body.style.overflow = ''
+      previousActiveElement.current?.focus()
     }
 
     return () => {
-      document.body.style.overflow = '';
-    };
-  }, [isOpen]);
+      document.body.style.overflow = ''
+    }
+  }, [isOpen])
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
-        onClose();
+        onClose()
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onClose]);
+    document.addEventListener('keydown', handleEscape)
+    return () => document.removeEventListener('keydown', handleEscape)
+  }, [isOpen, onClose])
 
   // Focus trap
   useEffect(() => {
-    if (!isOpen || !modalRef.current) return;
+    if (!isOpen || !modalRef.current) return
 
     const focusableElements = modalRef.current.querySelectorAll(
-      'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select'
-    );
-    const firstFocusable = focusableElements[0] as HTMLElement;
-    const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement;
+      'a[href], button, textarea, input[type="text"], input[type="radio"], input[type="checkbox"], select',
+    )
+    const firstFocusable = focusableElements[0] as HTMLElement
+    const lastFocusable = focusableElements[focusableElements.length - 1] as HTMLElement
 
     const handleTabKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Tab') return;
+      if (e.key !== 'Tab') return
 
       if (e.shiftKey) {
         if (document.activeElement === firstFocusable) {
-          lastFocusable?.focus();
-          e.preventDefault();
+          lastFocusable?.focus()
+          e.preventDefault()
         }
       } else {
         if (document.activeElement === lastFocusable) {
-          firstFocusable?.focus();
-          e.preventDefault();
+          firstFocusable?.focus()
+          e.preventDefault()
         }
       }
-    };
+    }
 
-    document.addEventListener('keydown', handleTabKey);
-    return () => document.removeEventListener('keydown', handleTabKey);
-  }, [isOpen]);
+    document.addEventListener('keydown', handleTabKey)
+    return () => document.removeEventListener('keydown', handleTabKey)
+  }, [isOpen])
 
   const getSizeClasses = () => {
     const sizes = {
@@ -91,11 +91,11 @@ const Modal: React.FC<ModalProps> = ({
       lg: 'max-w-lg',
       xl: 'max-w-xl',
       full: 'max-w-full mx-4',
-    };
-    return sizes[size];
-  };
+    }
+    return sizes[size]
+  }
 
-  if (!isOpen) return null;
+  if (!isOpen) return null
 
   const modalContent = (
     <div
@@ -146,21 +146,21 @@ const Modal: React.FC<ModalProps> = ({
         </div>
       </div>
     </div>
-  );
+  )
 
-  return createPortal(modalContent, document.body);
-};
+  return createPortal(modalContent, document.body)
+}
 
 // Confirmation Modal Component
 export const ConfirmModal: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  title: string;
-  message: string;
-  confirmText?: string;
-  cancelText?: string;
-  confirmButtonClass?: string;
+  isOpen: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+  message: string
+  confirmText?: string
+  cancelText?: string
+  confirmButtonClass?: string
 }> = ({
   isOpen,
   onClose,
@@ -186,15 +186,15 @@ export const ConfirmModal: React.FC<{
           type="button"
           className={`px-4 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 transition-colors ${confirmButtonClass}`}
           onClick={() => {
-            onConfirm();
-            onClose();
+            onConfirm()
+            onClose()
           }}
         >
           {confirmText}
         </button>
       </div>
     </Modal>
-  );
-};
+  )
+}
 
-export default Modal;
+export default Modal

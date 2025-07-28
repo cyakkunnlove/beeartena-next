@@ -1,77 +1,83 @@
-'use client';
+'use client'
 
-import { useState, useCallback, useMemo } from 'react';
-import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar';
-import moment from 'moment';
-import 'moment/locale/ja';
-import { Reservation } from '@/lib/types';
-import { reservationService } from '@/lib/reservationService';
+import { useState, useCallback, useMemo } from 'react'
+import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar'
+import moment from 'moment'
+import 'moment/locale/ja'
+import { Reservation } from '@/lib/types'
+import { reservationService } from '@/lib/reservationService'
 
-moment.locale('ja');
-const localizer = momentLocalizer(moment);
+moment.locale('ja')
+const localizer = momentLocalizer(moment)
 
 interface ReservationCalendarProps {
-  reservations: Reservation[];
-  onEventClick: (reservation: Reservation) => void;
-  onDateClick?: (date: Date) => void;
+  reservations: Reservation[]
+  onEventClick: (reservation: Reservation) => void
+  onDateClick?: (date: Date) => void
 }
 
-export default function ReservationCalendar({ 
-  reservations, 
+export default function ReservationCalendar({
+  reservations,
   onEventClick,
-  onDateClick 
+  onDateClick,
 }: ReservationCalendarProps) {
-  const [view, setView] = useState<View>('month');
-  const [date, setDate] = useState(new Date());
+  const [view, setView] = useState<View>('month')
+  const [date, setDate] = useState(new Date())
 
   // 予約をカレンダーイベントに変換
   const events = useMemo(() => {
-    return reservationService.getCalendarEvents(reservations);
-  }, [reservations]);
+    return reservationService.getCalendarEvents(reservations)
+  }, [reservations])
 
   // イベントクリックハンドラー
-  const handleSelectEvent = useCallback((event: any) => {
-    onEventClick(event.resource);
-  }, [onEventClick]);
+  const handleSelectEvent = useCallback(
+    (event: any) => {
+      onEventClick(event.resource)
+    },
+    [onEventClick],
+  )
 
   // 空いている時間枠クリックハンドラー
-  const handleSelectSlot = useCallback((slotInfo: SlotInfo) => {
-    if (onDateClick) {
-      onDateClick(slotInfo.start);
-    }
-  }, [onDateClick]);
+  const handleSelectSlot = useCallback(
+    (slotInfo: SlotInfo) => {
+      if (onDateClick) {
+        onDateClick(slotInfo.start)
+      }
+    },
+    [onDateClick],
+  )
 
   // カスタムイベントコンポーネント
   const EventComponent = ({ event }: any) => {
-    const statusClass = `status-${event.resource.status}`;
+    const statusClass = `status-${event.resource.status}`
     return (
       <div className={`rbc-event ${statusClass}`}>
         <div className="font-semibold">{event.resource.customerName}</div>
         <div className="text-xs">{event.resource.serviceName}</div>
       </div>
-    );
-  };
+    )
+  }
 
   // カスタムツールバー
   const CustomToolbar = (toolbar: any) => {
     const goToBack = () => {
-      toolbar.onNavigate('PREV');
-    };
+      toolbar.onNavigate('PREV')
+    }
 
     const goToNext = () => {
-      toolbar.onNavigate('NEXT');
-    };
+      toolbar.onNavigate('NEXT')
+    }
 
     const goToToday = () => {
-      toolbar.onNavigate('TODAY');
-    };
+      toolbar.onNavigate('TODAY')
+    }
 
     const viewNames = {
       month: '月',
       week: '週',
       day: '日',
-      agenda: '一覧'
-    };
+      agenda: '一覧',
+    }
 
     return (
       <div className="rbc-toolbar">
@@ -81,9 +87,7 @@ export default function ReservationCalendar({
           <button onClick={goToNext}>→</button>
         </div>
 
-        <span className="text-lg font-semibold">
-          {toolbar.label}
-        </span>
+        <span className="text-lg font-semibold">{toolbar.label}</span>
 
         <div className="flex gap-2">
           {toolbar.views.map((name: string) => (
@@ -97,60 +101,63 @@ export default function ReservationCalendar({
           ))}
         </div>
       </div>
-    );
-  };
+    )
+  }
 
   // 日付のスタイリング
-  const dayPropGetter = useCallback((date: Date) => {
-    const dateStr = moment(date).format('YYYY-MM-DD');
-    const dayOfWeek = date.getDay();
-    
-    // 日曜日は休業日
-    if (dayOfWeek === 0) {
-      return {
-        style: {
-          backgroundColor: '#f3f4f6',
-        }
-      };
-    }
+  const dayPropGetter = useCallback(
+    (date: Date) => {
+      const dateStr = moment(date).format('YYYY-MM-DD')
+      const dayOfWeek = date.getDay()
 
-    // 満員の日をチェック
-    const dayReservations = reservations.filter(r => 
-      r.date === dateStr && (r.status === 'confirmed' || r.status === 'pending')
-    );
-    
-    // 曜日ごとの最大予約数
-    const maxCapacity = dayOfWeek === 3 ? 4 : 2; // 水曜日は4枠、その他は2枠
-    
-    if (dayReservations.length >= maxCapacity) {
-      return {
-        style: {
-          backgroundColor: '#fee2e2',
+      // 日曜日は休業日
+      if (dayOfWeek === 0) {
+        return {
+          style: {
+            backgroundColor: '#f3f4f6',
+          },
         }
-      };
-    }
+      }
 
-    return {};
-  }, [reservations]);
+      // 満員の日をチェック
+      const dayReservations = reservations.filter(
+        (r) => r.date === dateStr && (r.status === 'confirmed' || r.status === 'pending'),
+      )
+
+      // 曜日ごとの最大予約数
+      const maxCapacity = dayOfWeek === 3 ? 4 : 2 // 水曜日は4枠、その他は2枠
+
+      if (dayReservations.length >= maxCapacity) {
+        return {
+          style: {
+            backgroundColor: '#fee2e2',
+          },
+        }
+      }
+
+      return {}
+    },
+    [reservations],
+  )
 
   // イベントのスタイリング
   const eventPropGetter = useCallback((event: any) => {
-    const status = event.resource.status;
-    let backgroundColor = '#3b82f6'; // default blue
+    const status = event.resource.status
+    let backgroundColor = '#3b82f6' // default blue
 
     switch (status) {
       case 'pending':
-        backgroundColor = '#eab308';
-        break;
+        backgroundColor = '#eab308'
+        break
       case 'confirmed':
-        backgroundColor = '#3b82f6';
-        break;
+        backgroundColor = '#3b82f6'
+        break
       case 'completed':
-        backgroundColor = '#22c55e';
-        break;
+        backgroundColor = '#22c55e'
+        break
       case 'cancelled':
-        backgroundColor = '#ef4444';
-        break;
+        backgroundColor = '#ef4444'
+        break
     }
 
     return {
@@ -160,10 +167,10 @@ export default function ReservationCalendar({
         opacity: 0.9,
         color: 'white',
         border: '0px',
-        display: 'block'
-      }
-    };
-  }, []);
+        display: 'block',
+      },
+    }
+  }, [])
 
   const messages = {
     allDay: '終日',
@@ -178,8 +185,8 @@ export default function ReservationCalendar({
     time: '時間',
     event: '予約',
     noEventsInRange: 'この期間に予約はありません',
-    showMore: (total: number) => `+${total} 件`
-  };
+    showMore: (total: number) => `+${total} 件`,
+  }
 
   return (
     <div className="h-[600px]">
@@ -212,5 +219,5 @@ export default function ReservationCalendar({
         }}
       />
     </div>
-  );
+  )
 }

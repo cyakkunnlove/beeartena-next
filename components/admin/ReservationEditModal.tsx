@@ -1,45 +1,49 @@
-'use client';
+'use client'
 
-import { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Reservation } from '@/lib/types';
-import { reservationService } from '@/lib/reservationService';
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Reservation } from '@/lib/types'
+import { reservationService } from '@/lib/reservationService'
 
 interface ReservationEditModalProps {
-  reservation: Reservation | null;
-  onClose: () => void;
-  onUpdate: (reservation: Reservation) => void;
+  reservation: Reservation | null
+  onClose: () => void
+  onUpdate: (reservation: Reservation) => void
 }
 
-export default function ReservationEditModal({ reservation, onClose, onUpdate }: ReservationEditModalProps) {
-  const [editedReservation, setEditedReservation] = useState<Reservation | null>(reservation);
-  const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+export default function ReservationEditModal({
+  reservation,
+  onClose,
+  onUpdate,
+}: ReservationEditModalProps) {
+  const [editedReservation, setEditedReservation] = useState<Reservation | null>(reservation)
+  const [availableSlots, setAvailableSlots] = useState<string[]>([])
 
   // Get available time slots when date changes
   const handleDateChange = async (date: string) => {
-    if (!editedReservation) return;
-    
+    if (!editedReservation) return
+
     setEditedReservation({
       ...editedReservation,
       date,
-    });
+    })
 
     // Get available slots for the new date
-    const slots = await reservationService.getTimeSlotsForDate(date);
+    const slots = await reservationService.getTimeSlotsForDate(date)
     const available = slots
-      .filter(slot => slot.available || slot.time === reservation?.time)
-      .map(slot => slot.time);
-    setAvailableSlots(available);
-  };
+      .filter((slot) => slot.available || slot.time === reservation?.time)
+      .map((slot) => slot.time)
+    setAvailableSlots(available)
+  }
 
   const handleSave = () => {
-    if (!editedReservation) return;
-    
-    onUpdate(editedReservation);
-    onClose();
-  };
+    if (!editedReservation) return
 
-  if (!reservation || !editedReservation) return null;
+    onUpdate(editedReservation)
+    onClose()
+  }
+
+  if (!reservation || !editedReservation) return null
 
   return (
     <AnimatePresence>
@@ -65,30 +69,30 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
               <h3 className="font-semibold text-gray-700 mb-2">お客様情報</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    お名前
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
                   <input
                     type="text"
                     value={editedReservation.customerName}
-                    onChange={(e) => setEditedReservation({
-                      ...editedReservation,
-                      customerName: e.target.value,
-                    })}
+                    onChange={(e) =>
+                      setEditedReservation({
+                        ...editedReservation,
+                        customerName: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    電話番号
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
                   <input
                     type="tel"
                     value={editedReservation.customerPhone}
-                    onChange={(e) => setEditedReservation({
-                      ...editedReservation,
-                      customerPhone: e.target.value,
-                    })}
+                    onChange={(e) =>
+                      setEditedReservation({
+                        ...editedReservation,
+                        customerPhone: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                   />
                 </div>
@@ -99,10 +103,12 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
                   <input
                     type="email"
                     value={editedReservation.customerEmail}
-                    onChange={(e) => setEditedReservation({
-                      ...editedReservation,
-                      customerEmail: e.target.value,
-                    })}
+                    onChange={(e) =>
+                      setEditedReservation({
+                        ...editedReservation,
+                        customerEmail: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                   />
                 </div>
@@ -114,9 +120,7 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
               <h3 className="font-semibold text-gray-700 mb-2">予約内容</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    日付
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">日付</label>
                   <input
                     type="date"
                     value={editedReservation.date}
@@ -126,46 +130,46 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    時間
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">時間</label>
                   <select
                     value={editedReservation.time}
-                    onChange={(e) => setEditedReservation({
-                      ...editedReservation,
-                      time: e.target.value,
-                    })}
+                    onChange={(e) =>
+                      setEditedReservation({
+                        ...editedReservation,
+                        time: e.target.value,
+                      })
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                   >
                     <option value={editedReservation.time}>{editedReservation.time}</option>
                     {availableSlots
-                      .filter(slot => slot !== editedReservation.time)
-                      .map(slot => (
-                        <option key={slot} value={slot}>{slot}</option>
+                      .filter((slot) => slot !== editedReservation.time)
+                      .map((slot) => (
+                        <option key={slot} value={slot}>
+                          {slot}
+                        </option>
                       ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    サービス
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">サービス</label>
                   <select
                     value={editedReservation.serviceType}
                     onChange={(e) => {
-                      const serviceType = e.target.value as '2D' | '3D' | '4D';
+                      const serviceType = e.target.value as '2D' | '3D' | '4D'
                       const serviceMap = {
                         '2D': { name: 'パウダーブロウ', price: 20000 },
                         '3D': { name: 'フェザーブロウ', price: 20000 },
                         '4D': { name: 'パウダー&フェザー', price: 25000 },
-                      };
-                      const service = serviceMap[serviceType];
-                      
+                      }
+                      const service = serviceMap[serviceType]
+
                       setEditedReservation({
                         ...editedReservation,
                         serviceType,
                         serviceName: service.name,
                         price: service.price,
-                      });
+                      })
                     }}
                     className="w-full px-3 py-2 border rounded-lg"
                   >
@@ -175,15 +179,15 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    ステータス
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">ステータス</label>
                   <select
                     value={editedReservation.status}
-                    onChange={(e) => setEditedReservation({
-                      ...editedReservation,
-                      status: e.target.value as Reservation['status'],
-                    })}
+                    onChange={(e) =>
+                      setEditedReservation({
+                        ...editedReservation,
+                        status: e.target.value as Reservation['status'],
+                      })
+                    }
                     className="w-full px-3 py-2 border rounded-lg"
                   >
                     <option value="pending">承認待ち</option>
@@ -197,15 +201,15 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
 
             {/* Notes */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                備考
-              </label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
               <textarea
                 value={editedReservation.notes || ''}
-                onChange={(e) => setEditedReservation({
-                  ...editedReservation,
-                  notes: e.target.value,
-                })}
+                onChange={(e) =>
+                  setEditedReservation({
+                    ...editedReservation,
+                    notes: e.target.value,
+                  })
+                }
                 className="w-full px-3 py-2 border rounded-lg"
                 rows={3}
               />
@@ -232,5 +236,5 @@ export default function ReservationEditModal({ reservation, onClose, onUpdate }:
         </motion.div>
       </motion.div>
     </AnimatePresence>
-  );
+  )
 }

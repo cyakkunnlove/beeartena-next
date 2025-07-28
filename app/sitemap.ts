@@ -1,8 +1,8 @@
-import { MetadataRoute } from 'next';
+import { MetadataRoute } from 'next'
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const baseUrl = 'https://beeartena.vercel.app';
-  
+  const baseUrl = 'https://beeartena.vercel.app'
+
   return [
     {
       url: baseUrl,
@@ -34,5 +34,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'yearly',
       priority: 0.5,
     },
-  ];
+  ]
 }

@@ -1,16 +1,16 @@
-'use client';
+'use client'
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
-import { useAuth } from '@/lib/auth/AuthContext';
-import DatePicker from '@/components/ui/DatePicker';
-import { reservationStorage } from '@/lib/utils/reservationStorage';
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
+import { useAuth } from '@/lib/auth/AuthContext'
+import DatePicker from '@/components/ui/DatePicker'
+import { reservationStorage } from '@/lib/utils/reservationStorage'
 
 function RegisterContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { register } = useAuth();
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { register } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -19,62 +19,62 @@ function RegisterContent() {
     phone: '',
     birthday: '',
     agreeToTerms: false,
-  });
-  const [error, setError] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
-  const [hasReservation, setHasReservation] = useState(false);
-  const [savedReservation, setSavedReservation] = useState<any>(null);
+  })
+  const [error, setError] = useState('')
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasReservation, setHasReservation] = useState(false)
+  const [savedReservation, setSavedReservation] = useState<any>(null)
 
   useEffect(() => {
     // 予約から来た場合、保存された予約情報を取得
-    const fromReservation = searchParams.get('reservation') === 'true';
-    setHasReservation(fromReservation);
-    
+    const fromReservation = searchParams.get('reservation') === 'true'
+    setHasReservation(fromReservation)
+
     if (fromReservation) {
-      const reservation = reservationStorage.get();
+      const reservation = reservationStorage.get()
       if (reservation) {
-        setSavedReservation(reservation);
+        setSavedReservation(reservation)
         // フォームに予約情報を反映
-        setFormData(prev => ({
+        setFormData((prev) => ({
           ...prev,
           name: reservation.formData.name || '',
           email: reservation.formData.email || '',
           phone: reservation.formData.phone || '',
-        }));
+        }))
       }
     }
-  }, [searchParams]);
+  }, [searchParams])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value, type, checked } = e.target;
-    setFormData(prev => ({
+    const { name, value, type, checked } = e.target
+    setFormData((prev) => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value,
-    }));
-  };
+    }))
+  }
 
   const handleDateChange = (date: string) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       birthday: date,
-    }));
-  };
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+    e.preventDefault()
+    setError('')
 
     if (formData.password !== formData.confirmPassword) {
-      setError('パスワードが一致しません');
-      return;
+      setError('パスワードが一致しません')
+      return
     }
 
     if (!formData.agreeToTerms) {
-      setError('利用規約に同意してください');
-      return;
+      setError('利用規約に同意してください')
+      return
     }
 
-    setIsLoading(true);
+    setIsLoading(true)
 
     try {
       await register(
@@ -82,28 +82,26 @@ function RegisterContent() {
         formData.password,
         formData.name,
         formData.phone,
-        formData.birthday
-      );
-      
+        formData.birthday,
+      )
+
       // 予約から来た場合は予約ページへ、そうでなければマイページへ
       if (hasReservation) {
-        router.push('/reservation?from=register');
+        router.push('/reservation?from=register')
       } else {
-        router.push('/mypage');
+        router.push('/mypage')
       }
     } catch (error) {
-      setError('登録に失敗しました。もう一度お試しください。');
+      setError('登録に失敗しました。もう一度お試しください。')
     } finally {
-      setIsLoading(false);
+      setIsLoading(false)
     }
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          新規会員登録
-        </h2>
+        <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">新規会員登録</h2>
         {hasReservation && savedReservation && (
           <div className="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
             <p className="text-sm text-blue-800">
@@ -112,9 +110,7 @@ function RegisterContent() {
             <p className="text-sm text-blue-600 mt-1">
               {savedReservation.serviceName} - {savedReservation.date} {savedReservation.time}
             </p>
-            <p className="text-xs text-blue-600 mt-2">
-              会員登録後、自動的に予約画面に戻ります
-            </p>
+            <p className="text-xs text-blue-600 mt-2">会員登録後、自動的に予約画面に戻ります</p>
           </div>
         )}
         <p className="mt-2 text-center text-sm text-gray-600">
@@ -185,14 +181,8 @@ function RegisterContent() {
               <label htmlFor="birthday" className="block text-sm font-medium text-gray-700">
                 生年月日
               </label>
-              <DatePicker
-                value={formData.birthday}
-                onChange={handleDateChange}
-                required={false}
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                誕生日月にポイントプレゼントがあります
-              </p>
+              <DatePicker value={formData.birthday} onChange={handleDateChange} required={false} />
+              <p className="mt-1 text-xs text-gray-500">誕生日月にポイントプレゼントがあります</p>
             </div>
 
             <div>
@@ -209,9 +199,7 @@ function RegisterContent() {
                 onChange={handleChange}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
               />
-              <p className="mt-1 text-xs text-gray-500">
-                8文字以上で入力してください
-              </p>
+              <p className="mt-1 text-xs text-gray-500">8文字以上で入力してください</p>
             </div>
 
             <div>
@@ -260,7 +248,7 @@ function RegisterContent() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default function RegisterPage() {
@@ -268,5 +256,5 @@ export default function RegisterPage() {
     <Suspense fallback={<div>Loading...</div>}>
       <RegisterContent />
     </Suspense>
-  );
+  )
 }

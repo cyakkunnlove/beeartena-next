@@ -87,5 +87,6 @@ BEE ART ENAのセキュリティ脆弱性を発見した場合は、以下の手
 ## Contact
 
 セキュリティに関する問い合わせ:
+
 - Email: security@beeartena.com
 - 緊急時: +81-XX-XXXX-XXXX

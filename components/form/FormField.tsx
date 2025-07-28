@@ -1,29 +1,29 @@
-import React, { useState, useEffect } from 'react';
-import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react'
+import { ExclamationCircleIcon, CheckCircleIcon } from '@heroicons/react/24/outline'
 
 interface ValidationRule {
-  test: (value: string) => boolean;
-  message: string;
+  test: (value: string) => boolean
+  message: string
 }
 
 interface FormFieldProps {
-  id: string;
-  name: string;
-  label: string;
-  type?: 'text' | 'email' | 'tel' | 'password' | 'textarea' | 'select';
-  value: string;
-  onChange: (value: string) => void;
-  onBlur?: () => void;
-  placeholder?: string;
-  required?: boolean;
-  disabled?: boolean;
-  validationRules?: ValidationRule[];
-  options?: { value: string; label: string }[];
-  rows?: number;
-  autoComplete?: string;
-  showSuccess?: boolean;
-  validateOnChange?: boolean;
-  className?: string;
+  id: string
+  name: string
+  label: string
+  type?: 'text' | 'email' | 'tel' | 'password' | 'textarea' | 'select'
+  value: string
+  onChange: (value: string) => void
+  onBlur?: () => void
+  placeholder?: string
+  required?: boolean
+  disabled?: boolean
+  validationRules?: ValidationRule[]
+  options?: { value: string; label: string }[]
+  rows?: number
+  autoComplete?: string
+  showSuccess?: boolean
+  validateOnChange?: boolean
+  className?: string
 }
 
 const FormField: React.FC<FormFieldProps> = ({
@@ -45,9 +45,9 @@ const FormField: React.FC<FormFieldProps> = ({
   validateOnChange = false,
   className = '',
 }) => {
-  const [error, setError] = useState('');
-  const [touched, setTouched] = useState(false);
-  const [isValid, setIsValid] = useState(false);
+  const [error, setError] = useState('')
+  const [touched, setTouched] = useState(false)
+  const [isValid, setIsValid] = useState(false)
 
   // デフォルトのバリデーションルール
   const defaultRules: Record<string, ValidationRule[]> = {
@@ -81,59 +81,62 @@ const FormField: React.FC<FormFieldProps> = ({
         message: 'パスワードには数字を含めてください',
       },
     ],
-  };
+  }
 
-  const rules = [...(defaultRules[type] || []), ...validationRules];
+  const rules = [...(defaultRules[type] || []), ...validationRules]
 
   const validate = (val: string) => {
     if (required && !val.trim()) {
-      setError(`${label}は必須項目です`);
-      setIsValid(false);
-      return false;
+      setError(`${label}は必須項目です`)
+      setIsValid(false)
+      return false
     }
 
     for (const rule of rules) {
       if (!rule.test(val)) {
-        setError(rule.message);
-        setIsValid(false);
-        return false;
+        setError(rule.message)
+        setIsValid(false)
+        return false
       }
     }
 
-    setError('');
-    setIsValid(true);
-    return true;
-  };
+    setError('')
+    setIsValid(true)
+    return true
+  }
 
   useEffect(() => {
     if (touched && (validateOnChange || error)) {
-      validate(value);
+      validate(value)
     }
-  }, [value, touched]);
+  }, [value, touched])
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    onChange(e.target.value);
-  };
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>,
+  ) => {
+    onChange(e.target.value)
+  }
 
   const handleBlur = () => {
-    setTouched(true);
-    validate(value);
-    onBlur?.();
-  };
+    setTouched(true)
+    validate(value)
+    onBlur?.()
+  }
 
   const getFieldStyles = () => {
-    const baseStyles = 'w-full px-4 py-2 border rounded-lg transition-all duration-300 focus:ring-2 focus:outline-none';
-    
+    const baseStyles =
+      'w-full px-4 py-2 border rounded-lg transition-all duration-300 focus:ring-2 focus:outline-none'
+
     if (error && touched) {
-      return `${baseStyles} border-red-500 focus:ring-red-200 focus:border-red-500`;
+      return `${baseStyles} border-red-500 focus:ring-red-200 focus:border-red-500`
     }
-    
+
     if (isValid && showSuccess && touched && value) {
-      return `${baseStyles} border-green-500 focus:ring-green-200 focus:border-green-500`;
+      return `${baseStyles} border-green-500 focus:ring-green-200 focus:border-green-500`
     }
-    
-    return `${baseStyles} border-gray-300 focus:ring-primary/20 focus:border-primary`;
-  };
+
+    return `${baseStyles} border-gray-300 focus:ring-primary/20 focus:border-primary`
+  }
 
   const renderField = () => {
     const fieldProps = {
@@ -149,12 +152,12 @@ const FormField: React.FC<FormFieldProps> = ({
       'aria-invalid': (error && touched) as boolean,
       'aria-describedby': error && touched ? `${id}-error` : undefined,
       'aria-required': required,
-    };
+    }
 
     switch (type) {
       case 'textarea':
-        return <textarea {...fieldProps} rows={rows} />;
-      
+        return <textarea {...fieldProps} rows={rows} />
+
       case 'select':
         return (
           <select {...fieldProps}>
@@ -165,12 +168,12 @@ const FormField: React.FC<FormFieldProps> = ({
               </option>
             ))}
           </select>
-        );
-      
+        )
+
       default:
-        return <input {...fieldProps} type={type} />;
+        return <input {...fieldProps} type={type} />
     }
-  };
+  }
 
   return (
     <div className={`form-field ${className}`}>
@@ -178,10 +181,10 @@ const FormField: React.FC<FormFieldProps> = ({
         {label}
         {required && <span className="text-red-500 ml-1">*</span>}
       </label>
-      
+
       <div className="relative">
         {renderField()}
-        
+
         {/* Status Icons */}
         {touched && value && (
           <div className="absolute right-2 top-1/2 transform -translate-y-1/2 pointer-events-none">
@@ -193,14 +196,14 @@ const FormField: React.FC<FormFieldProps> = ({
           </div>
         )}
       </div>
-      
+
       {/* Error Message */}
       {error && touched && (
         <p id={`${id}-error`} className="mt-1 text-sm text-red-600" role="alert">
           {error}
         </p>
       )}
-      
+
       {/* Success Message */}
       {isValid && showSuccess && touched && value && !error && (
         <p className="mt-1 text-sm text-green-600" role="status">
@@ -208,7 +211,7 @@ const FormField: React.FC<FormFieldProps> = ({
         </p>
       )}
     </div>
-  );
-};
+  )
+}
 
-export default FormField;
+export default FormField

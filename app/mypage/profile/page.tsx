@@ -1,12 +1,12 @@
-'use client';
+'use client'
 
-import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { storageService } from '@/lib/storage/storageService';
-import { Customer } from '@/lib/types';
+import { useState, useEffect, useCallback } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
+import { Customer } from '@/lib/types'
 
 export default function ProfilePage() {
-  const { user, updateProfile } = useAuth();
+  const { user, updateProfile } = useAuth()
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -17,50 +17,52 @@ export default function ProfilePage() {
     city: '',
     street: '',
     postalCode: '',
-  });
-  const [isEditing, setIsEditing] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [message, setMessage] = useState('');
+  })
+  const [isEditing, setIsEditing] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [message, setMessage] = useState('')
 
   const loadProfile = useCallback(() => {
-    const customer = storageService.getCustomer(user!.id);
+    const customer = storageService.getCustomer(user!.id)
     setFormData({
       name: user!.name,
       email: user!.email,
       phone: user!.phone,
-      birthDate: customer?.birthDate ? new Date(customer.birthDate).toISOString().split('T')[0] : '',
+      birthDate: customer?.birthDate
+        ? new Date(customer.birthDate).toISOString().split('T')[0]
+        : '',
       gender: customer?.gender || '',
       prefecture: customer?.address?.prefecture || '',
       city: customer?.address?.city || '',
       street: customer?.address?.street || '',
       postalCode: customer?.address?.postalCode || '',
-    });
-  }, [user]);
+    })
+  }, [user])
 
   useEffect(() => {
     if (user) {
-      loadProfile();
+      loadProfile()
     }
-  }, [user, loadProfile]);
+  }, [user, loadProfile])
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [e.target.name]: e.target.value,
-    }));
-  };
+    }))
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSaving(true);
-    setMessage('');
+    e.preventDefault()
+    setIsSaving(true)
+    setMessage('')
 
     try {
       // Update auth profile
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
-      });
+      })
 
       // Update customer profile
       const customerUpdate: Partial<Customer> = {
@@ -74,24 +76,24 @@ export default function ProfilePage() {
           street: formData.street,
           postalCode: formData.postalCode,
         },
-      };
+      }
 
-      storageService.updateCustomer(user!.id, customerUpdate);
-      
-      setMessage('プロフィールを更新しました');
-      setIsEditing(false);
+      storageService.updateCustomer(user!.id, customerUpdate)
+
+      setMessage('プロフィールを更新しました')
+      setIsEditing(false)
     } catch (error) {
-      setMessage('更新に失敗しました');
+      setMessage('更新に失敗しました')
     } finally {
-      setIsSaving(false);
+      setIsSaving(false)
     }
-  };
+  }
 
   const handleCancel = () => {
-    loadProfile();
-    setIsEditing(false);
-    setMessage('');
-  };
+    loadProfile()
+    setIsEditing(false)
+    setMessage('')
+  }
 
   return (
     <div className="space-y-6">
@@ -99,19 +101,18 @@ export default function ProfilePage() {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">プロフィール</h1>
           {!isEditing && (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="btn btn-primary"
-            >
+            <button onClick={() => setIsEditing(true)} className="btn btn-primary">
               編集する
             </button>
           )}
         </div>
 
         {message && (
-          <div className={`mb-4 p-4 rounded-lg ${
-            message.includes('失敗') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
-          }`}>
+          <div
+            className={`mb-4 p-4 rounded-lg ${
+              message.includes('失敗') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+            }`}
+          >
             {message}
           </div>
         )}
@@ -180,7 +181,9 @@ export default function ProfilePage() {
                   disabled={true}
                   className="input-field disabled:bg-gray-50"
                 />
-                <p className="text-xs text-gray-500 mt-1">※生年月日の変更はサポートにお問い合わせください</p>
+                <p className="text-xs text-gray-500 mt-1">
+                  ※生年月日の変更はサポートにお問い合わせください
+                </p>
               </div>
 
               <div className="input-group">
@@ -283,11 +286,7 @@ export default function ProfilePage() {
               >
                 {isSaving ? '保存中...' : '保存する'}
               </button>
-              <button
-                type="button"
-                onClick={handleCancel}
-                className="btn btn-secondary"
-              >
+              <button type="button" onClick={handleCancel} className="btn btn-secondary">
                 キャンセル
               </button>
             </div>
@@ -299,16 +298,12 @@ export default function ProfilePage() {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h2 className="text-lg font-semibold mb-4">アカウント設定</h2>
         <div className="space-y-4">
-          <button className="text-primary hover:text-dark-gold">
-            パスワードを変更
-          </button>
+          <button className="text-primary hover:text-dark-gold">パスワードを変更</button>
           <div className="pt-4 border-t">
-            <button className="text-red-600 hover:text-red-700">
-              アカウントを削除
-            </button>
+            <button className="text-red-600 hover:text-red-700">アカウントを削除</button>
           </div>
         </div>
       </div>
     </div>
-  );
+  )
 }

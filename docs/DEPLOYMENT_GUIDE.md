@@ -2,7 +2,8 @@
 
 ## 概要
 
-このガイドでは、BEE ART ENAプロジェクトを本番環境にデプロイする手順を説明します。Vercelを使用した自動デプロイメントと、各種環境設定について詳しく解説します。
+このガイドでは、BEE ART
+ENAプロジェクトを本番環境にデプロイする手順を説明します。Vercelを使用した自動デプロイメントと、各種環境設定について詳しく解説します。
 
 ## デプロイメントアーキテクチャ
 
@@ -293,13 +294,13 @@ npm install @sentry/nextjs
 `sentry.client.config.js`:
 
 ```javascript
-import * as Sentry from '@sentry/nextjs';
+import * as Sentry from '@sentry/nextjs'
 
 Sentry.init({
   dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
   environment: process.env.NODE_ENV,
   tracesSampleRate: 0.1,
-});
+})
 ```
 
 ### 9. バックアップとリカバリー

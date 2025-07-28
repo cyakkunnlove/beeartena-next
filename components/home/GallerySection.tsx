@@ -1,9 +1,9 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
-import SlideTransition from '@/components/layout/SlideTransition';
+import { useState, useEffect } from 'react'
+import Image from 'next/image'
+import { motion, AnimatePresence } from 'framer-motion'
+import SlideTransition from '@/components/layout/SlideTransition'
 
 // Instagram機能は実装しないため、デモギャラリーを表示
 const demoImages = [
@@ -13,47 +13,47 @@ const demoImages = [
   { id: 4, src: '/images/topimageafter.png', caption: '自然な仕上がり' },
   { id: 5, src: '/images/2D.jpg', caption: '美しい眉ライン' },
   { id: 6, src: '/images/3D.jpg', caption: '立体的な仕上がり' },
-];
+]
 
 export default function GallerySection() {
-  const [mounted, setMounted] = useState(false);
-  const [selectedImage, setSelectedImage] = useState<typeof demoImages[0] | null>(null);
-  const [touchStart, setTouchStart] = useState<number | null>(null);
-  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const [mounted, setMounted] = useState(false)
+  const [selectedImage, setSelectedImage] = useState<(typeof demoImages)[0] | null>(null)
+  const [touchStart, setTouchStart] = useState<number | null>(null)
+  const [touchEnd, setTouchEnd] = useState<number | null>(null)
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
+    setMounted(true)
+  }, [])
 
-  const minSwipeDistance = 50;
+  const minSwipeDistance = 50
 
   const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null);
-    setTouchStart(e.targetTouches[0].clientX);
-  };
+    setTouchEnd(null)
+    setTouchStart(e.targetTouches[0].clientX)
+  }
 
   const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX);
-  };
+    setTouchEnd(e.targetTouches[0].clientX)
+  }
 
   const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return;
-    
-    const distance = touchStart - touchEnd;
-    const isLeftSwipe = distance > minSwipeDistance;
-    const isRightSwipe = distance < -minSwipeDistance;
+    if (!touchStart || !touchEnd) return
+
+    const distance = touchStart - touchEnd
+    const isLeftSwipe = distance > minSwipeDistance
+    const isRightSwipe = distance < -minSwipeDistance
 
     if (selectedImage && (isLeftSwipe || isRightSwipe)) {
-      const currentIndex = demoImages.findIndex(img => img.id === selectedImage.id);
+      const currentIndex = demoImages.findIndex((img) => img.id === selectedImage.id)
       if (isLeftSwipe && currentIndex < demoImages.length - 1) {
-        setSelectedImage(demoImages[currentIndex + 1]);
+        setSelectedImage(demoImages[currentIndex + 1])
       } else if (isRightSwipe && currentIndex > 0) {
-        setSelectedImage(demoImages[currentIndex - 1]);
+        setSelectedImage(demoImages[currentIndex - 1])
       }
     }
-  };
+  }
 
-  if (!mounted) return null;
+  if (!mounted) return null
 
   return (
     <section id="gallery" className="py-20 bg-white">
@@ -63,7 +63,7 @@ export default function GallerySection() {
           <p className="section-subtitle">実際の施術例をご覧ください</p>
         </SlideTransition>
 
-        <motion.div 
+        <motion.div
           className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 mb-8"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -80,12 +80,7 @@ export default function GallerySection() {
               className="relative aspect-square overflow-hidden rounded-lg shadow-lg cursor-pointer"
               onClick={() => setSelectedImage(image)}
             >
-              <Image
-                src={image.src}
-                alt={image.caption}
-                fill
-                className="object-cover"
-              />
+              <Image src={image.src} alt={image.caption} fill className="object-cover" />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 opacity-0 hover:opacity-100 transition-opacity duration-300">
                 <p className="absolute bottom-2 left-2 right-2 text-white text-xs md:text-sm">
                   {image.caption}
@@ -128,7 +123,7 @@ export default function GallerySection() {
             >
               ×
             </button>
-            
+
             <motion.div
               key={selectedImage.id}
               initial={{ scale: 0.8, opacity: 0 }}
@@ -146,9 +141,7 @@ export default function GallerySection() {
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
                 <p className="text-white text-lg text-center">{selectedImage.caption}</p>
-                <p className="text-white/60 text-sm text-center mt-2">
-                  スワイプで次の画像へ
-                </p>
+                <p className="text-white/60 text-sm text-center mt-2">スワイプで次の画像へ</p>
               </div>
             </motion.div>
 
@@ -161,8 +154,8 @@ export default function GallerySection() {
                     selectedImage.id === img.id ? 'bg-white w-6' : 'bg-white/50'
                   }`}
                   onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedImage(img);
+                    e.stopPropagation()
+                    setSelectedImage(img)
                   }}
                 />
               ))}
@@ -171,5 +164,5 @@ export default function GallerySection() {
         )}
       </AnimatePresence>
     </section>
-  );
+  )
 }

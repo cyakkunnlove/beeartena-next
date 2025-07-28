@@ -1,86 +1,86 @@
-'use client';
+'use client'
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { apiClient } from '@/lib/api/client';
-import { reservationService } from '@/lib/reservationService';
-import Calendar from '@/components/reservation/Calendar';
-import TimeSlots from '@/components/reservation/TimeSlots';
-import ServiceSelection from '@/components/reservation/ServiceSelection';
-import ReservationForm from '@/components/reservation/ReservationForm';
-import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo';
-import { motion, AnimatePresence } from 'framer-motion';
-import { reservationStorage } from '@/lib/utils/reservationStorage';
+import { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { apiClient } from '@/lib/api/client'
+import { reservationService } from '@/lib/reservationService'
+import Calendar from '@/components/reservation/Calendar'
+import TimeSlots from '@/components/reservation/TimeSlots'
+import ServiceSelection from '@/components/reservation/ServiceSelection'
+import ReservationForm from '@/components/reservation/ReservationForm'
+import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
+import { motion, AnimatePresence } from 'framer-motion'
+import { reservationStorage } from '@/lib/utils/reservationStorage'
 
 function ReservationContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user } = useAuth();
-  const [step, setStep] = useState(1);
-  const [selectedService, setSelectedService] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedTime, setSelectedTime] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [pointsToUse, setPointsToUse] = useState(0);
-  const [shouldAutoSubmit, setShouldAutoSubmit] = useState(false);
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const { user } = useAuth()
+  const [step, setStep] = useState(1)
+  const [selectedService, setSelectedService] = useState('')
+  const [selectedDate, setSelectedDate] = useState('')
+  const [selectedTime, setSelectedTime] = useState('')
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [pointsToUse, setPointsToUse] = useState(0)
+  const [shouldAutoSubmit, setShouldAutoSubmit] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
     phone: '',
     notes: '',
-  });
+  })
 
   const serviceData = {
     '2D': { name: '2D眉毛', price: 30000 },
     '3D': { name: '3D眉毛', price: 50000 },
     '4D': { name: '4D眉毛', price: 70000 },
-  };
+  }
 
   // 会員登録から戻ってきた場合、保存した予約情報を復元
   useEffect(() => {
     if (searchParams.get('from') === 'register') {
-      const savedReservation = reservationStorage.get();
+      const savedReservation = reservationStorage.get()
       if (savedReservation) {
-        setSelectedService(savedReservation.serviceId);
-        setSelectedDate(savedReservation.date);
-        setSelectedTime(savedReservation.time);
-        setFormData(savedReservation.formData);
-        setStep(savedReservation.step || 4); // 保存されたステップまたは確認画面へ
+        setSelectedService(savedReservation.serviceId)
+        setSelectedDate(savedReservation.date)
+        setSelectedTime(savedReservation.time)
+        setFormData(savedReservation.formData)
+        setStep(savedReservation.step || 4) // 保存されたステップまたは確認画面へ
         if (savedReservation.pointsToUse !== undefined) {
-          setPointsToUse(savedReservation.pointsToUse);
+          setPointsToUse(savedReservation.pointsToUse)
         }
-        
+
         // 予約確定ボタンを押していた場合は、自動的に予約処理を実行
         if (savedReservation.isReadyToSubmit && user) {
-          reservationStorage.clear(); // 先にクリア
-          handleFormSubmit(savedReservation.formData);
+          reservationStorage.clear() // 先にクリア
+          handleFormSubmit(savedReservation.formData)
         } else {
           // データ復元後はクリア
-          reservationStorage.clear();
+          reservationStorage.clear()
         }
       }
     }
-  }, [searchParams, user]);
+  }, [searchParams, user])
 
   const handleServiceSelect = (service: string) => {
-    setSelectedService(service);
-    setStep(2);
-  };
+    setSelectedService(service)
+    setStep(2)
+  }
 
   const handleDateSelect = (date: string) => {
-    setSelectedDate(date);
-    setStep(3);
-  };
+    setSelectedDate(date)
+    setStep(3)
+  }
 
   const handleTimeSelect = (time: string) => {
-    setSelectedTime(time);
-    setStep(4);
-  };
+    setSelectedTime(time)
+    setStep(4)
+  }
 
   const handleFormSubmit = async (data: any) => {
-    setFormData(data);
-    setIsSubmitting(true);
+    setFormData(data)
+    setIsSubmitting(true)
 
     // 未ログインユーザーの場合
     if (!user) {
@@ -94,16 +94,16 @@ function ReservationContent() {
         step: 4, // 予約確認画面のステップ
         pointsToUse: pointsToUse,
         isReadyToSubmit: true, // 予約確定ボタンを押した状態
-      });
-      
+      })
+
       // 会員登録ページへリダイレクト
-      router.push('/register?reservation=true');
-      return;
+      router.push('/register?reservation=true')
+      return
     }
 
     try {
-      const service = serviceData[selectedService as keyof typeof serviceData];
-      const finalPrice = service.price - pointsToUse;
+      const service = serviceData[selectedService as keyof typeof serviceData]
+      const finalPrice = service.price - pointsToUse
 
       const reservationData = {
         serviceType: selectedService as '2D' | '3D' | '4D',
@@ -118,42 +118,45 @@ function ReservationContent() {
         notes: formData.notes,
         status: 'pending' as const,
         updatedAt: new Date(),
-      };
+      }
 
       // Firebaseに直接保存
-      await reservationService.createReservation(reservationData);
+      await reservationService.createReservation(reservationData)
 
       // ポイント使用の記録
       if (user && pointsToUse > 0) {
-        const updatedUser = { ...user, points: (user.points || 0) - pointsToUse };
-        localStorage.setItem('users', JSON.stringify(
-          JSON.parse(localStorage.getItem('users') || '[]').map((u: any) =>
-            u.id === user.id ? updatedUser : u
-          )
-        ));
+        const updatedUser = { ...user, points: (user.points || 0) - pointsToUse }
+        localStorage.setItem(
+          'users',
+          JSON.stringify(
+            JSON.parse(localStorage.getItem('users') || '[]').map((u: any) =>
+              u.id === user.id ? updatedUser : u,
+            ),
+          ),
+        )
       }
 
-      router.push('/reservation/complete');
+      router.push('/reservation/complete')
     } catch (error) {
-      console.error('Failed to create reservation:', error);
-      alert('予約の作成に失敗しました。もう一度お試しください。');
+      console.error('Failed to create reservation:', error)
+      alert('予約の作成に失敗しました。もう一度お試しください。')
     } finally {
-      setIsSubmitting(false);
+      setIsSubmitting(false)
     }
-  };
+  }
 
   const handleBack = () => {
     if (step > 1) {
-      setStep(step - 1);
+      setStep(step - 1)
     }
-  };
+  }
 
   const stepTitles = {
     1: 'サービス選択',
     2: '日付選択',
     3: '時間選択',
     4: '予約情報入力',
-  };
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -163,9 +166,7 @@ function ReservationContent() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">予約フォーム</h1>
-              <span className="text-sm text-gray-600">
-                ステップ {step} / 4
-              </span>
+              <span className="text-sm text-gray-600">ステップ {step} / 4</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
@@ -194,10 +195,7 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <ServiceSelection
-                    onSelect={handleServiceSelect}
-                    selected={selectedService}
-                  />
+                  <ServiceSelection onSelect={handleServiceSelect} selected={selectedService} />
                 </motion.div>
               )}
 
@@ -208,10 +206,7 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <Calendar
-                    onSelect={handleDateSelect}
-                    selected={selectedDate}
-                  />
+                  <Calendar onSelect={handleDateSelect} selected={selectedDate} />
                 </motion.div>
               )}
 
@@ -264,7 +259,7 @@ function ReservationContent() {
         </div>
       </div>
     </div>
-  );
+  )
 }
 
 export default function ReservationPage() {
@@ -272,5 +267,5 @@ export default function ReservationPage() {
     <Suspense fallback={<div>Loading...</div>}>
       <ReservationContent />
     </Suspense>
-  );
+  )
 }

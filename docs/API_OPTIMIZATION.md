@@ -2,7 +2,8 @@
 
 ## 概要
 
-このドキュメントは、BEE ART ENAプロジェクトのバックエンドAPIの最適化実装について説明します。
+このドキュメントは、BEE ART
+ENAプロジェクトのバックエンドAPIの最適化実装について説明します。
 
 ## 主な最適化内容
 
@@ -18,15 +19,15 @@ export const { GET, POST } = createApiHandler(
   {
     GET: async (req) => {
       // ハンドラーロジック
-      return apiSuccess(data);
-    }
+      return apiSuccess(data)
+    },
   },
   {
     auth: true,
     rateLimit: { limit: 100, window: 60 },
-    validation: { query: schema }
-  }
-);
+    validation: { query: schema },
+  },
+)
 ```
 
 ### 2. レート制限の実装
@@ -37,7 +38,7 @@ export const { GET, POST } = createApiHandler(
 
 ```typescript
 // 使用例
-rateLimit: { 
+rateLimit: {
   limit: 100,  // 100リクエスト
   window: 60   // 60秒間
 }
@@ -51,9 +52,9 @@ rateLimit: {
 
 ```typescript
 // 使用例
-const cached = await cache.get('key');
-await cache.set('key', data, 300, { tags: ['users'] });
-await cache.invalidateByTag('users');
+const cached = await cache.get('key')
+await cache.set('key', data, 300, { tags: ['users'] })
+await cache.invalidateByTag('users')
 ```
 
 ### 4. データベースクエリの最適化
@@ -64,12 +65,12 @@ await cache.invalidateByTag('users');
 
 ```typescript
 // 使用例
-const user = await userRepository.findById('123');
+const user = await userRepository.findById('123')
 const users = await userRepository.find({
   where: [{ field: 'role', operator: '==', value: 'customer' }],
   orderBy: [{ field: 'createdAt', direction: 'desc' }],
-  limit: 20
-});
+  limit: 20,
+})
 ```
 
 ### 5. 非同期処理とキューイング
@@ -80,13 +81,17 @@ const users = await userRepository.find({
 
 ```typescript
 // 使用例
-await queue.add('send_email', {
-  to: 'user@example.com',
-  subject: '予約確認'
-}, {
-  priority: 10,
-  delay: 5000 // 5秒後に実行
-});
+await queue.add(
+  'send_email',
+  {
+    to: 'user@example.com',
+    subject: '予約確認',
+  },
+  {
+    priority: 10,
+    delay: 5000, // 5秒後に実行
+  },
+)
 ```
 
 ### 6. APIドキュメント（OpenAPI/Swagger）
@@ -109,7 +114,7 @@ await queue.add('send_email', {
 
 ```typescript
 // 使用例
-await webhookService.sendReservationCreated(reservation);
+await webhookService.sendReservationCreated(reservation)
 ```
 
 ## 環境変数

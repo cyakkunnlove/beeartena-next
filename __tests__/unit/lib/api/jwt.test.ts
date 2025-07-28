@@ -24,7 +24,7 @@ describe('JWT utilities', () => {
   describe('signJWT', () => {
     it('should sign a JWT token with payload', async () => {
       const token = await signJWT(mockPayload)
-      
+
       expect(token).toBe('mock-token')
       expect(SignJWT).toHaveBeenCalledWith(mockPayload)
     })
@@ -32,7 +32,7 @@ describe('JWT utilities', () => {
     it('should set correct headers and expiration', async () => {
       const mockSignJWT = new SignJWT(mockPayload)
       await signJWT(mockPayload)
-      
+
       expect(mockSignJWT.setProtectedHeader).toHaveBeenCalledWith({ alg: 'HS256' })
       expect(mockSignJWT.setExpirationTime).toHaveBeenCalledWith('24h')
       expect(mockSignJWT.setIssuedAt).toHaveBeenCalled()
@@ -41,11 +41,9 @@ describe('JWT utilities', () => {
 
     it('should use JWT_SECRET from environment', async () => {
       await signJWT(mockPayload)
-      
+
       const mockSignJWT = new SignJWT(mockPayload)
-      expect(mockSignJWT.sign).toHaveBeenCalledWith(
-        expect.any(Uint8Array)
-      )
+      expect(mockSignJWT.sign).toHaveBeenCalledWith(expect.any(Uint8Array))
     })
   })
 
@@ -55,27 +53,24 @@ describe('JWT utilities', () => {
         payload: { userId: 'user123', email: 'test@example.com' },
         protectedHeader: { alg: 'HS256' },
       }
-      
+
       ;(jwtVerify as jest.Mock).mockResolvedValue(mockVerifiedPayload)
-      
+
       const result = await verifyJWT('valid-token')
-      
+
       expect(result).toEqual(mockVerifiedPayload.payload)
-      expect(jwtVerify).toHaveBeenCalledWith(
-        'valid-token',
-        expect.any(Uint8Array)
-      )
+      expect(jwtVerify).toHaveBeenCalledWith('valid-token', expect.any(Uint8Array))
     })
 
     it('should throw error for invalid token', async () => {
       ;(jwtVerify as jest.Mock).mockRejectedValue(new Error('Invalid token'))
-      
+
       await expect(verifyJWT('invalid-token')).rejects.toThrow('Invalid token')
     })
 
     it('should throw error for expired token', async () => {
       ;(jwtVerify as jest.Mock).mockRejectedValue(new Error('Token expired'))
-      
+
       await expect(verifyJWT('expired-token')).rejects.toThrow('Token expired')
     })
   })

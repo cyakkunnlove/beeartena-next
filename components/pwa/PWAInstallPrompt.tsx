@@ -1,83 +1,83 @@
-'use client';
+'use client'
 
-import React, { useState, useEffect } from 'react';
-import { XMarkIcon, PlusCircleIcon } from '@heroicons/react/24/outline';
+import React, { useState, useEffect } from 'react'
+import { XMarkIcon, PlusCircleIcon } from '@heroicons/react/24/outline'
 
 interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
 const PWAInstallPrompt: React.FC = () => {
-  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [showPrompt, setShowPrompt] = useState(false);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
+  const [showPrompt, setShowPrompt] = useState(false)
+  const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
-      return;
+      setIsInstalled(true)
+      return
     }
 
     // Check localStorage to see if user dismissed the prompt
-    const dismissed = localStorage.getItem('pwa-install-dismissed');
+    const dismissed = localStorage.getItem('pwa-install-dismissed')
     if (dismissed === 'true') {
-      return;
+      return
     }
 
     const handleBeforeInstallPrompt = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e as BeforeInstallPromptEvent);
-      
+      e.preventDefault()
+      setDeferredPrompt(e as BeforeInstallPromptEvent)
+
       // Show prompt after 30 seconds
       setTimeout(() => {
-        setShowPrompt(true);
-      }, 30000);
-    };
+        setShowPrompt(true)
+      }, 30000)
+    }
 
     const handleAppInstalled = () => {
-      setIsInstalled(true);
-      setShowPrompt(false);
-      setDeferredPrompt(null);
-    };
+      setIsInstalled(true)
+      setShowPrompt(false)
+      setDeferredPrompt(null)
+    }
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-    window.addEventListener('appinstalled', handleAppInstalled);
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+    window.addEventListener('appinstalled', handleAppInstalled)
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('appinstalled', handleAppInstalled);
-    };
-  }, []);
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
+      window.removeEventListener('appinstalled', handleAppInstalled)
+    }
+  }, [])
 
   const handleInstall = async () => {
-    if (!deferredPrompt) return;
+    if (!deferredPrompt) return
 
     try {
-      await deferredPrompt.prompt();
-      const { outcome } = await deferredPrompt.userChoice;
-      
+      await deferredPrompt.prompt()
+      const { outcome } = await deferredPrompt.userChoice
+
       if (outcome === 'accepted') {
-        console.log('User accepted the install prompt');
+        console.log('User accepted the install prompt')
       } else {
-        console.log('User dismissed the install prompt');
+        console.log('User dismissed the install prompt')
       }
-      
-      setDeferredPrompt(null);
-      setShowPrompt(false);
+
+      setDeferredPrompt(null)
+      setShowPrompt(false)
     } catch (error) {
-      console.error('Error installing PWA:', error);
+      console.error('Error installing PWA:', error)
     }
-  };
+  }
 
   const handleDismiss = () => {
-    setShowPrompt(false);
-    localStorage.setItem('pwa-install-dismissed', 'true');
-  };
+    setShowPrompt(false)
+    localStorage.setItem('pwa-install-dismissed', 'true')
+  }
 
   if (!showPrompt || isInstalled || !deferredPrompt) {
-    return null;
+    return null
   }
 
   return (
@@ -86,15 +86,13 @@ const PWAInstallPrompt: React.FC = () => {
         <div className="flex-shrink-0">
           <PlusCircleIcon className="w-8 h-8 text-primary" />
         </div>
-        
+
         <div className="flex-1">
-          <h3 className="text-lg font-semibold text-gray-900 mb-1">
-            アプリをインストール
-          </h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-1">アプリをインストール</h3>
           <p className="text-sm text-gray-600 mb-3">
             BEE ART ENAをホーム画面に追加して、より快適にご利用いただけます
           </p>
-          
+
           <div className="flex gap-2">
             <button
               onClick={handleInstall}
@@ -112,7 +110,7 @@ const PWAInstallPrompt: React.FC = () => {
             </button>
           </div>
         </div>
-        
+
         <button
           onClick={handleDismiss}
           className="flex-shrink-0 text-gray-400 hover:text-gray-600 transition-colors"
@@ -122,13 +120,13 @@ const PWAInstallPrompt: React.FC = () => {
         </button>
       </div>
     </div>
-  );
-};
+  )
+}
 
 // Service Worker Registration Hook
 export const useServiceWorker = () => {
-  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
-  const [updateAvailable, setUpdateAvailable] = useState(false);
+  const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null)
+  const [updateAvailable, setUpdateAvailable] = useState(false)
 
   useEffect(() => {
     if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
@@ -136,42 +134,42 @@ export const useServiceWorker = () => {
       navigator.serviceWorker
         .register('/sw.js')
         .then((reg) => {
-          setRegistration(reg);
-          
+          setRegistration(reg)
+
           // Check for updates
           reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing;
+            const newWorker = reg.installing
             if (newWorker) {
               newWorker.addEventListener('statechange', () => {
                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setUpdateAvailable(true);
+                  setUpdateAvailable(true)
                 }
-              });
+              })
             }
-          });
+          })
         })
         .catch((error) => {
-          console.error('Service Worker registration failed:', error);
-        });
+          console.error('Service Worker registration failed:', error)
+        })
 
       // Handle controller change
-      let refreshing = false;
+      let refreshing = false
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (!refreshing) {
-          refreshing = true;
-          window.location.reload();
+          refreshing = true
+          window.location.reload()
         }
-      });
+      })
     }
-  }, []);
+  }, [])
 
   const updateServiceWorker = () => {
     if (registration && registration.waiting) {
-      registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+      registration.waiting.postMessage({ type: 'SKIP_WAITING' })
     }
-  };
+  }
 
-  return { registration, updateAvailable, updateServiceWorker };
-};
+  return { registration, updateAvailable, updateServiceWorker }
+}
 
-export default PWAInstallPrompt;
+export default PWAInstallPrompt

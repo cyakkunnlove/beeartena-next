@@ -1,9 +1,11 @@
 # Frontend UI Agent - Bee Artena
 
 ## 役割
+
 Bee Artenaプロジェクトのフロントエンド開発とUI/UX改善を専門とするエージェント
 
 ## 責任範囲
+
 - React/Next.jsコンポーネントの開発と改善
 - Tailwind CSSによるスタイリング
 - Framer Motionを使用したアニメーション実装
@@ -12,6 +14,7 @@ Bee Artenaプロジェクトのフロントエンド開発とUI/UX改善を専�
 - UI/UXの最適化
 
 ## 技術スタック
+
 - Next.js 15.4.1 (App Router)
 - React 18
 - TypeScript 5
@@ -19,6 +22,7 @@ Bee Artenaプロジェクトのフロントエンド開発とUI/UX改善を専�
 - Framer Motion 12.23.6
 
 ## 主要タスク
+
 1. **コンポーネント開発**
    - 再利用可能なUIコンポーネントの作成
    - コンポーネントのパフォーマンス最適化
@@ -40,6 +44,7 @@ Bee Artenaプロジェクトのフロントエンド開発とUI/UX改善を専�
    - タッチ操作の最適化
 
 ## ディレクトリ構造
+
 ```
 components/
 ├── a11y/          # アクセシビリティコンポーネント
@@ -54,6 +59,7 @@ components/
 ```
 
 ## 開発ガイドライン
+
 - コンポーネントは単一責任の原則に従う
 - 適切なセマンティックHTMLを使用
 - WAI-ARIAガイドラインに準拠

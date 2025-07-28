@@ -1,25 +1,25 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { motion } from 'framer-motion';
-import { useAuth } from '@/lib/auth/AuthContext';
+import Link from 'next/link'
+import { usePathname } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { useAuth } from '@/lib/auth/AuthContext'
 
 export default function BottomNav() {
-  const pathname = usePathname();
-  const { user } = useAuth();
+  const pathname = usePathname()
+  const { user } = useAuth()
 
   const navItems = [
     { href: '/', icon: '🏠', label: 'ホーム' },
     { href: '/reservation', icon: '📅', label: '予約' },
     { href: '/pricing', icon: '💰', label: '料金' },
-    user 
+    user
       ? { href: '/mypage', icon: '👤', label: 'マイページ' }
       : { href: '/login', icon: '👤', label: 'ログイン' },
-  ];
+  ]
 
   return (
-    <motion.nav 
+    <motion.nav
       className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 pb-safe md:hidden z-40"
       initial={{ y: 100 }}
       animate={{ y: 0 }}
@@ -27,7 +27,7 @@ export default function BottomNav() {
     >
       <div className="flex justify-around items-center h-16">
         {navItems.map((item) => {
-          const isActive = pathname === item.href;
+          const isActive = pathname === item.href
           return (
             <Link
               key={item.href}
@@ -51,9 +51,9 @@ export default function BottomNav() {
                 <span className="text-xs">{item.label}</span>
               </motion.div>
             </Link>
-          );
+          )
         })}
       </div>
     </motion.nav>
-  );
+  )
 }

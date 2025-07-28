@@ -1,167 +1,182 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter, useParams } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { storageService } from '@/lib/storage/storageService';
-import { Customer, Reservation, PointTransaction, User } from '@/lib/types';
-import { ChevronLeftIcon } from '@heroicons/react/24/outline';
-import DatePicker from '@/components/ui/DatePicker';
-import { userService } from '@/lib/firebase/users';
-import { mockUserService } from '@/lib/mock/mockFirebase';
+import { useEffect, useState } from 'react'
+import { useRouter, useParams } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
+import { Customer, Reservation, PointTransaction, User } from '@/lib/types'
+import { ChevronLeftIcon } from '@heroicons/react/24/outline'
+import DatePicker from '@/components/ui/DatePicker'
+import { userService } from '@/lib/firebase/users'
+import { mockUserService } from '@/lib/mock/mockFirebase'
 
 export default function CustomerDetailPage() {
-  const router = useRouter();
-  const params = useParams();
-  const { user } = useAuth();
-  const [customer, setCustomer] = useState<Customer | null>(null);
-  const [userRecord, setUserRecord] = useState<User | null>(null);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [pointHistory, setPointHistory] = useState<PointTransaction[]>([]);
-  const [notes, setNotes] = useState('');
-  const [editingNotes, setEditingNotes] = useState(false);
-  const [selectedTier, setSelectedTier] = useState('');
-  const [activeTab, setActiveTab] = useState<'reservations' | 'points'>('reservations');
-  const [editingBirthday, setEditingBirthday] = useState(false);
-  const [birthday, setBirthday] = useState('');
+  const router = useRouter()
+  const params = useParams()
+  const { user } = useAuth()
+  const [customer, setCustomer] = useState<Customer | null>(null)
+  const [userRecord, setUserRecord] = useState<User | null>(null)
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [pointHistory, setPointHistory] = useState<PointTransaction[]>([])
+  const [notes, setNotes] = useState('')
+  const [editingNotes, setEditingNotes] = useState(false)
+  const [selectedTier, setSelectedTier] = useState('')
+  const [activeTab, setActiveTab] = useState<'reservations' | 'points'>('reservations')
+  const [editingBirthday, setEditingBirthday] = useState(false)
+  const [birthday, setBirthday] = useState('')
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/admin');
-      return;
+      router.push('/admin')
+      return
     }
 
     if (params.id) {
-      loadCustomerData(params.id as string);
+      loadCustomerData(params.id as string)
     }
-  }, [user, router, params.id]);
+  }, [user, router, params.id])
 
   const loadCustomerData = async (customerId: string) => {
     // 顧客情報を取得
-    const allCustomers = storageService.getAllCustomers();
-    const customerData = allCustomers.find(c => c.id === customerId);
-    
+    const allCustomers = storageService.getAllCustomers()
+    const customerData = allCustomers.find((c) => c.id === customerId)
+
     if (!customerData) {
-      router.push('/admin/customers');
-      return;
+      router.push('/admin/customers')
+      return
     }
-    
-    setCustomer(customerData);
-    setNotes(customerData.notes || '');
-    setSelectedTier(customerData.tier || 'bronze');
-    
+
+    setCustomer(customerData)
+    setNotes(customerData.notes || '')
+    setSelectedTier(customerData.tier || 'bronze')
+
     // Userレコードも取得（生年月日情報のため）
     try {
-      const isFirebaseConfigured = false; // 現在はモックを使用
-      let userData: User | null;
+      const isFirebaseConfigured = false // 現在はモックを使用
+      let userData: User | null
       if (isFirebaseConfigured) {
-        userData = await userService.getUser(customerId);
+        userData = await userService.getUser(customerId)
       } else {
-        userData = await mockUserService.getUser(customerId);
+        userData = await mockUserService.getUser(customerId)
       }
       if (userData) {
-        setUserRecord(userData);
-        setBirthday(userData.birthday || '');
+        setUserRecord(userData)
+        setBirthday(userData.birthday || '')
       }
     } catch (error) {
-      console.error('Failed to load user data:', error);
+      console.error('Failed to load user data:', error)
     }
-    
+
     // 予約履歴を取得
-    const allReservations = JSON.parse(localStorage.getItem('reservations') || '[]');
+    const allReservations = JSON.parse(localStorage.getItem('reservations') || '[]')
     const customerReservations = allReservations
       .filter((r: any) => r.customerId === customerId)
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    setReservations(customerReservations);
-    
+      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    setReservations(customerReservations)
+
     // ポイント履歴を取得
-    const allPoints = JSON.parse(localStorage.getItem('points') || '[]');
+    const allPoints = JSON.parse(localStorage.getItem('points') || '[]')
     const customerPoints = allPoints
       .filter((p: any) => p.userId === customerId)
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    setPointHistory(customerPoints);
-  };
-
-  const handleNotesUpdate = () => {
-    if (!customer) return;
-    
-    const updatedCustomer = { ...customer, notes };
-    storageService.updateCustomer(customer.id, updatedCustomer);
-    setCustomer(updatedCustomer);
-    setEditingNotes(false);
-  };
-
-  const handleTierUpdate = () => {
-    if (!customer) return;
-    
-    const updatedCustomer = { ...customer, tier: selectedTier as any };
-    storageService.updateCustomer(customer.id, updatedCustomer);
-    setCustomer(updatedCustomer);
-  };
-
-  const handleBirthdayUpdate = async () => {
-    if (!customer || !userRecord) return;
-    
-    try {
-      const isFirebaseConfigured = false; // 現在はモックを使用
-      if (isFirebaseConfigured) {
-        await userService.updateUser(customer.id, { birthday });
-      } else {
-        await mockUserService.updateUser(customer.id, { birthday });
-      }
-      
-      setUserRecord({ ...userRecord, birthday });
-      setEditingBirthday(false);
-    } catch (error) {
-      console.error('Failed to update birthday:', error);
-      alert('生年月日の更新に失敗しました');
-    }
-  };
-
-  const calculateStats = () => {
-    const completedReservations = reservations.filter(r => r.status === 'completed');
-    const totalSpent = completedReservations.reduce((sum, r) => sum + (r.price || 0), 0);
-    const visitCount = completedReservations.length;
-    const averageSpent = visitCount > 0 ? Math.round(totalSpent / visitCount) : 0;
-    
-    return { totalSpent, visitCount, averageSpent };
-  };
-
-  if (!user || user.role !== 'admin' || !customer) {
-    return null;
+      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    setPointHistory(customerPoints)
   }
 
-  const stats = calculateStats();
+  const handleNotesUpdate = () => {
+    if (!customer) return
+
+    const updatedCustomer = { ...customer, notes }
+    storageService.updateCustomer(customer.id, updatedCustomer)
+    setCustomer(updatedCustomer)
+    setEditingNotes(false)
+  }
+
+  const handleTierUpdate = () => {
+    if (!customer) return
+
+    const updatedCustomer = { ...customer, tier: selectedTier as any }
+    storageService.updateCustomer(customer.id, updatedCustomer)
+    setCustomer(updatedCustomer)
+  }
+
+  const handleBirthdayUpdate = async () => {
+    if (!customer || !userRecord) return
+
+    try {
+      const isFirebaseConfigured = false // 現在はモックを使用
+      if (isFirebaseConfigured) {
+        await userService.updateUser(customer.id, { birthday })
+      } else {
+        await mockUserService.updateUser(customer.id, { birthday })
+      }
+
+      setUserRecord({ ...userRecord, birthday })
+      setEditingBirthday(false)
+    } catch (error) {
+      console.error('Failed to update birthday:', error)
+      alert('生年月日の更新に失敗しました')
+    }
+  }
+
+  const calculateStats = () => {
+    const completedReservations = reservations.filter((r) => r.status === 'completed')
+    const totalSpent = completedReservations.reduce((sum, r) => sum + (r.price || 0), 0)
+    const visitCount = completedReservations.length
+    const averageSpent = visitCount > 0 ? Math.round(totalSpent / visitCount) : 0
+
+    return { totalSpent, visitCount, averageSpent }
+  }
+
+  if (!user || user.role !== 'admin' || !customer) {
+    return null
+  }
+
+  const stats = calculateStats()
 
   const getTierColor = (tier: string) => {
     switch (tier) {
-      case 'bronze': return 'text-orange-600 bg-orange-50';
-      case 'silver': return 'text-gray-600 bg-gray-50';
-      case 'gold': return 'text-yellow-600 bg-yellow-50';
-      case 'platinum': return 'text-purple-600 bg-purple-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'bronze':
+        return 'text-orange-600 bg-orange-50'
+      case 'silver':
+        return 'text-gray-600 bg-gray-50'
+      case 'gold':
+        return 'text-yellow-600 bg-yellow-50'
+      case 'platinum':
+        return 'text-purple-600 bg-purple-50'
+      default:
+        return 'text-gray-600 bg-gray-50'
     }
-  };
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'completed': return 'text-green-600 bg-green-50';
-      case 'confirmed': return 'text-blue-600 bg-blue-50';
-      case 'pending': return 'text-yellow-600 bg-yellow-50';
-      case 'cancelled': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'completed':
+        return 'text-green-600 bg-green-50'
+      case 'confirmed':
+        return 'text-blue-600 bg-blue-50'
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-50'
+      case 'cancelled':
+        return 'text-red-600 bg-red-50'
+      default:
+        return 'text-gray-600 bg-gray-50'
     }
-  };
+  }
 
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'completed': return '完了';
-      case 'confirmed': return '確定';
-      case 'pending': return '承認待ち';
-      case 'cancelled': return 'キャンセル';
-      default: return status;
+      case 'completed':
+        return '完了'
+      case 'confirmed':
+        return '確定'
+      case 'pending':
+        return '承認待ち'
+      case 'cancelled':
+        return 'キャンセル'
+      default:
+        return status
     }
-  };
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -217,11 +232,7 @@ export default function CustomerDetailPage() {
             <div className="flex items-center gap-2">
               {editingBirthday ? (
                 <div className="flex items-center gap-2">
-                  <DatePicker
-                    value={birthday}
-                    onChange={setBirthday}
-                    required
-                  />
+                  <DatePicker value={birthday} onChange={setBirthday} required />
                   <button
                     onClick={handleBirthdayUpdate}
                     className="px-3 py-1 bg-primary text-white rounded text-sm hover:bg-dark-gold"
@@ -230,8 +241,8 @@ export default function CustomerDetailPage() {
                   </button>
                   <button
                     onClick={() => {
-                      setBirthday(userRecord?.birthday || '');
-                      setEditingBirthday(false);
+                      setBirthday(userRecord?.birthday || '')
+                      setEditingBirthday(false)
                     }}
                     className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"
                   >
@@ -292,8 +303,8 @@ export default function CustomerDetailPage() {
                 </button>
                 <button
                   onClick={() => {
-                    setNotes(customer.notes || '');
-                    setEditingNotes(false);
+                    setNotes(customer.notes || '')
+                    setEditingNotes(false)
                   }}
                   className="px-4 py-2 border border-gray-300 rounded-md hover:bg-gray-50"
                 >
@@ -302,9 +313,7 @@ export default function CustomerDetailPage() {
               </div>
             </div>
           ) : (
-            <p className="text-gray-700 whitespace-pre-wrap">
-              {notes || '（メモなし）'}
-            </p>
+            <p className="text-gray-700 whitespace-pre-wrap">{notes || '（メモなし）'}</p>
           )}
         </div>
       </div>
@@ -319,9 +328,7 @@ export default function CustomerDetailPage() {
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-1">総利用額</p>
-          <p className="text-2xl font-bold">
-            ¥{stats.totalSpent.toLocaleString()}
-          </p>
+          <p className="text-2xl font-bold">¥{stats.totalSpent.toLocaleString()}</p>
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-1">来店回数</p>
@@ -329,9 +336,7 @@ export default function CustomerDetailPage() {
         </div>
         <div className="bg-white rounded-lg shadow-md p-6">
           <p className="text-sm text-gray-600 mb-1">平均利用額</p>
-          <p className="text-2xl font-bold">
-            ¥{stats.averageSpent.toLocaleString()}
-          </p>
+          <p className="text-2xl font-bold">¥{stats.averageSpent.toLocaleString()}</p>
         </div>
       </div>
 
@@ -365,48 +370,50 @@ export default function CustomerDetailPage() {
         {/* 予約履歴 */}
         {activeTab === 'reservations' && (
           <div className="p-6">
-          {reservations.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">予約履歴がありません</p>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    <th className="pb-3">日時</th>
-                    <th className="pb-3">サービス</th>
-                    <th className="pb-3">金額</th>
-                    <th className="pb-3">ステータス</th>
-                    <th className="pb-3">アクション</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {reservations.map((reservation) => (
-                    <tr key={reservation.id} className="border-t">
-                      <td className="py-3">
-                        <p>{new Date(reservation.date).toLocaleDateString('ja-JP')}</p>
-                        <p className="text-sm text-gray-500">{reservation.time}</p>
-                      </td>
-                      <td className="py-3">{reservation.serviceName}</td>
-                      <td className="py-3">¥{reservation.price.toLocaleString()}</td>
-                      <td className="py-3">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}>
-                          {getStatusText(reservation.status)}
-                        </span>
-                      </td>
-                      <td className="py-3">
-                        <button
-                          onClick={() => router.push(`/admin/reservations/${reservation.id}`)}
-                          className="text-sm text-primary hover:text-dark-gold"
-                        >
-                          詳細
-                        </button>
-                      </td>
+            {reservations.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">予約履歴がありません</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th className="pb-3">日時</th>
+                      <th className="pb-3">サービス</th>
+                      <th className="pb-3">金額</th>
+                      <th className="pb-3">ステータス</th>
+                      <th className="pb-3">アクション</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+                  </thead>
+                  <tbody>
+                    {reservations.map((reservation) => (
+                      <tr key={reservation.id} className="border-t">
+                        <td className="py-3">
+                          <p>{new Date(reservation.date).toLocaleDateString('ja-JP')}</p>
+                          <p className="text-sm text-gray-500">{reservation.time}</p>
+                        </td>
+                        <td className="py-3">{reservation.serviceName}</td>
+                        <td className="py-3">¥{reservation.price.toLocaleString()}</td>
+                        <td className="py-3">
+                          <span
+                            className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(reservation.status)}`}
+                          >
+                            {getStatusText(reservation.status)}
+                          </span>
+                        </td>
+                        <td className="py-3">
+                          <button
+                            onClick={() => router.push(`/admin/reservations/${reservation.id}`)}
+                            className="text-sm text-primary hover:text-dark-gold"
+                          >
+                            詳細
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
         )}
 
@@ -430,11 +437,11 @@ export default function CustomerDetailPage() {
                   <tbody>
                     {pointHistory.map((transaction, index) => {
                       // 残高を計算（最新から過去に向かって）
-                      let balance = customer?.points || 0;
+                      let balance = customer?.points || 0
                       for (let i = 0; i < index; i++) {
-                        balance -= pointHistory[i].amount;
+                        balance -= pointHistory[i].amount
                       }
-                      
+
                       return (
                         <tr key={transaction.id} className="border-t">
                           <td className="py-3">
@@ -444,29 +451,36 @@ export default function CustomerDetailPage() {
                             </p>
                           </td>
                           <td className="py-3">
-                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                              transaction.type === 'earned'
-                                ? 'text-green-600 bg-green-50'
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                transaction.type === 'earned'
+                                  ? 'text-green-600 bg-green-50'
+                                  : transaction.type === 'redeemed'
+                                    ? 'text-red-600 bg-red-50'
+                                    : 'text-gray-600 bg-gray-50'
+                              }`}
+                            >
+                              {transaction.type === 'earned'
+                                ? '獲得'
                                 : transaction.type === 'redeemed'
-                                ? 'text-red-600 bg-red-50'
-                                : 'text-gray-600 bg-gray-50'
-                            }`}>
-                              {transaction.type === 'earned' ? '獲得' : transaction.type === 'redeemed' ? '使用' : '失効'}
+                                  ? '使用'
+                                  : '失効'}
                             </span>
                           </td>
                           <td className="py-3">
-                            <span className={`font-medium ${
-                              transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
-                            }`}>
-                              {transaction.amount > 0 ? '+' : ''}{transaction.amount.toLocaleString()}pt
+                            <span
+                              className={`font-medium ${
+                                transaction.amount > 0 ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              {transaction.amount > 0 ? '+' : ''}
+                              {transaction.amount.toLocaleString()}pt
                             </span>
                           </td>
                           <td className="py-3">{transaction.reason}</td>
-                          <td className="py-3 font-medium">
-                            {balance.toLocaleString()}pt
-                          </td>
+                          <td className="py-3 font-medium">{balance.toLocaleString()}pt</td>
                         </tr>
-                      );
+                      )
                     })}
                   </tbody>
                 </table>
@@ -476,5 +490,5 @@ export default function CustomerDetailPage() {
         )}
       </div>
     </div>
-  );
+  )
 }

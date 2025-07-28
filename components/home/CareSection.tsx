@@ -20,13 +20,13 @@ export default function CareSection() {
       title: '色が定着',
       description: 'きれいな仕上がりが完成します',
     },
-  ];
+  ]
 
   return (
     <section id="care" className="py-20 bg-white">
       <div className="container mx-auto px-4">
         <h2 className="section-title">施術後ケアガイド</h2>
-        
+
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {careSteps.map((step, index) => (
@@ -34,7 +34,7 @@ export default function CareSection() {
                 {index < careSteps.length - 1 && (
                   <div className="hidden lg:block absolute top-12 left-full w-full h-0.5 bg-primary/30" />
                 )}
-                
+
                 <div className="bg-light-accent rounded-xl p-6 text-center h-full">
                   <div className="bg-primary text-white rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4 font-bold">
                     {index + 1}
@@ -52,11 +52,16 @@ export default function CareSection() {
           <p className="text-gray-600 mb-4">
             アフターケアについてご不明な点がございましたら、お気軽にお問い合わせください
           </p>
-          <a href="https://line.me/R/ti/p/@174geemy" target="_blank" rel="noopener noreferrer" className="btn btn-primary">
+          <a
+            href="https://line.me/R/ti/p/@174geemy"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="btn btn-primary"
+          >
             LINEで相談する
           </a>
         </div>
       </div>
     </section>
-  );
+  )
 }

@@ -1,97 +1,110 @@
-'use client';
+'use client'
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { storageService } from '@/lib/storage/storageService';
-import { reservationService } from '@/lib/reservationService';
-import { Reservation } from '@/lib/types';
-import ReservationCalendar from '@/components/admin/ReservationCalendar';
-import ReservationEditModal from '@/components/admin/ReservationEditModal';
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
+import { reservationService } from '@/lib/reservationService'
+import { Reservation } from '@/lib/types'
+import ReservationCalendar from '@/components/admin/ReservationCalendar'
+import ReservationEditModal from '@/components/admin/ReservationEditModal'
 
 export default function AdminReservations() {
-  const router = useRouter();
-  const { user } = useAuth();
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>('all');
-  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar');
-  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  const router = useRouter()
+  const { user } = useAuth()
+  const [reservations, setReservations] = useState<Reservation[]>([])
+  const [filter, setFilter] = useState<'all' | 'pending' | 'confirmed' | 'completed' | 'cancelled'>(
+    'all',
+  )
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar')
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/');
-      return;
+      router.push('/')
+      return
     }
 
-    loadReservations();
-  }, [user, router]);
+    loadReservations()
+  }, [user, router])
 
   const loadReservations = () => {
-    const allReservations = storageService.getAllReservations();
-    setReservations(allReservations.sort((a, b) => 
-      new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-    ));
-  };
+    const allReservations = storageService.getAllReservations()
+    setReservations(
+      allReservations.sort(
+        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+      ),
+    )
+  }
 
   const handleStatusUpdate = (reservationId: string, newStatus: Reservation['status']) => {
-    storageService.updateReservationStatus(reservationId, newStatus);
-    loadReservations();
-  };
+    storageService.updateReservationStatus(reservationId, newStatus)
+    loadReservations()
+  }
 
   const handleReservationUpdate = (updatedReservation: Reservation) => {
     // Update the reservation in storage
-    const allReservations = storageService.getAllReservations();
-    const index = allReservations.findIndex(r => r.id === updatedReservation.id);
+    const allReservations = storageService.getAllReservations()
+    const index = allReservations.findIndex((r) => r.id === updatedReservation.id)
     if (index !== -1) {
       allReservations[index] = {
         ...updatedReservation,
         updatedAt: new Date(),
-      };
-      localStorage.setItem('reservations', JSON.stringify(allReservations));
-      loadReservations();
+      }
+      localStorage.setItem('reservations', JSON.stringify(allReservations))
+      loadReservations()
     }
-  };
+  }
 
   const handleExportICal = () => {
-    const icalContent = reservationService.exportToICal(reservations);
-    const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `beeartena_reservations_${new Date().toISOString().split('T')[0]}.ics`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
+    const icalContent = reservationService.exportToICal(reservations)
+    const blob = new Blob([icalContent], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `beeartena_reservations_${new Date().toISOString().split('T')[0]}.ics`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+  }
 
-  const filteredReservations = filter === 'all' 
-    ? reservations 
-    : reservations.filter(r => r.status === filter);
+  const filteredReservations =
+    filter === 'all' ? reservations : reservations.filter((r) => r.status === filter)
 
   const getStatusColor = (status: Reservation['status']) => {
     switch (status) {
-      case 'pending': return 'text-yellow-600 bg-yellow-50';
-      case 'confirmed': return 'text-blue-600 bg-blue-50';
-      case 'completed': return 'text-green-600 bg-green-50';
-      case 'cancelled': return 'text-red-600 bg-red-50';
-      default: return 'text-gray-600 bg-gray-50';
+      case 'pending':
+        return 'text-yellow-600 bg-yellow-50'
+      case 'confirmed':
+        return 'text-blue-600 bg-blue-50'
+      case 'completed':
+        return 'text-green-600 bg-green-50'
+      case 'cancelled':
+        return 'text-red-600 bg-red-50'
+      default:
+        return 'text-gray-600 bg-gray-50'
     }
-  };
+  }
 
   const getStatusText = (status: Reservation['status']) => {
     switch (status) {
-      case 'pending': return '承認待ち';
-      case 'confirmed': return '確定';
-      case 'completed': return '完了';
-      case 'cancelled': return 'キャンセル';
-      default: return status;
+      case 'pending':
+        return '承認待ち'
+      case 'confirmed':
+        return '確定'
+      case 'completed':
+        return '完了'
+      case 'cancelled':
+        return 'キャンセル'
+      default:
+        return status
     }
-  };
+  }
 
   if (!user || user.role !== 'admin') {
-    return null;
+    return null
   }
 
   return (
@@ -147,24 +160,26 @@ export default function AdminReservations() {
 
             {viewMode === 'list' && (
               <div className="flex gap-2">
-                {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as const).map((status) => (
-                  <button
-                    key={status}
-                    onClick={() => setFilter(status)}
-                    className={`px-3 py-1 rounded-lg font-medium text-sm transition-colors ${
-                      filter === status
-                        ? 'bg-primary text-white'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    }`}
-                  >
-                    {status === 'all' ? '全て' : getStatusText(status)}
-                    {status !== 'all' && (
-                      <span className="ml-1">
-                        ({reservations.filter(r => r.status === status).length})
-                      </span>
-                    )}
-                  </button>
-                ))}
+                {(['all', 'pending', 'confirmed', 'completed', 'cancelled'] as const).map(
+                  (status) => (
+                    <button
+                      key={status}
+                      onClick={() => setFilter(status)}
+                      className={`px-3 py-1 rounded-lg font-medium text-sm transition-colors ${
+                        filter === status
+                          ? 'bg-primary text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                    >
+                      {status === 'all' ? '全て' : getStatusText(status)}
+                      {status !== 'all' && (
+                        <span className="ml-1">
+                          ({reservations.filter((r) => r.status === status).length})
+                        </span>
+                      )}
+                    </button>
+                  ),
+                )}
               </div>
             )}
           </div>
@@ -222,7 +237,9 @@ export default function AdminReservations() {
                   )}
 
                   <div className="flex items-center justify-between">
-                    <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(reservation.status)}`}>
+                    <span
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(reservation.status)}`}
+                    >
                       {getStatusText(reservation.status)}
                     </span>
 
@@ -284,38 +301,41 @@ export default function AdminReservations() {
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
             <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
               <h3 className="text-xl font-bold mb-4">予約詳細</h3>
-              
+
               <div className="space-y-3">
                 <div>
                   <p className="text-sm text-gray-600">お客様</p>
                   <p className="font-semibold">{selectedReservation.customerName}</p>
                 </div>
-                
+
                 <div>
                   <p className="text-sm text-gray-600">サービス</p>
                   <p className="font-semibold">{selectedReservation.serviceName}</p>
                 </div>
-                
+
                 <div>
                   <p className="text-sm text-gray-600">日時</p>
                   <p className="font-semibold">
-                    {new Date(selectedReservation.date).toLocaleDateString('ja-JP')} {selectedReservation.time}
+                    {new Date(selectedReservation.date).toLocaleDateString('ja-JP')}{' '}
+                    {selectedReservation.time}
                   </p>
                 </div>
-                
+
                 <div>
                   <p className="text-sm text-gray-600">ステータス</p>
-                  <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedReservation.status)}`}>
+                  <span
+                    className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(selectedReservation.status)}`}
+                  >
                     {getStatusText(selectedReservation.status)}
                   </span>
                 </div>
-                
+
                 <div>
                   <p className="text-sm text-gray-600">連絡先</p>
                   <p>{selectedReservation.customerEmail}</p>
                   <p>{selectedReservation.customerPhone}</p>
                 </div>
-                
+
                 {selectedReservation.notes && (
                   <div>
                     <p className="text-sm text-gray-600">備考</p>
@@ -329,8 +349,8 @@ export default function AdminReservations() {
                   <>
                     <button
                       onClick={() => {
-                        handleStatusUpdate(selectedReservation.id, 'confirmed');
-                        setSelectedReservation(null);
+                        handleStatusUpdate(selectedReservation.id, 'confirmed')
+                        setSelectedReservation(null)
                       }}
                       className="flex-1 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
                     >
@@ -338,8 +358,8 @@ export default function AdminReservations() {
                     </button>
                     <button
                       onClick={() => {
-                        handleStatusUpdate(selectedReservation.id, 'cancelled');
-                        setSelectedReservation(null);
+                        handleStatusUpdate(selectedReservation.id, 'cancelled')
+                        setSelectedReservation(null)
                       }}
                       className="flex-1 px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
                     >
@@ -368,5 +388,5 @@ export default function AdminReservations() {
         )}
       </div>
     </div>
-  );
+  )
 }

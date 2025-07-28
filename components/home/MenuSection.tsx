@@ -1,5 +1,5 @@
-import Image from 'next/image';
-import Link from 'next/link';
+import Image from 'next/image'
+import Link from 'next/link'
 
 const menuItems = [
   {
@@ -30,7 +30,7 @@ const menuItems = [
     image: '/images/4D.jpg',
     featured: true,
   },
-];
+]
 
 export default function MenuSection() {
   return (
@@ -41,27 +41,19 @@ export default function MenuSection() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {menuItems.map((item) => (
-            <div
-              key={item.id}
-              className={`menu-card ${item.featured ? 'featured' : ''}`}
-            >
+            <div key={item.id} className={`menu-card ${item.featured ? 'featured' : ''}`}>
               {item.featured && (
                 <div className="absolute top-0 right-0 bg-primary text-white px-4 py-1 rounded-bl-lg rounded-tr-lg font-semibold">
                   人気No.1
                 </div>
               )}
-              
+
               <div className="text-4xl font-bold text-primary mb-4">{item.id}</div>
               <h3 className="text-2xl font-bold mb-2">{item.name}</h3>
               <p className="text-gray-600 mb-4 whitespace-pre-line">{item.description}</p>
-              
+
               <div className="mb-4 h-48 relative overflow-hidden rounded-lg">
-                <Image
-                  src={item.image}
-                  alt={`${item.name}の症例`}
-                  fill
-                  className="object-cover"
-                />
+                <Image src={item.image} alt={`${item.name}の症例`} fill className="object-cover" />
               </div>
 
               <div className="space-y-2">
@@ -88,5 +80,5 @@ export default function MenuSection() {
         </div>
       </div>
     </section>
-  );
+  )
 }

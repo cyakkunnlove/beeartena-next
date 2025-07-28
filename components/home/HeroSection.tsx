@@ -1,10 +1,10 @@
-'use client';
+'use client'
 
-import Link from 'next/link';
-import { motion } from 'framer-motion';
-import SlideTransition from '@/components/layout/SlideTransition';
-import LazyImage from '@/components/ui/LazyImage';
-import ResponsiveContainer from '@/components/layout/ResponsiveContainer';
+import Link from 'next/link'
+import { motion } from 'framer-motion'
+import SlideTransition from '@/components/layout/SlideTransition'
+import LazyImage from '@/components/ui/LazyImage'
+import ResponsiveContainer from '@/components/layout/ResponsiveContainer'
 
 export default function HeroSection() {
   return (
@@ -22,15 +22,16 @@ export default function HeroSection() {
             </SlideTransition>
             <SlideTransition direction="right" delay={0.1}>
               <p className="text-base sm:text-lg md:text-xl text-gray-600 mb-6 sm:mb-8">
-                国家資格を持つ理容師による安全・安心の施術<br className="hidden sm:block" />
+                国家資格を持つ理容師による安全・安心の施術
+                <br className="hidden sm:block" />
                 <span className="block sm:inline">半年以内リタッチ11,000円の安心プラン</span>
               </p>
             </SlideTransition>
             <SlideTransition direction="up" delay={0.2}>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center lg:justify-start">
                 <motion.div whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.05 }}>
-                  <Link 
-                    href="/reservation" 
+                  <Link
+                    href="/reservation"
                     className="btn btn-primary w-full sm:w-auto text-center"
                     aria-label="予約ページへ移動"
                   >
@@ -38,8 +39,8 @@ export default function HeroSection() {
                   </Link>
                 </motion.div>
                 <motion.div whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.05 }}>
-                  <Link 
-                    href="/pricing" 
+                  <Link
+                    href="/pricing"
                     className="btn btn-secondary w-full sm:w-auto text-center"
                     aria-label="料金メニューページへ移動"
                   >
@@ -47,8 +48,8 @@ export default function HeroSection() {
                   </Link>
                 </motion.div>
                 <motion.div whileTap={{ scale: 0.95 }} whileHover={{ scale: 1.05 }}>
-                  <Link 
-                    href="/login" 
+                  <Link
+                    href="/login"
                     className="btn btn-outline w-full sm:w-auto text-center"
                     aria-label="会員登録ページへ移動"
                   >
@@ -62,7 +63,7 @@ export default function HeroSection() {
           <SlideTransition direction="left" delay={0.3}>
             <div className="relative">
               <div className="before-after">
-                <motion.div 
+                <motion.div
                   className="before-after-item"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -80,7 +81,7 @@ export default function HeroSection() {
                     Before
                   </span>
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="before-after-arrow"
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
@@ -88,7 +89,7 @@ export default function HeroSection() {
                 >
                   →
                 </motion.div>
-                <motion.div 
+                <motion.div
                   className="before-after-item"
                   initial={{ opacity: 0, scale: 0.8 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -112,5 +113,5 @@ export default function HeroSection() {
         </div>
       </ResponsiveContainer>
     </section>
-  );
+  )
 }

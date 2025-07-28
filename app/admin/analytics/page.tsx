@@ -1,8 +1,8 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth/AuthContext';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { useRouter } from 'next/navigation'
 import {
   BarChart,
   Bar,
@@ -17,124 +17,124 @@ import {
   Tooltip,
   Legend,
   ResponsiveContainer,
-} from 'recharts';
+} from 'recharts'
 
 export default function AnalyticsPage() {
-  const { user } = useAuth();
-  const router = useRouter();
-  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month');
-  const [monthlyData, setMonthlyData] = useState<any[]>([]);
-  const [serviceData, setServiceData] = useState<any[]>([]);
-  const [customerTierData, setCustomerTierData] = useState<any[]>([]);
-  const [timeSlotData, setTimeSlotData] = useState<any[]>([]);
+  const { user } = useAuth()
+  const router = useRouter()
+  const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
+  const [monthlyData, setMonthlyData] = useState<any[]>([])
+  const [serviceData, setServiceData] = useState<any[]>([])
+  const [customerTierData, setCustomerTierData] = useState<any[]>([])
+  const [timeSlotData, setTimeSlotData] = useState<any[]>([])
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
-      router.push('/admin');
-      return;
+      router.push('/admin')
+      return
     }
 
     // データの集計
-    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]');
-    const users = JSON.parse(localStorage.getItem('users') || '[]');
-    
+    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+    const users = JSON.parse(localStorage.getItem('users') || '[]')
+
     // 月別売上データ
-    const now = new Date();
-    const monthlyRevenue: { [key: string]: number } = {};
-    const monthlyCount: { [key: string]: number } = {};
-    
+    const now = new Date()
+    const monthlyRevenue: { [key: string]: number } = {}
+    const monthlyCount: { [key: string]: number } = {}
+
     // 過去12ヶ月のデータを集計
     for (let i = 11; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-      monthlyRevenue[monthKey] = 0;
-      monthlyCount[monthKey] = 0;
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      monthlyRevenue[monthKey] = 0
+      monthlyCount[monthKey] = 0
     }
-    
+
     reservations
       .filter((r: any) => r.status !== 'cancelled')
       .forEach((r: any) => {
-        const date = new Date(r.date);
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+        const date = new Date(r.date)
+        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         if (monthlyRevenue.hasOwnProperty(monthKey)) {
-          monthlyRevenue[monthKey] += r.price || 0;
-          monthlyCount[monthKey]++;
+          monthlyRevenue[monthKey] += r.price || 0
+          monthlyCount[monthKey]++
         }
-      });
-    
+      })
+
     const monthlyDataArray = Object.entries(monthlyRevenue).map(([month, revenue]) => ({
       month: month.split('-')[1] + '月',
       revenue,
       count: monthlyCount[month],
-    }));
-    
-    setMonthlyData(monthlyDataArray);
-    
+    }))
+
+    setMonthlyData(monthlyDataArray)
+
     // サービス別売上データ
-    const serviceRevenue: { [key: string]: number } = {};
-    const serviceCount: { [key: string]: number } = {};
-    
+    const serviceRevenue: { [key: string]: number } = {}
+    const serviceCount: { [key: string]: number } = {}
+
     reservations
       .filter((r: any) => r.status !== 'cancelled')
       .forEach((r: any) => {
-        const service = r.serviceName || 'その他';
-        serviceRevenue[service] = (serviceRevenue[service] || 0) + (r.price || 0);
-        serviceCount[service] = (serviceCount[service] || 0) + 1;
-      });
-    
+        const service = r.serviceName || 'その他'
+        serviceRevenue[service] = (serviceRevenue[service] || 0) + (r.price || 0)
+        serviceCount[service] = (serviceCount[service] || 0) + 1
+      })
+
     const serviceDataArray = Object.entries(serviceRevenue).map(([name, revenue]) => ({
       name,
       revenue,
       count: serviceCount[name],
-    }));
-    
-    setServiceData(serviceDataArray);
-    
+    }))
+
+    setServiceData(serviceDataArray)
+
     // 顧客ティア別データ
     const tierCounts = {
       bronze: 0,
       silver: 0,
       gold: 0,
       platinum: 0,
-    };
-    
+    }
+
     users
       .filter((u: any) => u.role === 'customer')
       .forEach((u: any) => {
-        const tier = u.tier || 'bronze';
-        tierCounts[tier as keyof typeof tierCounts]++;
-      });
-    
+        const tier = u.tier || 'bronze'
+        tierCounts[tier as keyof typeof tierCounts]++
+      })
+
     const tierDataArray = Object.entries(tierCounts).map(([tier, count]) => ({
       name: tier.charAt(0).toUpperCase() + tier.slice(1),
       value: count,
-    }));
-    
-    setCustomerTierData(tierDataArray);
-    
+    }))
+
+    setCustomerTierData(tierDataArray)
+
     // 時間帯別予約データ
-    const timeSlots: { [key: string]: number } = {};
-    
+    const timeSlots: { [key: string]: number } = {}
+
     reservations.forEach((r: any) => {
-      const time = r.time || '不明';
-      timeSlots[time] = (timeSlots[time] || 0) + 1;
-    });
-    
+      const time = r.time || '不明'
+      timeSlots[time] = (timeSlots[time] || 0) + 1
+    })
+
     const timeSlotDataArray = Object.entries(timeSlots)
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([time, count]) => ({
         time,
         count,
-      }));
-    
-    setTimeSlotData(timeSlotDataArray);
-  }, [user, router]);
+      }))
+
+    setTimeSlotData(timeSlotDataArray)
+  }, [user, router])
 
   if (!user || user.role !== 'admin') {
-    return null;
+    return null
   }
 
-  const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FED330'];
+  const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FED330']
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -265,9 +265,10 @@ export default function AnalyticsPage() {
         <div className="bg-white rounded-lg shadow-md p-6">
           <h3 className="text-sm font-medium text-gray-600 mb-2">平均単価</h3>
           <p className="text-2xl font-bold text-primary">
-            ¥{Math.round(
+            ¥
+            {Math.round(
               serviceData.reduce((sum, s) => sum + s.revenue, 0) /
-              serviceData.reduce((sum, s) => sum + s.count, 0) || 0
+                serviceData.reduce((sum, s) => sum + s.count, 0) || 0,
             ).toLocaleString()}
           </p>
         </div>
@@ -285,5 +286,5 @@ export default function AnalyticsPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

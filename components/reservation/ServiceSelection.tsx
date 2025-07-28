@@ -1,10 +1,10 @@
-'use client';
+'use client'
 
-import { motion } from 'framer-motion';
+import { motion } from 'framer-motion'
 
 interface ServiceSelectionProps {
-  onSelect: (service: string) => void;
-  selected: string;
+  onSelect: (service: string) => void
+  selected: string
 }
 
 const services = [
@@ -30,7 +30,7 @@ const services = [
     duration: '約2時間',
     featured: true,
   },
-];
+]
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -40,7 +40,7 @@ const containerVariants = {
       staggerChildren: 0.1,
     },
   },
-};
+}
 
 const itemVariants = {
   hidden: { opacity: 0, y: 20 },
@@ -53,7 +53,7 @@ const itemVariants = {
       damping: 12,
     },
   },
-};
+}
 
 export default function ServiceSelection({ onSelect, selected }: ServiceSelectionProps) {
   return (
@@ -86,7 +86,7 @@ export default function ServiceSelection({ onSelect, selected }: ServiceSelectio
               人気No.1
             </motion.div>
           )}
-          
+
           <motion.div
             className="text-3xl font-bold text-primary mb-2"
             animate={selected === service.id ? { scale: [1, 1.1, 1] } : {}}
@@ -98,7 +98,7 @@ export default function ServiceSelection({ onSelect, selected }: ServiceSelectio
           <p className="text-sm text-gray-600 mb-3">{service.description}</p>
           <p className="text-2xl font-bold mb-1">¥{service.price.toLocaleString()}</p>
           <p className="text-xs text-gray-500">{service.duration}</p>
-          
+
           {selected === service.id && (
             <motion.div
               initial={{ scale: 0 }}
@@ -109,5 +109,5 @@ export default function ServiceSelection({ onSelect, selected }: ServiceSelectio
         </motion.button>
       ))}
     </motion.div>
-  );
+  )
 }
