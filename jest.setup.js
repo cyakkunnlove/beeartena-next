@@ -48,8 +48,17 @@ window.scrollTo = jest.fn()
 const originalError = console.error
 beforeAll(() => {
   console.error = (...args) => {
-    if (typeof args[0] === 'string' && args[0].includes('Warning: ReactDOM.render')) {
-      return
+    if (typeof args[0] === 'string') {
+      // Ignore specific React warnings
+      const warningsToIgnore = [
+        'Warning: ReactDOM.render',
+        'Warning: An update to',
+        'not wrapped in act',
+      ]
+
+      if (warningsToIgnore.some((warning) => args[0].includes(warning))) {
+        return
+      }
     }
     originalError.call(console, ...args)
   }
