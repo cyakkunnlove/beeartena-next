@@ -40,7 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       import('@/lib/services/birthdayPoints').then(({ birthdayPointsService }) => {
         birthdayPointsService.checkAndGrantBirthdayPoints(user.id).then((granted) => {
           if (granted) {
-            console.log('Birthday points granted!')
+            // Birthday points granted!
           }
         })
       })

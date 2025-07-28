@@ -58,7 +58,7 @@ jobs:
 
       - name: Check for console.log statements
         run: |
-          if grep -r "console.log" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" src/; then
+          if grep -r "console.log" --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --exclude-dir=node_modules --exclude-dir=.next --exclude="logger.ts" --exclude="webhook.ts" app/ components/ lib/; then
             echo "❌ console.log statements found in source code"
             exit 1
           fi

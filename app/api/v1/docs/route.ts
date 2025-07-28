@@ -45,7 +45,7 @@ const swaggerUIHtml = `
         showExtensions: true,
         showCommonExtensions: true,
         onComplete: function() {
-          console.log("Swagger UI loaded");
+          // Swagger UI loaded
         }
       });
     };

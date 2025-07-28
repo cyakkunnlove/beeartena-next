@@ -191,7 +191,7 @@ export default function AdminReservations() {
             <ReservationCalendar
               reservations={reservations}
               onEventClick={(reservation) => setSelectedReservation(reservation)}
-              onDateClick={(date) => console.log('Date clicked:', date)}
+              onDateClick={(date) => {/* Date clicked: ${date} */}}
             />
           </div>
         )}
