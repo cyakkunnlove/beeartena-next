@@ -19,15 +19,16 @@ import {
 } from 'recharts'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { ChartData, ServiceChartData, TierChartData, TimeSlotChartData, Reservation, User } from '@/lib/types'
 
 export default function AnalyticsPage() {
   const { user } = useAuth()
   const router = useRouter()
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
-  const [monthlyData, setMonthlyData] = useState<any[]>([])
-  const [serviceData, setServiceData] = useState<any[]>([])
-  const [customerTierData, setCustomerTierData] = useState<any[]>([])
-  const [timeSlotData, setTimeSlotData] = useState<any[]>([])
+  const [monthlyData, setMonthlyData] = useState<ChartData[]>([])
+  const [serviceData, setServiceData] = useState<ServiceChartData[]>([])
+  const [customerTierData, setCustomerTierData] = useState<TierChartData[]>([])
+  const [timeSlotData, setTimeSlotData] = useState<TimeSlotChartData[]>([])
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -53,8 +54,8 @@ export default function AnalyticsPage() {
     }
 
     reservations
-      .filter((r: any) => r.status !== 'cancelled')
-      .forEach((r: any) => {
+      .filter((r: Reservation) => r.status !== 'cancelled')
+      .forEach((r: Reservation) => {
         const date = new Date(r.date)
         const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
         if (monthlyRevenue.hasOwnProperty(monthKey)) {
@@ -76,8 +77,8 @@ export default function AnalyticsPage() {
     const serviceCount: { [key: string]: number } = {}
 
     reservations
-      .filter((r: any) => r.status !== 'cancelled')
-      .forEach((r: any) => {
+      .filter((r: Reservation) => r.status !== 'cancelled')
+      .forEach((r: Reservation) => {
         const service = r.serviceName || 'その他'
         serviceRevenue[service] = (serviceRevenue[service] || 0) + (r.price || 0)
         serviceCount[service] = (serviceCount[service] || 0) + 1
@@ -100,8 +101,8 @@ export default function AnalyticsPage() {
     }
 
     users
-      .filter((u: any) => u.role === 'customer')
-      .forEach((u: any) => {
+      .filter((u: User) => u.role === 'customer')
+      .forEach((u: User & { tier?: string }) => {
         const tier = u.tier || 'bronze'
         tierCounts[tier as keyof typeof tierCounts]++
       })
@@ -116,7 +117,7 @@ export default function AnalyticsPage() {
     // 時間帯別予約データ
     const timeSlots: { [key: string]: number } = {}
 
-    reservations.forEach((r: any) => {
+    reservations.forEach((r: Reservation) => {
       const time = r.time || '不明'
       timeSlots[time] = (timeSlots[time] || 0) + 1
     })

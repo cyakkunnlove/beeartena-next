@@ -36,8 +36,8 @@ export default function LoginPage() {
       } else {
         router.push('/mypage')
       }
-    } catch (err: any) {
-      setError(err.message || 'ログインに失敗しました')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'ログインに失敗しました')
     } finally {
       setIsLoading(false)
     }

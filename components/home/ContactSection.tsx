@@ -8,9 +8,10 @@ import { useToastContext } from '@/components/layout/LayoutWrapper'
 import ResponsiveContainer from '@/components/layout/ResponsiveContainer'
 import Skeleton, { CardSkeleton } from '@/components/ui/Skeleton'
 import { storageService } from '@/lib/storage/storageService'
+import { ContactFormData } from '@/lib/types'
 
 export default function ContactSection() {
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ContactFormData>({
     name: '',
     email: '',
     phone: '',
@@ -38,7 +39,7 @@ export default function ContactSection() {
         name: formData.name,
         email: formData.email,
         phone: formData.phone || undefined,
-        type: formData.inquiryType as any,
+        type: formData.inquiryType as 'general' | 'menu' | 'booking' | 'aftercare' | 'other',
         message: formData.message,
       })
 

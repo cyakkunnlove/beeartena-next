@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
         token,
       }),
     )
-  } catch (error: any) {
-    return setCorsHeaders(errorResponse(error.message || 'ログインに失敗しました', 401))
+  } catch (error) {
+    return setCorsHeaders(errorResponse(error instanceof Error ? error.message : 'ログインに失敗しました', 401))
   }
 }

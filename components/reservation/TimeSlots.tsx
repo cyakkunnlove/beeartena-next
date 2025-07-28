@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 
 import { reservationService } from '@/lib/reservationService'
+import { TimeSlot } from '@/lib/types'
 
 interface TimeSlotsProps {
   date: string
@@ -11,7 +12,7 @@ interface TimeSlotsProps {
 }
 
 export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) {
-  const [timeSlots, setTimeSlots] = useState<any[]>([])
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(true)
   const selectedDate = new Date(date)
 

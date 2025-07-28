@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { User, Reservation, Inquiry } from '@/lib/types'
 
 
 export default function AdminDashboard() {
@@ -38,20 +39,20 @@ export default function AdminDashboard() {
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    const customers = users.filter((u: any) => u.role === 'customer')
-    const todayRes = reservations.filter((r: any) => r.date === today)
-    const pendingRes = reservations.filter((r: any) => r.status === 'pending')
-    const unreadInq = inquiries.filter((i: any) => i.status === 'unread')
+    const customers = users.filter((u: User) => u.role === 'customer')
+    const todayRes = reservations.filter((r: Reservation) => r.date === today)
+    const pendingRes = reservations.filter((r: Reservation) => r.status === 'pending')
+    const unreadInq = inquiries.filter((i: Inquiry) => i.status === 'unread')
 
     // アクティブ顧客（過去30日以内に予約があった顧客）
     const activeCustomerIds = new Set(
       reservations
-        .filter((r: any) => new Date(r.date) >= thirtyDaysAgo)
-        .map((r: any) => r.customerId),
+        .filter((r: Reservation) => new Date(r.date) >= thirtyDaysAgo)
+        .map((r: Reservation) => r.customerId),
     )
 
     const monthlyRev = reservations
-      .filter((r: any) => {
+      .filter((r: Reservation) => {
         const resDate = new Date(r.date)
         return (
           resDate.getMonth() === currentMonth &&
@@ -59,11 +60,11 @@ export default function AdminDashboard() {
           r.status !== 'cancelled'
         )
       })
-      .reduce((sum: number, r: any) => sum + r.price, 0)
+      .reduce((sum: number, r: Reservation) => sum + r.price, 0)
 
     const totalRev = reservations
-      .filter((r: any) => r.status !== 'cancelled')
-      .reduce((sum: number, r: any) => sum + r.price, 0)
+      .filter((r: Reservation) => r.status !== 'cancelled')
+      .reduce((sum: number, r: Reservation) => sum + r.price, 0)
 
     setStats({
       totalCustomers: customers.length,

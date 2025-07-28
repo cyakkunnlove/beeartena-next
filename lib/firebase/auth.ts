@@ -8,7 +8,7 @@ import {
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 
 import { mockAuth } from '../mock/mockFirebase'
-import { User as AppUser } from '../types'
+import { User as AppUser, getErrorMessage } from '../types'
 
 import { auth, db } from './config'
 
@@ -55,8 +55,8 @@ export const firebaseAuth = {
       await setDoc(doc(db, 'users', user.uid), userData)
 
       return userData
-    } catch (error: any) {
-      throw new Error(error.message || '登録に失敗しました')
+    } catch (error) {
+      throw new Error(getErrorMessage(error) || '登録に失敗しました')
     }
   },
 
@@ -78,8 +78,8 @@ export const firebaseAuth = {
       }
 
       return userDoc.data() as AppUser
-    } catch (error: any) {
-      throw new Error(error.message || 'ログインに失敗しました')
+    } catch (error) {
+      throw new Error(getErrorMessage(error) || 'ログインに失敗しました')
     }
   },
 
@@ -92,8 +92,8 @@ export const firebaseAuth = {
 
     try {
       await signOut(auth)
-    } catch (error: any) {
-      throw new Error(error.message || 'ログアウトに失敗しました')
+    } catch (error) {
+      throw new Error(getErrorMessage(error) || 'ログアウトに失敗しました')
     }
   },
 

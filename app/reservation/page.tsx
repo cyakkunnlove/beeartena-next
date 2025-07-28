@@ -12,6 +12,7 @@ import TimeSlots from '@/components/reservation/TimeSlots'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationService } from '@/lib/reservationService'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
+import { ReservationFormData } from '@/lib/types'
 
 function ReservationContent() {
   const router = useRouter()
@@ -93,7 +94,7 @@ function ReservationContent() {
     setStep(4)
   }
 
-  const handleFormSubmit = async (data: any) => {
+  const handleFormSubmit = async (data: ReservationFormData) => {
     setFormData(data)
     setIsSubmitting(true)
 
@@ -144,7 +145,7 @@ function ReservationContent() {
         localStorage.setItem(
           'users',
           JSON.stringify(
-            JSON.parse(localStorage.getItem('users') || '[]').map((u: any) =>
+            JSON.parse(localStorage.getItem('users') || '[]').map((u: { id: string }) =>
               u.id === user.id ? updatedUser : u,
             ),
           ),

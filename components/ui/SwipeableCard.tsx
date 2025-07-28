@@ -1,6 +1,6 @@
 'use client'
 
-import { motion, useMotionValue, useTransform, useAnimation } from 'framer-motion'
+import { motion, useMotionValue, useTransform, useAnimation, PanInfo } from 'framer-motion'
 import { ReactNode, useState } from 'react'
 
 interface SwipeableCardProps {
@@ -26,7 +26,7 @@ export default function SwipeableCard({
     ['rgba(239, 68, 68, 0.2)', 'rgba(255, 255, 255, 0)', 'rgba(34, 197, 94, 0.2)'],
   )
 
-  const handleDragEnd = (_: any, info: any) => {
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
     setIsDragging(false)
     const threshold = 100
 

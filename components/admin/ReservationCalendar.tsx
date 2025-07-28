@@ -6,7 +6,7 @@ import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar'
 
 import 'moment/locale/ja'
 import { reservationService } from '@/lib/reservationService'
-import { Reservation } from '@/lib/types'
+import { Reservation, CalendarEvent, CalendarEventProps, CalendarToolbarProps } from '@/lib/types'
 
 moment.locale('ja')
 const localizer = momentLocalizer(moment)
@@ -32,7 +32,7 @@ export default function ReservationCalendar({
 
   // イベントクリックハンドラー
   const handleSelectEvent = useCallback(
-    (event: any) => {
+    (event: CalendarEvent) => {
       onEventClick(event.resource)
     },
     [onEventClick],
@@ -49,7 +49,7 @@ export default function ReservationCalendar({
   )
 
   // カスタムイベントコンポーネント
-  const EventComponent = ({ event }: any) => {
+  const EventComponent = ({ event }: CalendarEventProps) => {
     const statusClass = `status-${event.resource.status}`
     return (
       <div className={`rbc-event ${statusClass}`}>
@@ -60,7 +60,7 @@ export default function ReservationCalendar({
   }
 
   // カスタムツールバー
-  const CustomToolbar = (toolbar: any) => {
+  const CustomToolbar = (toolbar: CalendarToolbarProps) => {
     const goToBack = () => {
       toolbar.onNavigate('PREV')
     }
@@ -91,7 +91,7 @@ export default function ReservationCalendar({
         <span className="text-lg font-semibold">{toolbar.label}</span>
 
         <div className="flex gap-2">
-          {toolbar.views.map((name: string) => (
+          {(['month', 'week', 'day', 'agenda'] as const).map((name) => (
             <button
               key={name}
               onClick={() => toolbar.onView(name)}
@@ -142,7 +142,7 @@ export default function ReservationCalendar({
   )
 
   // イベントのスタイリング
-  const eventPropGetter = useCallback((event: any) => {
+  const eventPropGetter = useCallback((event: CalendarEvent) => {
     const status = event.resource.status
     let backgroundColor = '#3b82f6' // default blue
 

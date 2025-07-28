@@ -1,3 +1,21 @@
+// Error handling types
+export type ErrorWithMessage = {
+  message: string
+  code?: string
+  statusCode?: number
+}
+
+export type ApiError = Error | ErrorWithMessage | unknown
+
+// Helper function to get error message
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (error && typeof error === 'object' && 'message' in error) {
+    return String(error.message)
+  }
+  return String(error)
+}
+
 // User types
 export interface User {
   id: string
@@ -142,4 +160,99 @@ export interface ReservationSettings {
   maxCapacityPerSlot: number
   businessHours: BusinessHours[]
   blockedDates?: string[] // ISO date strings
+}
+
+// Chart and Analytics types
+export interface ChartData {
+  month: string
+  revenue: number
+  count: number
+}
+
+export interface ServiceChartData {
+  name: string
+  value: number
+}
+
+export interface TierChartData {
+  name: string
+  value: number
+  fill: string
+}
+
+export interface TimeSlotChartData {
+  name: string
+  value: number
+}
+
+// Calendar Event types for ReservationCalendar
+export interface CalendarEvent {
+  id: string
+  title: string
+  start: Date
+  end: Date
+  resource: Reservation
+}
+
+export interface CalendarEventProps {
+  event: CalendarEvent
+}
+
+export interface CalendarToolbarProps {
+  date: Date
+  label: string
+  onNavigate: (action: 'PREV' | 'NEXT' | 'TODAY') => void
+  onView: (view: 'month' | 'week' | 'day' | 'agenda') => void
+  view: 'month' | 'week' | 'day' | 'agenda'
+}
+
+// Form types
+export interface ReservationFormData {
+  name: string
+  email: string
+  phone: string
+  serviceType: '2D' | '3D' | '4D'
+  date: string
+  time: string
+  notes?: string
+}
+
+export interface ContactFormData {
+  name: string
+  email: string
+  phone: string
+  inquiryType: 'general' | 'menu' | 'booking' | 'aftercare' | 'other' | ''
+  message: string
+}
+
+// API Response types
+export interface ApiResponse<T = unknown> {
+  success: boolean
+  data?: T
+  error?: string
+  message?: string
+}
+
+// Local Storage types
+export interface StoredUser extends User {
+  password?: string // Only for mock/local storage
+}
+
+// Firebase Firestore types
+export interface FirestoreTimestamp {
+  seconds: number
+  nanoseconds: number
+  toDate(): Date
+}
+
+// Type guards
+export function isFirestoreTimestamp(value: unknown): value is FirestoreTimestamp {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'seconds' in value &&
+    'nanoseconds' in value &&
+    'toDate' in value &&
+    typeof (value as FirestoreTimestamp).toDate === 'function'
+  )
 }

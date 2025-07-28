@@ -8,6 +8,22 @@ import DatePicker from '@/components/ui/DatePicker'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 
+interface SavedReservation {
+  serviceId: string
+  serviceName: string
+  date: string
+  time: string
+  formData: {
+    name: string
+    email: string
+    phone: string
+    notes?: string
+  }
+  step?: number
+  pointsToUse?: number
+  isReadyToSubmit?: boolean
+}
+
 function RegisterContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -24,7 +40,7 @@ function RegisterContent() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [hasReservation, setHasReservation] = useState(false)
-  const [savedReservation, setSavedReservation] = useState<any>(null)
+  const [savedReservation, setSavedReservation] = useState<SavedReservation | null>(null)
 
   useEffect(() => {
     // 予約から来た場合、保存された予約情報を取得
