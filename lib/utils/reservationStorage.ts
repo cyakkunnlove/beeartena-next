@@ -6,6 +6,7 @@ const STORAGE_KEY = 'pending_reservation'
 
 export interface PendingReservation {
   serviceId: string
+  serviceType?: '2D' | '3D' | '4D'
   serviceName: string
   date: string
   time: string

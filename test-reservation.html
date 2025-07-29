@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>予約テスト</title>
+</head>
+<body>
+    <h1>予約機能テスト</h1>
+    <button onclick="testReservation()">予約を作成</button>
+    <div id="result"></div>
+
+    <script>
+        async function testReservation() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '処理中...';
+
+            const reservationData = {
+                serviceType: '2D',
+                serviceName: '2D眉毛',
+                price: 30000,
+                date: '2025-08-01',
+                time: '18:30',
+                customerName: 'テスト太郎',
+                customerPhone: '090-1234-5678',
+                customerEmail: 'test@example.com',
+                notes: 'テスト予約'
+            };
+
+            try {
+                const response = await fetch('http://localhost:3000/api/reservations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(reservationData),
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<pre>成功:\n${JSON.stringify(result, null, 2)}</pre>`;
+                } else {
+                    resultDiv.innerHTML = `<pre>エラー (${response.status}):\n${JSON.stringify(result, null, 2)}</pre>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<pre>エラー:\n${error.message}</pre>`;
+            }
+        }
+    </script>
+</body>
+</html>

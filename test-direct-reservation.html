@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>予約テスト</title>
+</head>
+<body>
+    <h1>予約フォームテスト</h1>
+    <button id="testButton">予約をテスト</button>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testButton').addEventListener('click', async () => {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = '処理中...';
+            
+            try {
+                const response = await fetch('/api/reservations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        serviceId: '2D',
+                        serviceName: 'パウダーブロウ',
+                        price: 20000,
+                        date: '2025-08-01',
+                        time: '18:30',
+                        customerName: 'テスト太郎',
+                        customerPhone: '090-1234-5678',
+                        customerEmail: 'test@example.com',
+                        notes: 'ブラウザからのテスト'
+                    }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = '<p style="color: green;">予約が成功しました！</p>' + 
+                                        '<pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    resultDiv.innerHTML = '<p style="color: red;">エラー: ' + (data.error || data.message) + '</p>';
+                }
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="color: red;">エラー: ' + error.message + '</p>';
+            }
+        });
+    </script>
+</body>
+</html>
