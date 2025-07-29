@@ -23,8 +23,8 @@ async function initializeFirebaseData() {
     let adminUser
     try {
       adminUser = await auth.createUser({
-        email: 'admin@beeartena.com',
-        password: 'BeeArtEna2024Admin!',
+        email: 'admin@beeartena.jp',
+        password: process.env.ADMIN_PASSWORD || 'BeeArtEna2024Admin!',
         displayName: '管理者',
         emailVerified: true,
       })
@@ -32,7 +32,7 @@ async function initializeFirebaseData() {
     } catch (error) {
       if (error.code === 'auth/email-already-exists') {
         console.log('⚠️  管理者ユーザーは既に存在します')
-        adminUser = await auth.getUserByEmail('admin@beeartena.com')
+        adminUser = await auth.getUserByEmail('admin@beeartena.jp')
       } else {
         throw error
       }
@@ -183,8 +183,8 @@ async function initializeFirebaseData() {
     console.log('\n🎉 初期データの投入が完了しました！')
     console.log('\n📝 ログイン情報:')
     console.log('【管理者】')
-    console.log('Email: admin@beeartena.com')
-    console.log('Password: BeeArtEna2024Admin!')
+    console.log('Email: admin@beeartena.jp')
+    console.log('Password: admin123')
     console.log('\n【テストユーザー】')
     console.log('Email: test@example.com')
     console.log('Password: testpass123')

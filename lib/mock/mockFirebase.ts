@@ -41,7 +41,8 @@ export const mockAuth = {
     await delay(500)
 
     // 管理者アカウント
-    if (email === 'admin@beeartena.jp' && password === 'admin123') {
+    const adminPassword = process.env.ADMIN_PASSWORD || 'admin123'
+    if (email === 'admin@beeartena.jp' && password === adminPassword) {
       const admin = mockUsers.find((u) => u.email === email)!
       this.currentUser = admin
       return admin
