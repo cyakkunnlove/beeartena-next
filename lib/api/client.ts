@@ -205,6 +205,20 @@ class ApiClient {
       body: JSON.stringify(data),
     })
   }
+
+  async changePassword(currentPassword: string, newPassword: string) {
+    return this.request<any>('/auth/change-password', {
+      method: 'POST',
+      body: JSON.stringify({ currentPassword, newPassword }),
+    })
+  }
+
+  async deleteAccount(password: string) {
+    return this.request<any>('/auth/delete-account', {
+      method: 'DELETE',
+      body: JSON.stringify({ password }),
+    })
+  }
 }
 
 export const apiClient = new ApiClient()

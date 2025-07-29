@@ -1,13 +1,20 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 
+import PasswordChangeModal from '@/components/account/PasswordChangeModal'
+import AccountDeleteModal from '@/components/account/AccountDeleteModal'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { firebaseAuth } from '@/lib/firebase/auth'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer } from '@/lib/types'
 
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth()
+  const router = useRouter()
+  const [showPasswordModal, setShowPasswordModal] = useState(false)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -94,6 +101,17 @@ export default function ProfilePage() {
     loadProfile()
     setIsEditing(false)
     setMessage('')
+  }
+
+  const handlePasswordChange = async (currentPassword: string, newPassword: string) => {
+    await firebaseAuth.changePassword(currentPassword, newPassword)
+    setMessage('パスワードを変更しました')
+  }
+
+  const handleAccountDelete = async (password: string) => {
+    await firebaseAuth.deleteAccount(password)
+    // アカウント削除成功後、ホームページにリダイレクト
+    router.push('/')
   }
 
   return (
@@ -299,12 +317,36 @@ export default function ProfilePage() {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h2 className="text-lg font-semibold mb-4">アカウント設定</h2>
         <div className="space-y-4">
-          <button className="text-primary hover:text-dark-gold">パスワードを変更</button>
+          <button 
+            onClick={() => setShowPasswordModal(true)}
+            className="text-primary hover:text-dark-gold"
+          >
+            パスワードを変更
+          </button>
           <div className="pt-4 border-t">
-            <button className="text-red-600 hover:text-red-700">アカウントを削除</button>
+            <button 
+              onClick={() => setShowDeleteModal(true)}
+              className="text-red-600 hover:text-red-700"
+            >
+              アカウントを削除
+            </button>
           </div>
         </div>
       </div>
+
+      {/* パスワード変更モーダル */}
+      <PasswordChangeModal
+        isOpen={showPasswordModal}
+        onClose={() => setShowPasswordModal(false)}
+        onSubmit={handlePasswordChange}
+      />
+
+      {/* アカウント削除モーダル */}
+      <AccountDeleteModal
+        isOpen={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleAccountDelete}
+      />
     </div>
   )
 }

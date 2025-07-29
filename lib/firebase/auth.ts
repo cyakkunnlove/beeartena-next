@@ -4,6 +4,10 @@ import {
   signOut,
   onAuthStateChanged,
   updateProfile,
+  updatePassword,
+  deleteUser,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 
@@ -132,5 +136,61 @@ export const firebaseAuth = {
         callback(null)
       }
     })
+  },
+
+  // パスワード変更
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('パスワード変更機能は現在利用できません')
+    }
+
+    const user = auth.currentUser
+    if (!user || !user.email) {
+      throw new Error('ユーザーがログインしていません')
+    }
+
+    try {
+      // 再認証
+      const credential = EmailAuthProvider.credential(user.email, currentPassword)
+      await reauthenticateWithCredential(user, credential)
+
+      // パスワード更新
+      await updatePassword(user, newPassword)
+    } catch (error: any) {
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('現在のパスワードが正しくありません')
+      }
+      throw new Error(getErrorMessage(error) || 'パスワードの変更に失敗しました')
+    }
+  },
+
+  // アカウント削除
+  async deleteAccount(password: string): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('アカウント削除機能は現在利用できません')
+    }
+
+    const user = auth.currentUser
+    if (!user || !user.email) {
+      throw new Error('ユーザーがログインしていません')
+    }
+
+    try {
+      // 再認証
+      const credential = EmailAuthProvider.credential(user.email, password)
+      await reauthenticateWithCredential(user, credential)
+
+      // Firestoreからユーザーデータを削除
+      // 注: 実際の実装では、Cloud Functionsを使って関連データも削除する必要があります
+      await setDoc(doc(db, 'users', user.uid), { deleted: true, deletedAt: new Date() }, { merge: true })
+
+      // Firebase Authからユーザーを削除
+      await deleteUser(user)
+    } catch (error: any) {
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('パスワードが正しくありません')
+      }
+      throw new Error(getErrorMessage(error) || 'アカウントの削除に失敗しました')
+    }
   },
 }
