@@ -604,15 +604,18 @@ describe('ReservationService - Comprehensive Tests', () => {
 
         jest.spyOn(reservationService, 'isDateAvailable').mockResolvedValue(true)
 
-        const availability = await reservationService.getMonthAvailability(currentYear, currentMonth)
+        const availability = await reservationService.getMonthAvailability(
+          currentYear,
+          currentMonth,
+        )
 
         // Format dates for comparison
         const yesterday = new Date(today)
         yesterday.setDate(currentDay - 1)
         const yesterdayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`
-        
+
         const todayStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(currentDay).padStart(2, '0')}`
-        
+
         const tomorrow = new Date(today)
         tomorrow.setDate(currentDay + 1)
         const tomorrowStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(tomorrow.getDate()).padStart(2, '0')}`
