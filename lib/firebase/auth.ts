@@ -82,8 +82,23 @@ export const firebaseAuth = {
       }
 
       return userDoc.data() as AppUser
-    } catch (error) {
-      throw new Error(getErrorMessage(error) || 'ログインに失敗しました')
+    } catch (error: any) {
+      console.error('Firebase login error:', error)
+      console.error('Error code:', error.code)
+      console.error('Error message:', error.message)
+      
+      // より詳細なエラーメッセージを返す
+      if (error.code === 'auth/user-not-found') {
+        throw new Error('ユーザーが見つかりません')
+      }
+      if (error.code === 'auth/wrong-password') {
+        throw new Error('パスワードが正しくありません')
+      }
+      if (error.code === 'auth/invalid-credential') {
+        throw new Error('認証情報が無効です')
+      }
+      
+      throw new Error(getErrorMessage(error) || `ログインに失敗しました: ${error.message}`)
     }
   },
 

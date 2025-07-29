@@ -66,6 +66,42 @@ export default function DebugPage() {
     }
   }
 
+  const testAdminLogin = async () => {
+    setLoading(true)
+    setResult('Testing admin login...')
+    
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: 'admin@beeartena.jp',
+          password: 'BeeArtEna2024Admin!'
+        })
+      })
+      
+      const data = await response.json()
+      setResult(JSON.stringify({ status: response.status, data }, null, 2))
+      
+      if (data.token) {
+        // Test /api/auth/me with the token
+        const meResponse = await fetch('/api/auth/me', {
+          headers: {
+            'Authorization': `Bearer ${data.token}`
+          }
+        })
+        const meData = await meResponse.json()
+        setResult(prev => prev + '\n\n/api/auth/me response:\n' + JSON.stringify({ status: meResponse.status, data: meData }, null, 2))
+      }
+    } catch (error: any) {
+      setResult(`Error: ${error.message}\n${error.stack}`)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const checkEnvironment = async () => {
     // 環境変数の確認
     const envInfo = {
@@ -112,6 +148,14 @@ export default function DebugPage() {
           disabled={loading}
         >
           Check Environment
+        </button>
+        
+        <button 
+          onClick={testAdminLogin}
+          className="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 ml-4"
+          disabled={loading}
+        >
+          Test Admin Login
         </button>
         
         <button 
