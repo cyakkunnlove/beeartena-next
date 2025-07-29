@@ -120,14 +120,16 @@ export default function LoginPage() {
           </div>
         </form>
 
-        <div className="bg-gray-50 rounded-lg p-4 text-center">
-          <p className="text-sm text-gray-600 mb-2">管理者アカウント：</p>
-          <p className="text-xs text-gray-500">
-            メール: admin@beeartena.jp
-            <br />
-            パスワード: admin123
-          </p>
-        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="bg-gray-50 rounded-lg p-4 text-center">
+            <p className="text-sm text-gray-600 mb-2">管理者アカウント：</p>
+            <p className="text-xs text-gray-500">
+              メール: admin@beeartena.jp
+              <br />
+              パスワード: 環境変数ADMIN_PASSWORDを参照
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )
