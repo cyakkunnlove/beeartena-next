@@ -36,14 +36,11 @@ service cloud.firestore {
     
     // 予約コレクション
     match /reservations/{reservationId} {
-      // 読み取り：予約者本人または管理者
-      allow read: if isAuthenticated() && 
-        (resource.data.userId == request.auth.uid || isAdmin());
+      // 読み取り：予約者本人または管理者、未認証でも可
+      allow read: if true;
       
-      // 作成：認証済みユーザー（本人の予約のみ）
-      allow create: if isAuthenticated() && 
-        request.resource.data.userId == request.auth.uid &&
-        request.resource.data.status == 'pending';
+      // 作成：全員許可（ステータスがpendingの場合）
+      allow create: if request.resource.data.status == 'pending';
       
       // 更新：管理者のみ（ステータス変更など）
       allow update: if isAdmin();

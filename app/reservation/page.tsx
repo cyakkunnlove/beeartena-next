@@ -113,6 +113,7 @@ function ReservationContent() {
       // 予約情報を保存（現在のステップとポイント情報も含む）
       reservationStorage.save({
         serviceId: selectedService,
+        serviceType: selectedService as '2D' | '3D' | '4D',
         serviceName: serviceData[selectedService as keyof typeof serviceData].name,
         date: selectedDate,
         time: selectedTime,

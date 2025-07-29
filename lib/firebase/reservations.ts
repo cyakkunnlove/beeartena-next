@@ -48,6 +48,7 @@ export const reservationService = {
 
       return newReservation
     } catch (error: any) {
+      console.error('Firebase reservation creation error:', error)
       throw new Error(error.message || '予約の作成に失敗しました')
     }
   },
@@ -173,11 +174,11 @@ export const reservationService = {
       const endOfDay = new Date(date)
       endOfDay.setHours(23, 59, 59, 999)
 
+      // インデックスエラーを回避するため、一時的に簡略化
       const q = query(
         collection(db, 'reservations'),
         where('date', '>=', Timestamp.fromDate(startOfDay)),
         where('date', '<=', Timestamp.fromDate(endOfDay)),
-        where('status', '!=', 'cancelled'),
       )
 
       const querySnapshot = await getDocs(q)

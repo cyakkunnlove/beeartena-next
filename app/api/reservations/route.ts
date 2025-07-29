@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   const authUser = await verifyAuth(request)
 
   const { data, error } = await validateRequestBody<{
-    serviceId: string
+    serviceType: '2D' | '3D' | '4D'
     serviceName: string
     price: number
     date: string
@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     finalPrice?: number
     pointsUsed?: number
   }>(request, [
-    'serviceId',
+    'serviceType',
     'serviceName',
     'price',
     'date',
@@ -75,25 +75,9 @@ export async function POST(request: NextRequest) {
       return setCorsHeaders(errorResponse('選択された時間枠は予約できません', 400))
     }
 
-    // serviceIdからserviceTypeへのマッピング
-    const serviceTypeMap: Record<string, '2D' | '3D' | '4D'> = {
-      '2D': '2D',
-      '3D': '3D',
-      '4D': '4D',
-      '2d-eyelash': '2D',
-      '3d-eyelash': '3D',
-      '4d-eyelash': '4D',
-    }
-
-    const serviceType = serviceTypeMap[data.serviceId]
-    if (!serviceType) {
-      return setCorsHeaders(errorResponse('無効なサービスIDです', 400))
-    }
-
     // 予約作成
     const reservation = await reservationService.createReservation({
       ...data,
-      serviceType,
       customerId: authUser?.userId || null, // ログインしている場合のみcustomerIdを設定
       status: 'pending',
       updatedAt: new Date(),
