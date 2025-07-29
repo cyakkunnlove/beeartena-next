@@ -4,6 +4,7 @@ import { ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { useRouter, useParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import CustomerDeleteModal from '@/components/admin/CustomerDeleteModal'
 import DatePicker from '@/components/ui/DatePicker'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { userService } from '@/lib/firebase/users'
@@ -25,6 +26,7 @@ export default function CustomerDetailPage() {
   const [activeTab, setActiveTab] = useState<'reservations' | 'points'>('reservations')
   const [editingBirthday, setEditingBirthday] = useState(false)
   const [birthday, setBirthday] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -116,6 +118,17 @@ export default function CustomerDetailPage() {
     } catch (error) {
       console.error('Failed to update birthday:', error)
       alert('生年月日の更新に失敗しました')
+    }
+  }
+
+  const handleDeleteConfirm = async (customerId: string) => {
+    try {
+      await userService.deleteCustomerByAdmin(customerId)
+      // 削除成功後、顧客一覧に戻る
+      router.push('/admin/customers')
+    } catch (error: any) {
+      console.error('Failed to delete customer:', error)
+      throw error
     }
   }
 
@@ -215,6 +228,12 @@ export default function CustomerDetailPage() {
               className="px-4 py-2 bg-primary text-white rounded-md hover:bg-dark-gold"
             >
               ティア更新
+            </button>
+            <button
+              onClick={() => setShowDeleteModal(true)}
+              className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700"
+            >
+              顧客削除
             </button>
           </div>
         </div>
@@ -490,6 +509,14 @@ export default function CustomerDetailPage() {
           </div>
         )}
       </div>
+
+      {/* 削除確認モーダル */}
+      <CustomerDeleteModal
+        isOpen={showDeleteModal}
+        customer={customer}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   )
 }

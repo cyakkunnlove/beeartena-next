@@ -158,4 +158,28 @@ export const userService = {
       throw new Error(error.message || '累計利用金額の更新に失敗しました')
     }
   },
+
+  // 管理者による顧客削除（論理削除）
+  async deleteCustomerByAdmin(customerId: string): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('顧客削除機能は現在利用できません')
+    }
+
+    try {
+      const userDoc = await getDoc(doc(db, 'users', customerId))
+      if (!userDoc.exists()) {
+        throw new Error('顧客が見つかりません')
+      }
+
+      // 論理削除を実行
+      await updateDoc(doc(db, 'users', customerId), {
+        deleted: true,
+        deletedAt: Timestamp.now(),
+        deletedBy: 'admin',
+        updatedAt: Timestamp.now(),
+      })
+    } catch (error: any) {
+      throw new Error(error.message || '顧客の削除に失敗しました')
+    }
+  },
 }

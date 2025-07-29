@@ -3,7 +3,9 @@
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import CustomerDeleteModal from '@/components/admin/CustomerDeleteModal'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { userService } from '@/lib/firebase/users'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer } from '@/lib/types'
 
@@ -12,6 +14,8 @@ export default function AdminCustomers() {
   const { user } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [searchTerm, setSearchTerm] = useState('')
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -65,6 +69,24 @@ export default function AdminCustomers() {
         return 'プラチナ'
       default:
         return tier
+    }
+  }
+
+  const handleDeleteClick = (customer: Customer) => {
+    setSelectedCustomer(customer)
+    setShowDeleteModal(true)
+  }
+
+  const handleDeleteConfirm = async (customerId: string) => {
+    try {
+      await userService.deleteCustomerByAdmin(customerId)
+      // ローカルの顧客リストからも削除
+      setCustomers(customers.filter(c => c.id !== customerId))
+      setShowDeleteModal(false)
+      setSelectedCustomer(null)
+    } catch (error: any) {
+      console.error('Failed to delete customer:', error)
+      throw error
     }
   }
 
@@ -211,6 +233,12 @@ export default function AdminCustomers() {
                           >
                             メール
                           </a>
+                          <button
+                            onClick={() => handleDeleteClick(customer)}
+                            className="text-red-600 hover:text-red-800 text-sm"
+                          >
+                            削除
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -221,6 +249,17 @@ export default function AdminCustomers() {
           </div>
         </div>
       </div>
+
+      {/* 削除確認モーダル */}
+      <CustomerDeleteModal
+        isOpen={showDeleteModal}
+        customer={selectedCustomer}
+        onClose={() => {
+          setShowDeleteModal(false)
+          setSelectedCustomer(null)
+        }}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   )
 }
