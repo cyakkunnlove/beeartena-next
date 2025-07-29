@@ -1,5 +1,5 @@
 import React from 'react'
-import { render, fireEvent, screen, act } from '@testing-library/react'
+import { render, fireEvent, screen, act, waitFor } from '@testing-library/react'
 import ReservationForm from '@/components/reservation/ReservationForm'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 import '@testing-library/jest-dom'

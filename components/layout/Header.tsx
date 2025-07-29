@@ -19,8 +19,13 @@ export default function Header() {
   }, [pathname])
 
   const handleLogout = async () => {
-    await logout()
-    window.location.href = '/'
+    try {
+      await logout()
+      window.location.href = '/'
+    } catch (error) {
+      // Still redirect even if logout fails
+      window.location.href = '/'
+    }
   }
 
   return (

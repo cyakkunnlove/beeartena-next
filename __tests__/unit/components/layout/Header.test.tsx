@@ -289,15 +289,22 @@ describe('Header Component', () => {
       })
       mockLogout.mockRejectedValue(new Error('Logout failed'))
 
+      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {})
+
       render(<Header />)
 
       const logoutButton = screen.getAllByText('ログアウト')[0]
 
-      // Should not throw
-      await expect(async () => {
-        fireEvent.click(logoutButton)
-        await waitFor(() => expect(mockLogout).toHaveBeenCalled())
-      }).not.toThrow()
+      fireEvent.click(logoutButton)
+
+      await waitFor(() => {
+        expect(mockLogout).toHaveBeenCalled()
+      })
+
+      // The component should handle the error without throwing
+      expect(window.location.href).toBe('/')
+
+      consoleErrorSpy.mockRestore()
     })
   })
 
@@ -447,7 +454,9 @@ describe('Header Component', () => {
 
       await user.keyboard('{Enter}')
 
-      expect(mockLogout).toHaveBeenCalled()
+      await waitFor(() => {
+        expect(mockLogout).toHaveBeenCalled()
+      })
     })
   })
 })
