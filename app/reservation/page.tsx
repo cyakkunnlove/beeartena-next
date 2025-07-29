@@ -38,7 +38,13 @@ function ReservationContent() {
   })
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
 
-  const serviceData = {
+  const serviceData: {
+    [key: string]: {
+      name: string
+      price: number
+      monitorPrice?: number
+    }
+  } = {
     '2D': { name: '2Dパウダーブロウ', price: 22000, monitorPrice: 20000 },
     '3D': { name: '3Dフェザーブロウ', price: 23000, monitorPrice: 20000 },
     '4D': { name: '4Dパウダー&フェザー', price: 25000, monitorPrice: 22000 },
@@ -268,8 +274,8 @@ function ReservationContent() {
                     onChange={(field, value) => setFormData({ ...formData, [field]: value })}
                     onSubmit={() => handleFormSubmit(formData)}
                     isLoggedIn={!!user}
-                    servicePrice={serviceData[selectedService as keyof typeof serviceData].price}
-                    monitorPrice={serviceData[selectedService as keyof typeof serviceData].monitorPrice}
+                    servicePrice={serviceData[selectedService].price}
+                    monitorPrice={serviceData[selectedService]?.monitorPrice}
                     onPointsUsed={setPointsToUse}
                     onMonitorPriceSelected={setIsMonitorPrice}
                   />
