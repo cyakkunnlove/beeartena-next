@@ -15,24 +15,15 @@ import { v4 as uuidv4 } from 'uuid'
 import { mockReservationService } from '../mock/mockFirebase'
 import { Reservation } from '../types'
 
-import { db } from './config'
-
-// Firebaseが設定されているかチェック
-const isFirebaseConfigured = () => {
-  const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-  return apiKey && apiKey !== 'test-api-key' && apiKey !== ''
-}
+import { db, isFirebaseConfigured } from './config'
 
 export const reservationService = {
   // 予約作成
   async createReservation(
     reservation: Omit<Reservation, 'id' | 'createdAt'>,
   ): Promise<Reservation> {
-    console.log('Firebase configured:', isFirebaseConfigured())
-    console.log('FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 10) + '...')
-    
     if (!isFirebaseConfigured()) {
-      console.log('Using mock service')
+      console.log('Using mock service for createReservation')
       return mockReservationService.createReservation(reservation)
     }
 

@@ -14,6 +14,21 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abcdef',
 }
 
+// Firebase設定が正しいかチェック
+export const isFirebaseConfigured = () => {
+  const apiKey = firebaseConfig.apiKey
+  return apiKey && apiKey !== 'test-api-key' && apiKey !== ''
+}
+
+// デバッグ用
+if (typeof window !== 'undefined') {
+  console.log('Firebase Configuration Status:', {
+    isConfigured: isFirebaseConfigured(),
+    hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+    apiKeyPrefix: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 10) + '...',
+  })
+}
+
 // Initialize Firebase (シングルトンパターン)
 const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp()
 
