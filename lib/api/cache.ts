@@ -1,17 +1,36 @@
 import Redis from 'ioredis'
 import { compress, decompress } from 'lz-string'
 
+// Check if Redis should be disabled (for testing/CI environments)
+const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
+
 // Redis client for caching
-const redis = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  db: parseInt(process.env.REDIS_CACHE_DB || '1'), // Different DB for cache
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000)
-    return delay
-  },
-})
+let redis: Redis | null = null
+
+if (!isRedisDisabled) {
+  try {
+    redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_CACHE_DB || '1'), // Different DB for cache
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000)
+        return delay
+      },
+      lazyConnect: true, // Don't connect immediately
+    })
+    
+    // Attempt to connect
+    redis.connect().catch(err => {
+      console.warn('Redis connection failed, falling back to memory cache:', err.message)
+      redis = null
+    })
+  } catch (err) {
+    console.warn('Redis initialization failed, falling back to memory cache:', err)
+    redis = null
+  }
+}
 
 export interface CacheOptions {
   ttl?: number // Time to live in seconds
@@ -32,7 +51,9 @@ class Cache {
         return memCached.data
       }
 
-      // Check Redis
+      // Check Redis if available
+      if (!redis) return null
+      
       const cached = await redis.get(key)
       if (!cached) return null
 
@@ -79,8 +100,10 @@ class Cache {
         tags: options.tags || [],
       }
 
-      // Set in Redis with TTL
-      await redis.setex(key, ttl, JSON.stringify(cacheData))
+      // Set in Redis with TTL if available
+      if (redis) {
+        await redis.setex(key, ttl, JSON.stringify(cacheData))
+      }
 
       // Set in memory cache
       this.setMemoryCache(key, data, ttl)
@@ -96,7 +119,9 @@ class Cache {
 
   async delete(key: string): Promise<void> {
     try {
-      await redis.del(key)
+      if (redis) {
+        await redis.del(key)
+      }
       this.memoryCache.delete(key)
     } catch (error) {
       console.error('Cache delete error:', error)
@@ -105,13 +130,23 @@ class Cache {
 
   async invalidate(pattern: string): Promise<void> {
     try {
-      const keys = await redis.keys(pattern)
-      if (keys.length > 0) {
-        await redis.del(...keys)
+      if (redis) {
+        const keys = await redis.keys(pattern)
+        if (keys.length > 0) {
+          await redis.del(...keys)
 
-        // Clear from memory cache
-        for (const key of keys) {
-          this.memoryCache.delete(key)
+          // Clear from memory cache
+          for (const key of keys) {
+            this.memoryCache.delete(key)
+          }
+        }
+      } else {
+        // Clear memory cache with pattern matching
+        const regex = new RegExp(pattern.replace(/\*/g, '.*'))
+        for (const key of this.memoryCache.keys()) {
+          if (regex.test(key)) {
+            this.memoryCache.delete(key)
+          }
         }
       }
     } catch (error) {
@@ -121,17 +156,19 @@ class Cache {
 
   async invalidateByTag(tag: string): Promise<void> {
     try {
-      const keys = await redis.smembers(`tag:${tag}`)
-      if (keys.length > 0) {
-        await redis.del(...keys)
+      if (redis) {
+        const keys = await redis.smembers(`tag:${tag}`)
+        if (keys.length > 0) {
+          await redis.del(...keys)
 
-        // Clear from memory cache
-        for (const key of keys) {
-          this.memoryCache.delete(key)
+          // Clear from memory cache
+          for (const key of keys) {
+            this.memoryCache.delete(key)
+          }
+
+          // Remove the tag set
+          await redis.del(`tag:${tag}`)
         }
-
-        // Remove the tag set
-        await redis.del(`tag:${tag}`)
       }
     } catch (error) {
       console.error('Cache invalidate by tag error:', error)
@@ -140,7 +177,9 @@ class Cache {
 
   async clear(): Promise<void> {
     try {
-      await redis.flushdb()
+      if (redis) {
+        await redis.flushdb()
+      }
       this.memoryCache.clear()
     } catch (error) {
       console.error('Cache clear error:', error)
@@ -163,6 +202,8 @@ class Cache {
   }
 
   private async storeTags(key: string, tags: string[], ttl: number): Promise<void> {
+    if (!redis) return
+    
     const multi = redis.multi()
 
     for (const tag of tags) {

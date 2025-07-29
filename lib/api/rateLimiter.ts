@@ -1,17 +1,36 @@
 import Redis from 'ioredis'
 import { NextRequest } from 'next/server'
 
+// Check if Redis should be disabled (for testing/CI environments)
+const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
+
 // Redis client for rate limiting
-const redis = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  db: parseInt(process.env.REDIS_DB || '0'),
-  retryStrategy: (times) => {
-    const delay = Math.min(times * 50, 2000)
-    return delay
-  },
-})
+let redis: Redis | null = null
+
+if (!isRedisDisabled) {
+  try {
+    redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_DB || '0'),
+      retryStrategy: (times) => {
+        const delay = Math.min(times * 50, 2000)
+        return delay
+      },
+      lazyConnect: true, // Don't connect immediately
+    })
+    
+    // Attempt to connect
+    redis.connect().catch(err => {
+      console.warn('Redis connection failed for rate limiting, using memory fallback:', err.message)
+      redis = null
+    })
+  } catch (err) {
+    console.warn('Redis initialization failed for rate limiting, using memory fallback:', err)
+    redis = null
+  }
+}
 
 export interface RateLimitOptions {
   limit: number
@@ -36,9 +55,14 @@ class RateLimiter {
     const reset = now + window
 
     try {
-      // Try Redis first
-      const result = await this.checkRedis(key, options, now, reset)
-      return !result.allowed
+      // Try Redis first if available
+      if (redis) {
+        const result = await this.checkRedis(key, options, now, reset)
+        return !result.allowed
+      } else {
+        // Use in-memory store if Redis is not available
+        return this.checkFallback(key, options, now)
+      }
     } catch (error) {
       // Fallback to in-memory store if Redis fails
       console.error('Redis rate limit error:', error)
@@ -54,7 +78,19 @@ class RateLimiter {
     const reset = now + window
 
     try {
-      return await this.checkRedis(key, options, now, reset)
+      if (redis) {
+        return await this.checkRedis(key, options, now, reset)
+      } else {
+        // Use fallback for rate limit info
+        const record = this.fallbackStore.get(key)
+        const count = record && now <= record.reset ? record.count : 0
+        return {
+          allowed: count < options.limit,
+          limit: options.limit,
+          remaining: Math.max(0, options.limit - count),
+          reset: Math.floor((record?.reset || reset) / 1000),
+        }
+      }
     } catch (error) {
       console.error('Redis rate limit error:', error)
       // Return a default response on error
@@ -73,6 +109,10 @@ class RateLimiter {
     now: number,
     reset: number,
   ): Promise<RateLimitResult> {
+    if (!redis) {
+      throw new Error('Redis not available')
+    }
+    
     const multi = redis.multi()
 
     // Increment counter
@@ -154,7 +194,9 @@ class RateLimiter {
   async reset(identifier: string): Promise<void> {
     const key = `rate_limit:${identifier}`
     try {
-      await redis.del(key)
+      if (redis) {
+        await redis.del(key)
+      }
     } catch (error) {
       console.error('Failed to reset rate limit:', error)
     }

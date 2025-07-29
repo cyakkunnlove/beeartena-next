@@ -250,29 +250,31 @@ describe('Calendar Component', () => {
     await waitFor(() => {
       // Look for any button that has a red dot (span with ● symbol)
       const buttonsWithRedDot = container.querySelectorAll('button span.text-red-500')
-      
+
       // Verify that at least one button has a red dot
       expect(buttonsWithRedDot.length).toBeGreaterThan(0)
-      
+
       // Verify the red dot content
       const firstRedDot = buttonsWithRedDot[0]
       expect(firstRedDot).toHaveTextContent('●')
-      
+
       // Verify that the button containing the red dot is disabled
       const buttonWithRedDot = firstRedDot.closest('button')
       expect(buttonWithRedDot).toBeDisabled()
-      
+
       // Based on the mock, August 3rd and 15th should be unavailable
       // But August 3rd is a Sunday, so it won't have a red dot
       // We should have red dots on non-Sunday unavailable dates
       const allButtons = container.querySelectorAll('button')
       const dayButtons = Array.from(allButtons).filter(
-        (btn) => btn.textContent && /^\d+/.test(btn.textContent.trim())
+        (btn) => btn.textContent && /^\d+/.test(btn.textContent.trim()),
       )
-      
+
       // Find buttons for days we know should be unavailable (not Sundays)
       // Based on the HTML output, day 1 and 4 have red dots
-      const day1Button = dayButtons.find((btn) => btn.textContent?.trim().startsWith('1') && btn.textContent?.includes('●'))
+      const day1Button = dayButtons.find(
+        (btn) => btn.textContent?.trim().startsWith('1') && btn.textContent?.includes('●'),
+      )
       expect(day1Button).toBeTruthy()
       expect(day1Button).toBeDisabled()
     })

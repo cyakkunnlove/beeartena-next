@@ -1,13 +1,32 @@
 import Redis from 'ioredis'
 import { v4 as uuidv4 } from 'uuid'
 
+// Check if Redis should be disabled (for testing/CI environments)
+const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
+
 // Redis client for queue
-const redis = new Redis({
-  host: process.env.REDIS_HOST || 'localhost',
-  port: parseInt(process.env.REDIS_PORT || '6379'),
-  password: process.env.REDIS_PASSWORD,
-  db: parseInt(process.env.REDIS_QUEUE_DB || '2'), // Different DB for queue
-})
+let redis: Redis | null = null
+
+if (!isRedisDisabled) {
+  try {
+    redis = new Redis({
+      host: process.env.REDIS_HOST || 'localhost',
+      port: parseInt(process.env.REDIS_PORT || '6379'),
+      password: process.env.REDIS_PASSWORD,
+      db: parseInt(process.env.REDIS_QUEUE_DB || '2'), // Different DB for queue
+      lazyConnect: true, // Don't connect immediately
+    })
+    
+    // Attempt to connect
+    redis.connect().catch(err => {
+      console.warn('Redis connection failed for queue, queue functionality disabled:', err.message)
+      redis = null
+    })
+  } catch (err) {
+    console.warn('Redis initialization failed for queue, queue functionality disabled:', err)
+    redis = null
+  }
+}
 
 export interface Job<T = any> {
   id: string
@@ -41,6 +60,7 @@ class Queue {
   private processing = false
   private concurrency = parseInt(process.env.QUEUE_CONCURRENCY || '5')
   private activeJobs = new Set<string>()
+  private memoryQueue: Job[] = [] // Fallback memory queue
 
   // Register a job handler
   register<T = any>(type: string, handler: JobHandler<T>): void {
@@ -59,17 +79,30 @@ class Queue {
       createdAt: new Date(),
     }
 
-    const key = `job:${job.id}`
-    const score = this.calculateScore(options)
+    if (redis) {
+      const key = `job:${job.id}`
+      const score = this.calculateScore(options)
 
-    // Store job data
-    await redis.set(key, JSON.stringify(job), 'EX', 86400) // 24 hour expiry
+      // Store job data
+      await redis.set(key, JSON.stringify(job), 'EX', 86400) // 24 hour expiry
 
-    // Add to queue with score (for priority and delay)
-    if (options.delay) {
-      await redis.zadd('queue:delayed', score, job.id)
+      // Add to queue with score (for priority and delay)
+      if (options.delay) {
+        await redis.zadd('queue:delayed', score, job.id)
+      } else {
+        await redis.zadd('queue:pending', score, job.id)
+      }
     } else {
-      await redis.zadd('queue:pending', score, job.id)
+      // Use memory queue as fallback
+      this.memoryQueue.push(job)
+      // Sort by priority if needed
+      if (options.priority) {
+        this.memoryQueue.sort((a, b) => {
+          const aPriority = (a as any).priority || 0
+          const bPriority = (b as any).priority || 0
+          return bPriority - aPriority
+        })
+      }
     }
 
     // Start processing if not already running
@@ -80,8 +113,13 @@ class Queue {
 
   // Get job by ID
   async getJob<T = any>(jobId: string): Promise<Job<T> | null> {
-    const data = await redis.get(`job:${jobId}`)
-    return data ? JSON.parse(data) : null
+    if (redis) {
+      const data = await redis.get(`job:${jobId}`)
+      return data ? JSON.parse(data) : null
+    } else {
+      // Search in memory queue
+      return this.memoryQueue.find(job => job.id === jobId) || null
+    }
   }
 
   // Get job status
@@ -98,15 +136,26 @@ class Queue {
     failed: number
     delayed: number
   }> {
-    const [pending, processing, completed, failed, delayed] = await Promise.all([
-      redis.zcard('queue:pending'),
-      redis.scard('queue:processing'),
-      redis.zcard('queue:completed'),
-      redis.zcard('queue:failed'),
-      redis.zcard('queue:delayed'),
-    ])
+    if (redis) {
+      const [pending, processing, completed, failed, delayed] = await Promise.all([
+        redis.zcard('queue:pending'),
+        redis.scard('queue:processing'),
+        redis.zcard('queue:completed'),
+        redis.zcard('queue:failed'),
+        redis.zcard('queue:delayed'),
+      ])
 
-    return { pending, processing, completed, failed, delayed }
+      return { pending, processing, completed, failed, delayed }
+    } else {
+      // Return stats from memory queue
+      return {
+        pending: this.memoryQueue.filter(j => j.status === 'pending').length,
+        processing: this.activeJobs.size,
+        completed: this.memoryQueue.filter(j => j.status === 'completed').length,
+        failed: this.memoryQueue.filter(j => j.status === 'failed').length,
+        delayed: 0, // No delay support in memory queue
+      }
+    }
   }
 
   // Start processing jobs
@@ -145,8 +194,14 @@ class Queue {
 
   // Get next job from queue
   private async getNextJob(): Promise<string | null> {
-    const result = await redis.zpopmin('queue:pending')
-    return result.length > 0 ? result[0] : null
+    if (redis) {
+      const result = await redis.zpopmin('queue:pending')
+      return result.length > 0 ? result[0] : null
+    } else {
+      // Get from memory queue
+      const job = this.memoryQueue.find(j => j.status === 'pending')
+      return job ? job.id : null
+    }
   }
 
   // Process a single job
@@ -169,7 +224,9 @@ class Queue {
       await this.updateJob(job)
 
       // Move to processing set
-      await redis.sadd('queue:processing', jobId)
+      if (redis) {
+        await redis.sadd('queue:processing', jobId)
+      }
 
       // Execute handler
       const result = await handler(job)
@@ -181,8 +238,10 @@ class Queue {
       await this.updateJob(job)
 
       // Move to completed queue
-      await redis.srem('queue:processing', jobId)
-      await redis.zadd('queue:completed', Date.now(), jobId)
+      if (redis) {
+        await redis.srem('queue:processing', jobId)
+        await redis.zadd('queue:completed', Date.now(), jobId)
+      }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error'
 
@@ -196,7 +255,15 @@ class Queue {
 
   // Update job in storage
   private async updateJob(job: Job): Promise<void> {
-    await redis.set(`job:${job.id}`, JSON.stringify(job), 'EX', 86400)
+    if (redis) {
+      await redis.set(`job:${job.id}`, JSON.stringify(job), 'EX', 86400)
+    } else {
+      // Update in memory queue
+      const index = this.memoryQueue.findIndex(j => j.id === job.id)
+      if (index !== -1) {
+        this.memoryQueue[index] = job
+      }
+    }
   }
 
   // Fail a job
@@ -206,8 +273,10 @@ class Queue {
     job.error = error
     await this.updateJob(job)
 
-    await redis.srem('queue:processing', job.id)
-    await redis.zadd('queue:failed', Date.now(), job.id)
+    if (redis) {
+      await redis.srem('queue:processing', job.id)
+      await redis.zadd('queue:failed', Date.now(), job.id)
+    }
   }
 
   // Retry a job
@@ -216,21 +285,25 @@ class Queue {
     job.error = error
     await this.updateJob(job)
 
-    await redis.srem('queue:processing', job.id)
+    if (redis) {
+      await redis.srem('queue:processing', job.id)
 
-    // Calculate backoff delay
-    const delay = this.calculateBackoff(job)
-    const score = Date.now() + delay
+      // Calculate backoff delay
+      const delay = this.calculateBackoff(job)
+      const score = Date.now() + delay
 
-    if (delay > 0) {
-      await redis.zadd('queue:delayed', score, job.id)
-    } else {
-      await redis.zadd('queue:pending', score, job.id)
+      if (delay > 0) {
+        await redis.zadd('queue:delayed', score, job.id)
+      } else {
+        await redis.zadd('queue:pending', score, job.id)
+      }
     }
   }
 
   // Move delayed jobs to pending queue
   private async moveDelayedJobs(): Promise<void> {
+    if (!redis) return // No delay support without Redis
+    
     const now = Date.now()
     const jobIds = await redis.zrangebyscore('queue:delayed', 0, now)
 

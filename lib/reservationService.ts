@@ -249,13 +249,17 @@ class ReservationService {
   async getMonthAvailability(year: number, month: number): Promise<Map<string, boolean>> {
     const availability = new Map<string, boolean>()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
+    
+    // Get today's date string for comparison
+    const today = new Date()
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
 
     for (let day = 1; day <= daysInMonth; day++) {
-      const date = new Date(year, month, day)
-      const dateStr = date.toISOString().split('T')[0]
+      // Create date string in YYYY-MM-DD format
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
       // 過去の日付は予約不可
-      if (date < new Date()) {
+      if (dateStr < todayStr) {
         availability.set(dateStr, false)
       } else {
         availability.set(dateStr, await this.isDateAvailable(dateStr))

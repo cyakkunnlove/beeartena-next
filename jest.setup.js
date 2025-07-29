@@ -9,6 +9,8 @@ process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET = 'test-storage-bucket'
 process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID = 'test-sender-id'
 process.env.NEXT_PUBLIC_FIREBASE_APP_ID = 'test-app-id'
 process.env.JWT_SECRET = 'test-jwt-secret'
+process.env.NODE_ENV = 'test'
+process.env.DISABLE_REDIS = 'true'
 
 // Mock window.matchMedia
 Object.defineProperty(window, 'matchMedia', {
