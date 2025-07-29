@@ -126,8 +126,14 @@ class ReservationService {
   // 予約作成
   async createReservation(
     reservation: Omit<Reservation, 'id' | 'createdAt'>,
+    createdBy?: string,
   ): Promise<Reservation> {
-    const newReservation = await firebaseReservationService.createReservation(reservation)
+    const reservationData = {
+      ...reservation,
+      createdBy: createdBy || reservation.customerId || undefined,
+    }
+    
+    const newReservation = await firebaseReservationService.createReservation(reservationData)
 
     // 予約完了時のポイント付与（予約金額の5%）
     if (reservation.price && reservation.customerId) {
@@ -179,13 +185,13 @@ class ReservationService {
   }
 
   // 予約完了処理
-  async completeReservation(id: string): Promise<void> {
+  async completeReservation(id: string, completedBy?: string): Promise<void> {
     const reservation = await firebaseReservationService.getReservation(id)
     if (!reservation) {
       throw new Error('予約が見つかりません')
     }
 
-    await firebaseReservationService.updateReservationStatus(id, 'completed')
+    await firebaseReservationService.updateReservationStatus(id, 'completed', completedBy)
 
     // 累計利用金額を更新
     if (reservation.price && reservation.customerId) {

@@ -75,7 +75,7 @@ export interface Reservation {
   customerName: string
   customerEmail: string
   customerPhone: string
-  serviceType: '2D' | '3D' | '4D'
+  serviceType: '2D' | '3D' | '4D' | 'wax' | string // 柔軟に対応
   serviceName: string
   price: number
   date: string
@@ -84,6 +84,10 @@ export interface Reservation {
   notes?: string
   createdAt: Date
   updatedAt: Date
+  createdBy?: string // 作成者のUID（管理者が代理作成した場合など）
+  completedAt?: Date // 予約完了日時
+  cancelReason?: string // キャンセル理由
+  cancelledAt?: Date // キャンセル日時
 }
 
 // Inquiry types
@@ -217,6 +221,7 @@ export interface ReservationFormData {
   date: string
   time: string
   notes?: string
+  isMonitorPrice?: boolean // モニター価格を選択した場合true
 }
 
 export interface ContactFormData {

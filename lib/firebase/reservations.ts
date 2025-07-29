@@ -28,7 +28,11 @@ export const reservationService = {
   async createReservation(
     reservation: Omit<Reservation, 'id' | 'createdAt'>,
   ): Promise<Reservation> {
+    console.log('Firebase configured:', isFirebaseConfigured())
+    console.log('FIREBASE_API_KEY:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 10) + '...')
+    
     if (!isFirebaseConfigured()) {
+      console.log('Using mock service')
       return mockReservationService.createReservation(reservation)
     }
 
@@ -40,10 +44,18 @@ export const reservationService = {
         status: 'pending' as const,
       }
 
+      console.log('Creating reservation in Firebase:', newReservation)
+
+      // dateが文字列の場合の処理
+      const dateObj = typeof newReservation.date === 'string' 
+        ? new Date(newReservation.date + 'T00:00:00') 
+        : newReservation.date
+
       await setDoc(doc(db, 'reservations', newReservation.id), {
         ...newReservation,
-        date: Timestamp.fromDate(new Date(newReservation.date)),
+        date: newReservation.date, // 文字列のまま保存
         createdAt: Timestamp.fromDate(newReservation.createdAt),
+        updatedAt: Timestamp.now(),
       })
 
       return newReservation
@@ -66,8 +78,9 @@ export const reservationService = {
       const data = docRef.data()
       return {
         ...data,
-        date: data.date.toDate(),
-        createdAt: data.createdAt.toDate(),
+        id: id,
+        date: data.date, // 文字列のまま
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
       } as Reservation
     } catch (error: any) {
       throw new Error(error.message || '予約の取得に失敗しました')
@@ -92,8 +105,9 @@ export const reservationService = {
         const data = doc.data()
         return {
           ...data,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
+          id: doc.id,
+          date: data.date, // 文字列のまま
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
         } as Reservation
       })
     } catch (error: any) {
@@ -115,8 +129,9 @@ export const reservationService = {
         const data = doc.data()
         return {
           ...data,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
+          id: doc.id,
+          date: data.date, // 文字列のまま
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
         } as Reservation
       })
     } catch (error: any) {
@@ -128,16 +143,28 @@ export const reservationService = {
   async updateReservationStatus(
     id: string,
     status: 'pending' | 'confirmed' | 'cancelled' | 'completed',
+    updatedBy?: string,
   ): Promise<void> {
     if (!isFirebaseConfigured()) {
       return mockReservationService.updateReservationStatus(id, status)
     }
 
     try {
-      await updateDoc(doc(db, 'reservations', id), {
+      const updateData: any = {
         status,
         updatedAt: Timestamp.now(),
-      })
+      }
+      
+      // ステータスに応じて追加フィールドを設定
+      if (status === 'completed') {
+        updateData.completedAt = Timestamp.now()
+      }
+      
+      if (updatedBy) {
+        updateData.updatedBy = updatedBy
+      }
+      
+      await updateDoc(doc(db, 'reservations', id), updateData)
     } catch (error: any) {
       throw new Error(error.message || '予約状態の更新に失敗しました')
     }
@@ -168,17 +195,13 @@ export const reservationService = {
     }
 
     try {
-      const startOfDay = new Date(date)
-      startOfDay.setHours(0, 0, 0, 0)
-
-      const endOfDay = new Date(date)
-      endOfDay.setHours(23, 59, 59, 999)
-
-      // インデックスエラーを回避するため、一時的に簡略化
+      // 日付を文字列形式に変換 (YYYY-MM-DD)
+      const dateStr = date.toISOString().split('T')[0]
+      
+      // 文字列で比較
       const q = query(
         collection(db, 'reservations'),
-        where('date', '>=', Timestamp.fromDate(startOfDay)),
-        where('date', '<=', Timestamp.fromDate(endOfDay)),
+        where('date', '==', dateStr),
       )
 
       const querySnapshot = await getDocs(q)
@@ -186,8 +209,9 @@ export const reservationService = {
         const data = doc.data()
         return {
           ...data,
-          date: data.date.toDate(),
-          createdAt: data.createdAt.toDate(),
+          id: doc.id,
+          date: data.date, // 文字列のまま
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
         } as Reservation
       })
     } catch (error: any) {

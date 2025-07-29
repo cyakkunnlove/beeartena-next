@@ -36,11 +36,14 @@ function ReservationContent() {
     phone: '',
     notes: '',
   })
+  const [isMonitorPrice, setIsMonitorPrice] = useState(false)
 
   const serviceData = {
-    '2D': { name: '2D眉毛', price: 30000 },
-    '3D': { name: '3D眉毛', price: 50000 },
-    '4D': { name: '4D眉毛', price: 70000 },
+    '2D': { name: '2Dパウダーブロウ', price: 22000, monitorPrice: 20000 },
+    '3D': { name: '3Dフェザーブロウ', price: 23000, monitorPrice: 20000 },
+    '4D': { name: '4Dパウダー&フェザー', price: 25000, monitorPrice: 22000 },
+    'wax': { name: '眉毛ワックス脱毛', price: 15000 },
+    'retouch': { name: '安心プラン（リタッチ）', price: 11000 },
   }
 
   // 会員登録から戻ってきた場合、保存した予約情報を復元
@@ -130,19 +133,20 @@ function ReservationContent() {
 
     try {
       const service = serviceData[selectedService as keyof typeof serviceData]
-      const _finalPrice = service.price - pointsToUse
+      const basePrice = isMonitorPrice && service.monitorPrice ? service.monitorPrice : service.price
+      const _finalPrice = basePrice - pointsToUse
 
       const reservationData = {
         serviceType: selectedService as '2D' | '3D' | '4D',
         serviceName: service.name,
-        price: service.price,
+        price: basePrice,
         date: selectedDate,
         time: selectedTime,
         customerName: formData.name,
         customerPhone: formData.phone,
         customerEmail: formData.email,
         customerId: user?.id || null,
-        notes: formData.notes,
+        notes: isMonitorPrice ? `${formData.notes}\n【モニター価格適用】写真撮影にご協力いただきます` : formData.notes,
         status: 'pending' as const,
         updatedAt: new Date(),
       }
@@ -265,7 +269,9 @@ function ReservationContent() {
                     onSubmit={() => handleFormSubmit(formData)}
                     isLoggedIn={!!user}
                     servicePrice={serviceData[selectedService as keyof typeof serviceData].price}
+                    monitorPrice={serviceData[selectedService as keyof typeof serviceData].monitorPrice}
                     onPointsUsed={setPointsToUse}
+                    onMonitorPriceSelected={setIsMonitorPrice}
                   />
                 </motion.div>
               )}

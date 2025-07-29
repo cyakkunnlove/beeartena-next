@@ -16,6 +16,8 @@ interface ReservationFormProps {
   isLoggedIn: boolean
   servicePrice: number
   onPointsUsed: (points: number) => void
+  monitorPrice?: number
+  onMonitorPriceSelected?: (selected: boolean) => void
 }
 
 export default function ReservationForm({
@@ -25,12 +27,16 @@ export default function ReservationForm({
   isLoggedIn,
   servicePrice,
   onPointsUsed,
+  monitorPrice,
+  onMonitorPriceSelected,
 }: ReservationFormProps) {
   const { user } = useAuth()
   const [usePoints, setUsePoints] = useState(false)
   const [pointsToUse, setPointsToUse] = useState('')
+  const [useMonitorPrice, setUseMonitorPrice] = useState(false)
   const availablePoints = user?.points || 0
-  const maxPoints = Math.min(availablePoints, servicePrice)
+  const currentPrice = useMonitorPrice && monitorPrice ? monitorPrice : servicePrice
+  const maxPoints = Math.min(availablePoints, currentPrice)
 
   useEffect(() => {
     // ポイント使用をリセット
@@ -39,6 +45,13 @@ export default function ReservationForm({
       onPointsUsed(0)
     }
   }, [usePoints, onPointsUsed])
+
+  useEffect(() => {
+    // モニター価格選択を親コンポーネントに通知
+    if (onMonitorPriceSelected) {
+      onMonitorPriceSelected(useMonitorPrice)
+    }
+  }, [useMonitorPrice, onMonitorPriceSelected])
 
   const handlePointsChange = (value: string) => {
     const points = parseInt(value) || 0
@@ -125,6 +138,29 @@ export default function ReservationForm({
         />
       </div>
 
+      {/* モニター価格オプション */}
+      {monitorPrice && (
+        <div className="border rounded-lg p-4 bg-amber-50">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={useMonitorPrice}
+              onChange={(e) => setUseMonitorPrice(e.target.checked)}
+              className="rounded"
+            />
+            <span className="font-medium">モニター価格で予約する</span>
+          </label>
+          <p className="text-sm text-gray-600 mt-2">
+            施術前後の写真撮影にご協力いただくことで、特別価格でご利用いただけます。
+          </p>
+          <div className="mt-3 text-sm">
+            <p className="line-through text-gray-500">通常価格: ¥{servicePrice.toLocaleString()}</p>
+            <p className="text-lg font-bold text-primary">モニター価格: ¥{monitorPrice.toLocaleString()}</p>
+            <p className="text-xs text-gray-500 mt-1">※写真は施術例として使用させていただく場合があります</p>
+          </div>
+        </div>
+      )}
+
       {/* ポイント使用 */}
       {isLoggedIn && availablePoints > 0 && (
         <div className="border rounded-lg p-4 bg-gray-50">
@@ -166,10 +202,10 @@ export default function ReservationForm({
               </div>
 
               <div className="text-sm text-gray-600">
-                <p>サービス料金: ¥{servicePrice.toLocaleString()}</p>
+                <p>サービス料金: ¥{currentPrice.toLocaleString()}</p>
                 <p>ポイント利用: -{parseInt(pointsToUse) || 0}pt</p>
                 <p className="font-medium text-gray-900">
-                  お支払い金額: ¥{(servicePrice - (parseInt(pointsToUse) || 0)).toLocaleString()}
+                  お支払い金額: ¥{(currentPrice - (parseInt(pointsToUse) || 0)).toLocaleString()}
                 </p>
               </div>
             </div>

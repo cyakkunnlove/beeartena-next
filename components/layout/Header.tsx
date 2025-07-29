@@ -55,6 +55,11 @@ export default function Header() {
               </Link>
             </li>
             <li>
+              <Link href="/maintenance" className="text-gray-700 hover:text-primary transition-colors">
+                メンテナンス
+              </Link>
+            </li>
+            <li>
               <Link href="/#plan" className="text-gray-700 hover:text-primary transition-colors">
                 安心プラン
               </Link>
@@ -163,6 +168,7 @@ export default function Header() {
                 {[
                   { href: '/', label: 'トップ' },
                   { href: '/pricing', label: 'メニュー・料金' },
+                  { href: '/maintenance', label: 'メンテナンス' },
                   { href: '/#plan', label: '安心プラン' },
                   { href: '/#care', label: 'アフターケア' },
                   { href: '/#profile', label: 'プロフィール' },

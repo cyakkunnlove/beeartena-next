@@ -10,25 +10,44 @@ interface ServiceSelectionProps {
 const services = [
   {
     id: '2D',
-    name: 'パウダーブロウ',
-    description: 'ふんわりパウダー眉',
-    price: 20000,
+    name: '2D パウダーブロウ',
+    description: 'まるでパウダーで描いたような、ふんわり優しい印象に',
+    price: 22000,
     duration: '約2時間',
+    monitorPrice: 20000,
   },
   {
     id: '3D',
-    name: 'フェザーブロウ',
-    description: '立体的な毛流れ眉',
-    price: 20000,
+    name: '3D フェザーブロウ',
+    description: '一本一本丁寧に毛流れを描き、自眉のような自然で立体的な印象に',
+    price: 23000,
     duration: '約2時間',
+    monitorPrice: 20000,
   },
   {
     id: '4D',
-    name: 'パウダー&フェザー',
-    description: '2D+3Dのいいとこ取り',
+    name: '4D パウダー＆フェザー',
+    description: 'パウダーのふんわり感と、フェザーの立体感を組み合わせた、最も自然で洗練された印象に',
     price: 25000,
     duration: '約2時間',
     featured: true,
+    monitorPrice: 22000,
+  },
+  {
+    id: 'wax',
+    name: '眉毛ワックス脱毛',
+    description: 'すっきり整った眉毛に',
+    price: 15000,
+    duration: '約30分',
+  },
+  {
+    id: 'retouch',
+    name: '安心プラン（リタッチ）',
+    description: '2回の施術完了から半年以内の方限定。少し薄くなってきた・形を微調整したい方に',
+    price: 11000,
+    duration: '約1時間30分',
+    requiresHistory: true,
+    badge: 'リピーター限定',
   },
 ]
 
@@ -87,6 +106,16 @@ export default function ServiceSelection({ onSelect, selected }: ServiceSelectio
               人気No.1
             </motion.div>
           )}
+          {service.badge && (
+            <motion.div
+              initial={{ scale: 0, rotate: -10 }}
+              animate={{ scale: 1, rotate: 0 }}
+              transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
+              className="absolute top-0 right-0 bg-amber-600 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg"
+            >
+              {service.badge}
+            </motion.div>
+          )}
 
           <motion.div
             className="text-3xl font-bold text-primary mb-2"
@@ -97,7 +126,14 @@ export default function ServiceSelection({ onSelect, selected }: ServiceSelectio
           </motion.div>
           <h3 className="font-semibold text-lg mb-1">{service.name}</h3>
           <p className="text-sm text-gray-600 mb-3">{service.description}</p>
-          <p className="text-2xl font-bold mb-1">¥{service.price.toLocaleString()}</p>
+          <div className="mb-1">
+            <p className="text-2xl font-bold">¥{service.price.toLocaleString()}</p>
+            {service.monitorPrice && (
+              <p className="text-sm text-primary mt-1">
+                モニター価格: ¥{service.monitorPrice.toLocaleString()}
+              </p>
+            )}
+          </div>
           <p className="text-xs text-gray-500">{service.duration}</p>
 
           {selected === service.id && (

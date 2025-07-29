@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase統合テスト - Bee Artena</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 30px;
+        }
+        h2 {
+            color: #666;
+            margin-top: 30px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .info {
+            background-color: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+        button {
+            background-color: #D97706;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #B45309;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        input, select, textarea {
+            width: 100%;
+            padding: 8px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        .data-list {
+            background-color: #f9f9f9;
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .data-item {
+            background-color: white;
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .test-section {
+            border-left: 4px solid #D97706;
+            padding-left: 20px;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>🐝 Bee Artena - Firebase統合テスト</h1>
+
+    <div class="container">
+        <h2>1. Firebase接続状態</h2>
+        <div id="connection-status" class="status info">接続確認中...</div>
+    </div>
+
+    <div class="container">
+        <h2>2. 管理者ログイン</h2>
+        <div class="form-group">
+            <label>メールアドレス</label>
+            <input type="email" id="admin-email" value="admin@beeartena.jp">
+        </div>
+        <div class="form-group">
+            <label>パスワード</label>
+            <input type="password" id="admin-password" placeholder="パスワードを入力">
+        </div>
+        <button onclick="loginAsAdmin()">管理者としてログイン</button>
+        <div id="login-status" class="status info" style="display:none;"></div>
+    </div>
+
+    <div class="container test-section" id="admin-section" style="display:none;">
+        <h2>3. 管理者機能テスト</h2>
+        
+        <h3>予約データ確認</h3>
+        <button onclick="loadReservations()">予約一覧を取得</button>
+        <div id="reservations-list" class="data-list"></div>
+
+        <h3>顧客データ確認</h3>
+        <button onclick="loadCustomers()">顧客一覧を取得</button>
+        <div id="customers-list" class="data-list"></div>
+
+        <h3>新規顧客作成</h3>
+        <div class="form-group">
+            <label>顧客名</label>
+            <input type="text" id="customer-name" value="テスト 花子">
+        </div>
+        <div class="form-group">
+            <label>メールアドレス</label>
+            <input type="email" id="customer-email" value="test-hanako@example.com">
+        </div>
+        <div class="form-group">
+            <label>電話番号</label>
+            <input type="tel" id="customer-phone" value="090-1234-5678">
+        </div>
+        <button onclick="createCustomer()">顧客を作成</button>
+        <div id="customer-status" class="status info" style="display:none;"></div>
+
+        <h3>新規予約作成</h3>
+        <div class="form-group">
+            <label>顧客ID</label>
+            <input type="text" id="reservation-customer-id" placeholder="顧客IDを入力">
+        </div>
+        <div class="form-group">
+            <label>サービス</label>
+            <select id="reservation-service">
+                <option value="2D">2Dパウダーブロウ - ¥22,000</option>
+                <option value="3D">3Dフェザーブロウ - ¥23,000</option>
+                <option value="4D">4Dパウダー&フェザー - ¥25,000</option>
+                <option value="wax">眉毛ワックス脱毛 - ¥15,000</option>
+                <option value="retouch">安心プラン（リタッチ） - ¥11,000</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>予約日</label>
+            <input type="date" id="reservation-date">
+        </div>
+        <div class="form-group">
+            <label>予約時間</label>
+            <select id="reservation-time">
+                <option value="09:00">09:00</option>
+                <option value="11:00">11:00</option>
+                <option value="13:00">13:00</option>
+                <option value="15:00">15:00</option>
+                <option value="17:00">17:00</option>
+                <option value="18:30">18:30</option>
+            </select>
+        </div>
+        <button onclick="createReservation()">予約を作成</button>
+        <div id="reservation-status" class="status info" style="display:none;"></div>
+    </div>
+
+    <div class="container">
+        <h2>テスト結果サマリー</h2>
+        <div id="test-summary" class="data-list"></div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import { getAuth, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, getDocs, doc, setDoc, query, where, orderBy, serverTimestamp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
+
+        // Firebase設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXYa8FeHyHQa0jHRfhZjJ4xLYUb4YvFFuA",
+            authDomain: "beeart-ena.firebaseapp.com",
+            projectId: "beeart-ena",
+            storageBucket: "beeart-ena.appspot.com",
+            messagingSenderId: "47862693911",
+            appId: "1:47862693911:web:f7181ecac113393d5c9c52"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.auth = auth;
+
+        // 接続確認
+        const connectionStatus = document.getElementById('connection-status');
+        try {
+            const testCollection = collection(db, 'settings');
+            connectionStatus.className = 'status success';
+            connectionStatus.textContent = '✅ Firebaseに正常に接続されています';
+        } catch (error) {
+            connectionStatus.className = 'status error';
+            connectionStatus.textContent = '❌ Firebase接続エラー: ' + error.message;
+        }
+
+        // 今日の日付を設定
+        document.getElementById('reservation-date').value = new Date().toISOString().split('T')[0];
+
+        // グローバル関数として定義
+        window.loginAsAdmin = async function() {
+            const email = document.getElementById('admin-email').value;
+            const password = document.getElementById('admin-password').value;
+            const loginStatus = document.getElementById('login-status');
+            
+            try {
+                loginStatus.style.display = 'block';
+                loginStatus.className = 'status info';
+                loginStatus.textContent = 'ログイン中...';
+                
+                const userCredential = await signInWithEmailAndPassword(auth, email, password);
+                
+                loginStatus.className = 'status success';
+                loginStatus.textContent = '✅ ログイン成功！UID: ' + userCredential.user.uid;
+                
+                document.getElementById('admin-section').style.display = 'block';
+                
+                addTestResult('管理者ログイン', true, 'UID: ' + userCredential.user.uid);
+            } catch (error) {
+                loginStatus.className = 'status error';
+                loginStatus.textContent = '❌ ログインエラー: ' + error.message;
+                addTestResult('管理者ログイン', false, error.message);
+            }
+        };
+
+        window.loadReservations = async function() {
+            const listElement = document.getElementById('reservations-list');
+            try {
+                listElement.innerHTML = '<div class="status info">読み込み中...</div>';
+                
+                const q = query(collection(db, 'reservations'), orderBy('date', 'desc'));
+                const querySnapshot = await getDocs(q);
+                
+                listElement.innerHTML = '';
+                let count = 0;
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    count++;
+                    const item = document.createElement('div');
+                    item.className = 'data-item';
+                    item.innerHTML = `
+                        <strong>予約ID:</strong> ${doc.id}<br>
+                        <strong>顧客名:</strong> ${data.customerName}<br>
+                        <strong>サービス:</strong> ${data.serviceName}<br>
+                        <strong>日付:</strong> ${data.date}<br>
+                        <strong>時間:</strong> ${data.time}<br>
+                        <strong>ステータス:</strong> ${data.status}
+                    `;
+                    listElement.appendChild(item);
+                });
+                
+                if (count === 0) {
+                    listElement.innerHTML = '<div class="status info">予約データがありません</div>';
+                }
+                
+                addTestResult('予約データ取得', true, `${count}件の予約を取得`);
+            } catch (error) {
+                listElement.innerHTML = '<div class="status error">エラー: ' + error.message + '</div>';
+                addTestResult('予約データ取得', false, error.message);
+            }
+        };
+
+        window.loadCustomers = async function() {
+            const listElement = document.getElementById('customers-list');
+            try {
+                listElement.innerHTML = '<div class="status info">読み込み中...</div>';
+                
+                const q = query(collection(db, 'users'), where('role', '==', 'customer'));
+                const querySnapshot = await getDocs(q);
+                
+                listElement.innerHTML = '';
+                let count = 0;
+                
+                querySnapshot.forEach((doc) => {
+                    const data = doc.data();
+                    count++;
+                    const item = document.createElement('div');
+                    item.className = 'data-item';
+                    item.innerHTML = `
+                        <strong>顧客ID:</strong> ${doc.id}<br>
+                        <strong>名前:</strong> ${data.name}<br>
+                        <strong>メール:</strong> ${data.email}<br>
+                        <strong>電話:</strong> ${data.phone}<br>
+                        <strong>ポイント:</strong> ${data.points || 0}pt
+                    `;
+                    listElement.appendChild(item);
+                });
+                
+                if (count === 0) {
+                    listElement.innerHTML = '<div class="status info">顧客データがありません</div>';
+                }
+                
+                addTestResult('顧客データ取得', true, `${count}件の顧客を取得`);
+            } catch (error) {
+                listElement.innerHTML = '<div class="status error">エラー: ' + error.message + '</div>';
+                addTestResult('顧客データ取得', false, error.message);
+            }
+        };
+
+        window.createCustomer = async function() {
+            const statusElement = document.getElementById('customer-status');
+            try {
+                statusElement.style.display = 'block';
+                statusElement.className = 'status info';
+                statusElement.textContent = '作成中...';
+                
+                const customerId = 'customer_' + Date.now();
+                const customerData = {
+                    name: document.getElementById('customer-name').value,
+                    email: document.getElementById('customer-email').value,
+                    phone: document.getElementById('customer-phone').value,
+                    role: 'customer',
+                    points: 0,
+                    totalSpent: 0,
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                
+                await setDoc(doc(db, 'users', customerId), customerData);
+                
+                statusElement.className = 'status success';
+                statusElement.textContent = '✅ 顧客作成成功！ID: ' + customerId;
+                document.getElementById('reservation-customer-id').value = customerId;
+                
+                addTestResult('新規顧客作成', true, 'ID: ' + customerId);
+                
+                // 顧客一覧を再読み込み
+                loadCustomers();
+            } catch (error) {
+                statusElement.className = 'status error';
+                statusElement.textContent = '❌ エラー: ' + error.message;
+                addTestResult('新規顧客作成', false, error.message);
+            }
+        };
+
+        window.createReservation = async function() {
+            const statusElement = document.getElementById('reservation-status');
+            try {
+                statusElement.style.display = 'block';
+                statusElement.className = 'status info';
+                statusElement.textContent = '作成中...';
+                
+                const serviceType = document.getElementById('reservation-service').value;
+                const serviceNames = {
+                    '2D': '2Dパウダーブロウ',
+                    '3D': '3Dフェザーブロウ',
+                    '4D': '4Dパウダー&フェザー',
+                    'wax': '眉毛ワックス脱毛',
+                    'retouch': '安心プラン（リタッチ）'
+                };
+                const prices = {
+                    '2D': 22000,
+                    '3D': 23000,
+                    '4D': 25000,
+                    'wax': 15000,
+                    'retouch': 11000
+                };
+                
+                const reservationData = {
+                    customerId: document.getElementById('reservation-customer-id').value,
+                    customerName: document.getElementById('customer-name').value,
+                    customerEmail: document.getElementById('customer-email').value,
+                    customerPhone: document.getElementById('customer-phone').value,
+                    serviceType: serviceType,
+                    serviceName: serviceNames[serviceType],
+                    price: prices[serviceType],
+                    date: document.getElementById('reservation-date').value,
+                    time: document.getElementById('reservation-time').value,
+                    status: 'pending',
+                    notes: 'Firebaseテストから作成',
+                    createdAt: serverTimestamp(),
+                    updatedAt: serverTimestamp()
+                };
+                
+                const docRef = await addDoc(collection(db, 'reservations'), reservationData);
+                
+                statusElement.className = 'status success';
+                statusElement.textContent = '✅ 予約作成成功！ID: ' + docRef.id;
+                
+                addTestResult('新規予約作成', true, 'ID: ' + docRef.id);
+                
+                // 予約一覧を再読み込み
+                loadReservations();
+            } catch (error) {
+                statusElement.className = 'status error';
+                statusElement.textContent = '❌ エラー: ' + error.message;
+                addTestResult('新規予約作成', false, error.message);
+            }
+        };
+
+        function addTestResult(testName, success, details) {
+            const summaryElement = document.getElementById('test-summary');
+            const resultItem = document.createElement('div');
+            resultItem.className = 'data-item';
+            resultItem.innerHTML = `
+                <strong>${success ? '✅' : '❌'} ${testName}</strong><br>
+                <small>${new Date().toLocaleTimeString()}</small><br>
+                ${details ? '<em>' + details + '</em>' : ''}
+            `;
+            summaryElement.appendChild(resultItem);
+        }
+    </script>
+</body>
+</html>
