@@ -206,33 +206,36 @@ class ReservationService {
     const slots: TimeSlot[] = []
     const reservations = await firebaseReservationService.getReservationsByDate(dateObj)
 
-    // 水曜日は時間枠が多い
-    if (dayOfWeek === 3) {
-      // 9:00-17:00の営業時間で2時間枠
-      for (let hour = 9; hour < 17; hour += 2) {
-        const timeStr = `${hour}:00`
-        const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
-
-        slots.push({
-          time: timeStr,
-          available: bookingsAtTime < this.settings.maxCapacityPerSlot,
-          date: date,
-          maxCapacity: this.settings.maxCapacityPerSlot,
-          currentBookings: bookingsAtTime,
-        })
+    // 営業時間から時間枠を生成
+    const [openHour, openMinute] = businessHours.open.split(':').map(Number)
+    const [closeHour, closeMinute] = businessHours.close.split(':').map(Number)
+    
+    // 開始時刻と終了時刻を分単位に変換
+    const openTimeInMinutes = openHour * 60 + openMinute
+    const closeTimeInMinutes = closeHour * 60 + closeMinute
+    
+    // スロット時間（デフォルト120分）
+    const slotDuration = this.settings.slotDuration || 120
+    
+    // 時間枠を生成
+    for (let currentMinutes = openTimeInMinutes; currentMinutes < closeTimeInMinutes; currentMinutes += slotDuration) {
+      const hour = Math.floor(currentMinutes / 60)
+      const minute = currentMinutes % 60
+      const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
+      
+      // 営業終了時刻を超えないかチェック
+      if (currentMinutes + slotDuration > closeTimeInMinutes) {
+        break
       }
-    } else if (businessHours.isOpen) {
-      // その他の曜日は18:30と19:30のみ
-      ;['18:30', '19:30'].forEach((time) => {
-        const bookingsAtTime = reservations.filter((r) => r.time === time).length
+      
+      const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
 
-        slots.push({
-          time: time,
-          available: bookingsAtTime < this.settings.maxCapacityPerSlot,
-          date: date,
-          maxCapacity: this.settings.maxCapacityPerSlot,
-          currentBookings: bookingsAtTime,
-        })
+      slots.push({
+        time: timeStr,
+        available: bookingsAtTime < this.settings.maxCapacityPerSlot,
+        date: date,
+        maxCapacity: this.settings.maxCapacityPerSlot,
+        currentBookings: bookingsAtTime,
       })
     }
 
