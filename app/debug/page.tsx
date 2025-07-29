@@ -66,16 +66,38 @@ export default function DebugPage() {
     }
   }
 
-  const checkEnvironment = () => {
-    const info = {
+  const checkEnvironment = async () => {
+    // 環境変数の確認
+    const envInfo = {
       apiUrl: process.env.NEXT_PUBLIC_API_URL || '(not set - using relative)',
-      firebaseApiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ? 'Set' : 'Not set',
+      firebaseApiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'Not set',
       firebaseProjectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'Not set',
+      firebaseAuthDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'Not set',
       useFirebase: process.env.NEXT_PUBLIC_USE_FIREBASE || 'Not set',
+      nodeEnv: process.env.NODE_ENV || 'Not set',
       userAgent: typeof window !== 'undefined' ? window.navigator.userAgent : 'SSR',
       localStorage: typeof window !== 'undefined' && window.localStorage ? 'Available' : 'Not available',
-      authToken: typeof window !== 'undefined' && localStorage.getItem('auth_token') ? 'Present' : 'Not present'
+      authToken: typeof window !== 'undefined' && localStorage.getItem('auth_token') ? 'Present' : 'Not present',
+      allEnvKeys: Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')).join(', ') || 'None found'
     }
+    
+    // Firebaseの初期化状態を確認
+    let firebaseStatus = 'Not checked'
+    try {
+      const { getApps } = await import('firebase/app')
+      const apps = getApps()
+      firebaseStatus = apps.length > 0 ? `Initialized (${apps.length} app(s))` : 'Not initialized'
+    } catch (error: any) {
+      firebaseStatus = `Error: ${error.message}`
+    }
+    
+    const info = {
+      ...envInfo,
+      firebaseStatus,
+      isFirebaseConfigured: process.env.NEXT_PUBLIC_FIREBASE_API_KEY && 
+                           process.env.NEXT_PUBLIC_FIREBASE_API_KEY !== 'test-api-key' ? 'Yes' : 'No'
+    }
+    
     setResult(JSON.stringify(info, null, 2))
   }
 
