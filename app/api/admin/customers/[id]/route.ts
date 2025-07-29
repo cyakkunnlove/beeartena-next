@@ -15,8 +15,10 @@ export async function OPTIONS(_request: NextRequest) {
 // 管理者による顧客削除
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await params
+  
   const authUser = await verifyAuth(request)
   if (!authUser) {
     return setCorsHeaders(errorResponse('認証が必要です', 401))
@@ -27,7 +29,7 @@ export async function DELETE(
   }
 
   try {
-    await userService.deleteCustomerByAdmin(params.id)
+    await userService.deleteCustomerByAdmin(id)
     return setCorsHeaders(successResponse({ message: '顧客が削除されました' }))
   } catch (error: any) {
     return setCorsHeaders(errorResponse(error.message || '顧客の削除に失敗しました', 500))
