@@ -16,9 +16,9 @@ if (!isRedisDisabled) {
       db: parseInt(process.env.REDIS_QUEUE_DB || '2'), // Different DB for queue
       lazyConnect: true, // Don't connect immediately
     })
-    
+
     // Attempt to connect
-    redis.connect().catch(err => {
+    redis.connect().catch((err) => {
       console.warn('Redis connection failed for queue, queue functionality disabled:', err.message)
       redis = null
     })
@@ -118,7 +118,7 @@ class Queue {
       return data ? JSON.parse(data) : null
     } else {
       // Search in memory queue
-      return this.memoryQueue.find(job => job.id === jobId) || null
+      return this.memoryQueue.find((job) => job.id === jobId) || null
     }
   }
 
@@ -149,10 +149,10 @@ class Queue {
     } else {
       // Return stats from memory queue
       return {
-        pending: this.memoryQueue.filter(j => j.status === 'pending').length,
+        pending: this.memoryQueue.filter((j) => j.status === 'pending').length,
         processing: this.activeJobs.size,
-        completed: this.memoryQueue.filter(j => j.status === 'completed').length,
-        failed: this.memoryQueue.filter(j => j.status === 'failed').length,
+        completed: this.memoryQueue.filter((j) => j.status === 'completed').length,
+        failed: this.memoryQueue.filter((j) => j.status === 'failed').length,
         delayed: 0, // No delay support in memory queue
       }
     }
@@ -199,7 +199,7 @@ class Queue {
       return result.length > 0 ? result[0] : null
     } else {
       // Get from memory queue
-      const job = this.memoryQueue.find(j => j.status === 'pending')
+      const job = this.memoryQueue.find((j) => j.status === 'pending')
       return job ? job.id : null
     }
   }
@@ -259,7 +259,7 @@ class Queue {
       await redis.set(`job:${job.id}`, JSON.stringify(job), 'EX', 86400)
     } else {
       // Update in memory queue
-      const index = this.memoryQueue.findIndex(j => j.id === job.id)
+      const index = this.memoryQueue.findIndex((j) => j.id === job.id)
       if (index !== -1) {
         this.memoryQueue[index] = job
       }
@@ -303,7 +303,7 @@ class Queue {
   // Move delayed jobs to pending queue
   private async moveDelayedJobs(): Promise<void> {
     if (!redis) return // No delay support without Redis
-    
+
     const now = Date.now()
     const jobIds = await redis.zrangebyscore('queue:delayed', 0, now)
 

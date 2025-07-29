@@ -20,9 +20,9 @@ if (!isRedisDisabled) {
       },
       lazyConnect: true, // Don't connect immediately
     })
-    
+
     // Attempt to connect
-    redis.connect().catch(err => {
+    redis.connect().catch((err) => {
       console.warn('Redis connection failed for rate limiting, using memory fallback:', err.message)
       redis = null
     })
@@ -112,7 +112,7 @@ class RateLimiter {
     if (!redis) {
       throw new Error('Redis not available')
     }
-    
+
     const multi = redis.multi()
 
     // Increment counter

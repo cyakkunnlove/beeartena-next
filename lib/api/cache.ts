@@ -20,9 +20,9 @@ if (!isRedisDisabled) {
       },
       lazyConnect: true, // Don't connect immediately
     })
-    
+
     // Attempt to connect
-    redis.connect().catch(err => {
+    redis.connect().catch((err) => {
       console.warn('Redis connection failed, falling back to memory cache:', err.message)
       redis = null
     })
@@ -53,7 +53,7 @@ class Cache {
 
       // Check Redis if available
       if (!redis) return null
-      
+
       const cached = await redis.get(key)
       if (!cached) return null
 
@@ -203,7 +203,7 @@ class Cache {
 
   private async storeTags(key: string, tags: string[], ttl: number): Promise<void> {
     if (!redis) return
-    
+
     const multi = redis.multi()
 
     for (const tag of tags) {
