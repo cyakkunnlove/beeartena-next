@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>API Test</title>
+</head>
+<body>
+    <h1>Frontend API Test</h1>
+    <button onclick="testRegister()">Test Register</button>
+    <button onclick="testReservation()">Test Reservation</button>
+    <div id="result"></div>
+
+    <script>
+        async function testRegister() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing registration...';
+            
+            try {
+                const response = await fetch('https://beeartena-next.vercel.app/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: `test-${Date.now()}@example.com`,
+                        password: 'password123',
+                        name: 'フロントエンドテスト',
+                        phone: '090-1111-2222'
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+
+        async function testReservation() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing reservation...';
+            
+            try {
+                const response = await fetch('https://beeartena-next.vercel.app/api/reservations', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        serviceType: '3D',
+                        serviceName: '3D眉毛',
+                        price: 50000,
+                        date: '2025-08-20',
+                        time: '18:30',
+                        customerName: 'フロントエンドテスト',
+                        customerPhone: '090-3333-4444',
+                        customerEmail: 'frontend-test@example.com',
+                        notes: 'フロントエンドからのテスト'
+                    })
+                });
+                
+                const data = await response.json();
+                resultDiv.innerHTML = `<pre>${JSON.stringify(data, null, 2)}</pre>`;
+            } catch (error) {
+                resultDiv.innerHTML = `Error: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
