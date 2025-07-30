@@ -88,7 +88,7 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
   }
 
   return (
-    <div className="max-w-md mx-auto">
+    <div className="max-w-md mx-auto relative">
       <div className="flex justify-between items-center mb-4">
         <button
           onClick={handlePrevMonth}
@@ -161,6 +161,15 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
           )
         })}
       </div>
+      
+      {isLoading && (
+        <div className="absolute inset-0 bg-white/80 rounded-lg flex items-center justify-center">
+          <div className="text-center">
+            <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            <p className="mt-2 text-sm text-gray-600">予約状況を確認中...</p>
+          </div>
+        </div>
+      )}
 
       <div className="mt-4 flex items-center gap-4 text-sm">
         <div className="flex items-center gap-2">
