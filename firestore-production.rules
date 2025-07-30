@@ -1,0 +1,82 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ユーザー認証の確認
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // 管理者の確認
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // ユーザー自身のデータかどうか
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // ユーザーコレクション
+    match /users/{userId} {
+      // 自分のデータは読み書き可能
+      allow read: if isOwner(userId) || isAdmin();
+      allow create: if isAuthenticated();
+      allow update: if isOwner(userId) || isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // 予約コレクション
+    match /reservations/{document=**} {
+      // 認証されたユーザーは読み取り可能
+      allow read: if isAuthenticated();
+      // 認証されたユーザーは作成可能
+      allow create: if isAuthenticated();
+      // 本人または管理者は更新可能
+      allow update: if isAuthenticated() && 
+        (request.auth.uid == resource.data.customerId || isAdmin());
+      // 管理者のみ削除可能
+      allow delete: if isAdmin();
+    }
+    
+    // お問い合わせコレクション
+    match /inquiries/{document=**} {
+      // 誰でも作成可能（未認証でも可）
+      allow create: if true;
+      // 管理者のみ読み取り・更新・削除可能
+      allow read, update, delete: if isAdmin();
+    }
+    
+    // ポイントコレクション
+    match /points/{userId} {
+      // 本人と管理者のみアクセス可能
+      allow read: if isOwner(userId) || isAdmin();
+      allow write: if isAdmin();
+    }
+    
+    // ポイント履歴コレクション
+    match /pointTransactions/{document=**} {
+      // 本人と管理者のみ読み取り可能
+      allow read: if isAuthenticated() && 
+        (request.auth.uid == resource.data.userId || isAdmin());
+      // 管理者のみ作成可能
+      allow create: if isAdmin();
+      // 更新・削除は不可
+      allow update, delete: if false;
+    }
+    
+    // 設定コレクション（営業時間など）
+    match /settings/{document=**} {
+      // 誰でも読み取り可能
+      allow read: if true;
+      // 管理者のみ書き込み可能
+      allow write: if isAdmin();
+    }
+    
+    // テスト用コレクション（開発環境のみ）
+    match /test/{document=**} {
+      // 開発環境では許可、本番環境では拒否
+      allow read, write: if false;
+    }
+  }
+}
