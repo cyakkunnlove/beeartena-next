@@ -68,7 +68,7 @@ ${reservation.customerName} 様
 ━━━━━━━━━━━━━━━━━━━━━━━━
 ■ 日時：${formatDate(reservation.date)} ${reservation.time}
 ■ メニュー：${reservation.serviceName}
-■ 料金：${formatPrice(reservation.price)}円${reservation.isMonitor ? '（モニター価格）' : ''}
+■ 料金：${formatPrice(reservation.price)}円
 ■ 所要時間：約2時間30分
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -120,8 +120,7 @@ function createReservationNotificationTemplate(reservation: Reservation): EmailT
 ■ 電話番号：${reservation.customerPhone}
 ■ メールアドレス：${reservation.customerEmail}
 ■ メニュー：${reservation.serviceName}
-■ 料金：${formatPrice(reservation.price)}円${reservation.isMonitor ? '（モニター価格）' : ''}
-■ ポイント利用：${reservation.pointsUsed || 0}ポイント
+■ 料金：${formatPrice(reservation.price)}円
 ■ 備考：${reservation.notes || 'なし'}
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
