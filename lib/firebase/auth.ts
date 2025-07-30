@@ -71,7 +71,36 @@ export const firebaseAuth = {
       }
 
       return userData
-    } catch (error) {
+    } catch (error: any) {
+      // Firebase エラーの詳細をログに記録
+      console.error('Firebase register error:', {
+        code: error?.code,
+        message: error?.message,
+        customData: error?.customData,
+        serverResponse: error?.serverResponse,
+        timestamp: new Date().toISOString(),
+      })
+
+      // Firebase Auth のエラーコードに基づいてメッセージを返す
+      if (error?.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            throw new Error('このメールアドレスは既に登録されています')
+          case 'auth/invalid-email':
+            throw new Error('有効なメールアドレスを入力してください')
+          case 'auth/weak-password':
+            throw new Error('パスワードは8文字以上で設定してください')
+          case 'auth/operation-not-allowed':
+            throw new Error('メール/パスワード認証が無効です。管理者に連絡してください')
+          case 'auth/network-request-failed':
+            throw new Error('ネットワークエラーが発生しました。接続を確認してください')
+          case 'auth/too-many-requests':
+            throw new Error('リクエストが多すぎます。しばらくしてからお試しください')
+          default:
+            throw new Error(`Firebase認証エラー: ${error.code} - ${error.message}`)
+        }
+      }
+
       throw new Error(getErrorMessage(error) || '登録に失敗しました')
     }
   },

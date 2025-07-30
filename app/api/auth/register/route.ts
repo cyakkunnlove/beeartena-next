@@ -70,7 +70,16 @@ export async function POST(request: NextRequest) {
       ),
     )
   } catch (error: any) {
-    console.error('Registration error:', error)
+    // 詳細なエラーログを出力
+    console.error('Registration error details:', {
+      error: error,
+      errorMessage: error?.message,
+      errorCode: error?.code,
+      errorStack: error?.stack,
+      errorType: error?.constructor?.name,
+      firebaseError: error?.customData,
+      timestamp: new Date().toISOString(),
+    })
     
     // エラーメッセージを適切に返す
     let errorMessage = '登録に失敗しました'
@@ -87,6 +96,13 @@ export async function POST(request: NextRequest) {
       } else if (error.message.includes('リクエストが多すぎます')) {
         errorMessage = 'リクエストが多すぎます。しばらくしてからお試しください'
         statusCode = 429
+      } else if (error.message.includes('auth/')) {
+        // Firebase Auth エラーコードを含む場合
+        errorMessage = `認証エラー: ${error.message}`
+        console.error('Firebase Auth Error:', error.message)
+      } else {
+        // その他のエラーの場合も、詳細をログに記録
+        errorMessage = `登録エラー: ${error.message}`
       }
     }
 
