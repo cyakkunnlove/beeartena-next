@@ -157,6 +157,8 @@ export interface BusinessHours {
   close: string // "17:00"
   isOpen: boolean
   slots?: TimeSlot[]
+  allowMultipleSlots?: boolean // 複数予約枠を許可するか
+  slotInterval?: number // スロット間隔（分）、allowMultipleSlotsがtrueの場合のみ使用
 }
 
 export interface ReservationSettings {

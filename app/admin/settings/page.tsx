@@ -19,6 +19,7 @@ export default function AdminSettingsPage() {
   })
   const [newBlockedDate, setNewBlockedDate] = useState('')
   const [message, setMessage] = useState('')
+  const [messageType, setMessageType] = useState<'success' | 'error'>('success')
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export default function AdminSettingsPage() {
   const handleBusinessHoursChange = (
     dayIndex: number,
     field: keyof BusinessHours,
-    value: string | boolean
+    value: string | boolean | number
   ) => {
     const updatedHours = [...settings.businessHours]
     updatedHours[dayIndex] = {
@@ -51,10 +52,17 @@ export default function AdminSettingsPage() {
     setSettings({ ...settings, businessHours: updatedHours })
   }
 
-  const handleSaveSettings = () => {
-    reservationService.saveSettings(settings)
-    setMessage('設定を保存しました')
-    setTimeout(() => setMessage(''), 3000)
+  const handleSaveSettings = async () => {
+    try {
+      await reservationService.saveSettings(settings)
+      setMessage('設定を保存しました')
+      setMessageType('success')
+      setTimeout(() => setMessage(''), 3000)
+    } catch (error) {
+      setMessage('設定の保存に失敗しました。もう一度お試しください。')
+      setMessageType('error')
+      setTimeout(() => setMessage(''), 5000)
+    }
   }
 
   const handleAddBlockedDate = () => {
@@ -90,7 +98,11 @@ export default function AdminSettingsPage() {
       <h1 className="text-3xl font-bold mb-8">予約システム設定</h1>
 
       {message && (
-        <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        <div className={`border px-4 py-3 rounded mb-4 ${
+          messageType === 'success' 
+            ? 'bg-green-100 border-green-400 text-green-700'
+            : 'bg-red-100 border-red-400 text-red-700'
+        }`}>
           {message}
         </div>
       )}
@@ -140,6 +152,8 @@ export default function AdminSettingsPage() {
                 <th className="text-left py-2 px-4">営業</th>
                 <th className="text-left py-2 px-4">開店時間</th>
                 <th className="text-left py-2 px-4">閉店時間</th>
+                <th className="text-left py-2 px-4">複数予約</th>
+                <th className="text-left py-2 px-4">スロット間隔（分）</th>
               </tr>
             </thead>
             <tbody>
@@ -172,11 +186,37 @@ export default function AdminSettingsPage() {
                       className="border rounded px-2 py-1 disabled:bg-gray-100"
                     />
                   </td>
+                  <td className="py-2 px-4">
+                    <input
+                      type="checkbox"
+                      checked={hours.allowMultipleSlots || false}
+                      onChange={(e) => handleBusinessHoursChange(index, 'allowMultipleSlots', e.target.checked)}
+                      disabled={!hours.isOpen}
+                      className="w-4 h-4 disabled:opacity-50"
+                    />
+                  </td>
+                  <td className="py-2 px-4">
+                    <input
+                      type="number"
+                      value={hours.slotInterval || 30}
+                      onChange={(e) => handleBusinessHoursChange(index, 'slotInterval', parseInt(e.target.value) || 30)}
+                      disabled={!hours.isOpen || !hours.allowMultipleSlots}
+                      className="border rounded px-2 py-1 w-20 disabled:bg-gray-100"
+                      min="15"
+                      max="120"
+                      step="15"
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+        <p className="text-sm text-gray-600 mt-4">
+          ※ 複数予約を有効にすると、指定した間隔で複数の予約枠が生成されます。
+          <br />
+          ※ スロット間隔は15分単位で設定できます。
+        </p>
       </div>
 
       <div className="bg-white rounded-lg shadow-lg p-6 mb-8">

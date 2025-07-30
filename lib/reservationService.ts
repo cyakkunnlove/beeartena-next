@@ -1,6 +1,7 @@
 import { pointService } from '@/lib/firebase/points'
 import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { userService } from '@/lib/firebase/users'
+import { settingsService } from '@/lib/firebase/settings'
 import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
 import { emailService } from '@/lib/email/emailService'
 import { cache, Cache } from '@/lib/api/cache'
@@ -91,7 +92,7 @@ class ReservationService {
       { dayOfWeek: 0, open: '', close: '', isOpen: false }, // 日曜休み
       { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true }, // 月曜
       { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true }, // 火曜
-      { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true }, // 水曜
+      { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true, allowMultipleSlots: true, slotInterval: 30 }, // 水曜（30分間隔で複数予約可）
       { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true }, // 木曜
       { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true }, // 金曜
       { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true }, // 土曜
@@ -100,7 +101,7 @@ class ReservationService {
   }
 
   constructor() {
-    // Load settings from localStorage if exists
+    // Load settings from localStorage if exists (for immediate use)
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('reservationSettings')
       if (saved) {
@@ -112,12 +113,40 @@ class ReservationService {
         }
       }
     }
+    
+    // Firestoreから設定を非同期で読み込む
+    this.loadSettingsFromFirestore()
+  }
+  
+  private async loadSettingsFromFirestore(): Promise<void> {
+    try {
+      const firestoreSettings = await settingsService.getSettings()
+      if (firestoreSettings) {
+        this.settings = firestoreSettings
+        // localStorageも更新
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('reservationSettings', JSON.stringify(firestoreSettings))
+        }
+      }
+    } catch (error) {
+      console.error('Firestoreから設定を読み込めませんでした:', error)
+    }
   }
 
-  saveSettings(settings: ReservationSettings): void {
+  async saveSettings(settings: ReservationSettings): Promise<void> {
     this.settings = settings
+    
+    // localStorageに即座に保存（UIの即時反映のため）
     if (typeof window !== 'undefined') {
       localStorage.setItem('reservationSettings', JSON.stringify(settings))
+    }
+    
+    // Firestoreに保存
+    try {
+      await settingsService.saveSettings(settings)
+    } catch (error) {
+      console.error('設定の保存に失敗しました:', error)
+      throw error
     }
   }
 
@@ -272,10 +301,10 @@ class ReservationService {
     // スロット時間（デフォルト120分）
     const slotDuration = this.settings.slotDuration || 120
     
-    // 水曜日は複数枠、その他は1枠のみ
-    if (dayOfWeek === 3) {
-      // 水曜日：30分間隔で時間枠を生成
-      const interval = 30 // 30分間隔
+    // 複数予約が許可されている曜日は指定された間隔で時間枠を生成
+    if (businessHours.allowMultipleSlots) {
+      // 設定されたスロット間隔を使用（デフォルト30分）
+      const interval = businessHours.slotInterval || 30
       for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += interval) {
         const hour = Math.floor(currentMinutes / 60)
         const minute = currentMinutes % 60
@@ -310,7 +339,7 @@ class ReservationService {
         })
       }
     } else {
-      // 月火木金土：1日1枠のみ（受付開始時刻）
+      // 単一予約の曜日：1日1枠のみ（受付開始時刻）
       const timeStr = businessHours.open
       const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
       
@@ -400,9 +429,10 @@ class ReservationService {
       
       let hasAvailableSlot = false
       
-      if (dayOfWeek === 3) {
-        // 水曜日：複数の時間枠をチェック
-        for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += slotDuration) {
+      if (dayBusinessHours.allowMultipleSlots) {
+        // 複数予約可能な曜日：設定された間隔で時間枠をチェック
+        const interval = dayBusinessHours.slotInterval || 30
+        for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += interval) {
           const hour = Math.floor(currentMinutes / 60)
           const minute = currentMinutes % 60
           const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
@@ -415,7 +445,7 @@ class ReservationService {
           }
         }
       } else {
-        // 月火木金土：1日1枠のみ（受付開始時刻）
+        // 単一予約の曜日：1日1枠のみ（受付開始時刻）
         const timeStr = dayBusinessHours.open
         const bookingsAtTime = dayReservations.filter((r) => r.time === timeStr).length
         
