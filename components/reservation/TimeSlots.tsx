@@ -14,7 +14,9 @@ interface TimeSlotsProps {
 export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(true)
-  const selectedDate = new Date(date)
+  // 日付文字列をローカルタイムで解釈
+  const [year, month, day] = date.split('-').map(Number)
+  const selectedDate = new Date(year, month - 1, day)
 
   useEffect(() => {
     const fetchTimeSlots = async () => {

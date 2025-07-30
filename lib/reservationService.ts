@@ -87,7 +87,7 @@ export function validateReservationData(data: any): {
 class ReservationService {
   private settings: ReservationSettings = {
     slotDuration: 150, // 2時間30分
-    maxCapacityPerSlot: 1, // 1枠1人
+    maxCapacityPerSlot: 10, // デフォルトを10に設定（Firestoreから読み込むまでの暫定値）
     businessHours: [
       { dayOfWeek: 0, open: '', close: '', isOpen: false, maxCapacityPerDay: 1 }, // 日曜休み
       { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 月曜
@@ -99,6 +99,8 @@ class ReservationService {
     ],
     blockedDates: [],
   }
+  private isSettingsLoaded = false
+  private settingsLoadPromise: Promise<void> | null = null
 
   constructor() {
     // Load settings from localStorage if exists (for immediate use)
@@ -107,6 +109,7 @@ class ReservationService {
       if (saved) {
         try {
           this.settings = JSON.parse(saved)
+          this.isSettingsLoaded = true
         } catch (error) {
           // If parsing fails, use default settings
           console.warn('Failed to parse reservation settings from localStorage:', error)
@@ -115,7 +118,7 @@ class ReservationService {
     }
     
     // Firestoreから設定を非同期で読み込む
-    this.loadSettingsFromFirestore()
+    this.settingsLoadPromise = this.loadSettingsFromFirestore()
   }
   
   private async loadSettingsFromFirestore(): Promise<void> {
@@ -123,6 +126,7 @@ class ReservationService {
       const firestoreSettings = await settingsService.getSettings()
       if (firestoreSettings) {
         this.settings = firestoreSettings
+        this.isSettingsLoaded = true
         // localStorageも更新
         if (typeof window !== 'undefined') {
           localStorage.setItem('reservationSettings', JSON.stringify(firestoreSettings))
@@ -130,6 +134,14 @@ class ReservationService {
       }
     } catch (error) {
       console.error('Firestoreから設定を読み込めませんでした:', error)
+    }
+  }
+
+  // 設定が読み込まれるまで待つ
+  async waitForSettings(): Promise<void> {
+    if (this.isSettingsLoaded) return
+    if (this.settingsLoadPromise) {
+      await this.settingsLoadPromise
     }
   }
 
@@ -270,6 +282,8 @@ class ReservationService {
 
   // 特定の日付の予約可能な時間枠を取得
   async getTimeSlotsForDate(date: string): Promise<TimeSlot[]> {
+    // 設定が読み込まれるまで待つ
+    await this.waitForSettings()
     // キャッシュキーを生成
     const cacheKey = Cache.generateKey('time-slots', date)
     
@@ -377,6 +391,8 @@ class ReservationService {
 
   // 月の予約状況サマリーを取得（最適化版）
   async getMonthAvailability(year: number, month: number): Promise<Map<string, boolean>> {
+    // 設定が読み込まれるまで待つ
+    await this.waitForSettings()
     // キャッシュキーを生成
     const cacheKey = Cache.generateKey('month-availability', year, month)
     

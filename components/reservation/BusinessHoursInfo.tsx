@@ -1,12 +1,41 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import { useState, useEffect } from 'react'
 
 import { reservationService } from '@/lib/reservationService'
+import { ReservationSettings } from '@/lib/types'
 
 export default function BusinessHoursInfo() {
-  const settings = reservationService.getSettings()
+  const [settings, setSettings] = useState<ReservationSettings>(reservationService.getSettings())
+  const [isLoading, setIsLoading] = useState(true)
   const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
+
+  useEffect(() => {
+    // 設定の読み込みを待つ
+    const loadSettings = async () => {
+      setIsLoading(true)
+      await reservationService.waitForSettings()
+      setSettings(reservationService.getSettings())
+      setIsLoading(false)
+    }
+    loadSettings()
+
+    // localStorageの変更を監視
+    const handleStorageChange = () => {
+      const saved = localStorage.getItem('reservationSettings')
+      if (saved) {
+        try {
+          setSettings(JSON.parse(saved))
+        } catch (error) {
+          console.error('Failed to parse settings:', error)
+        }
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
   const formatTime = (time: string) => {
     if (!time) return ''
@@ -46,6 +75,18 @@ export default function BusinessHoursInfo() {
   }
 
   const groups = groupedHours()
+
+  if (isLoading) {
+    return (
+      <div className="bg-light-accent rounded-lg p-4 mb-6 animate-pulse">
+        <div className="h-5 bg-gray-300 rounded w-20 mb-2"></div>
+        <div className="space-y-1">
+          <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+          <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <motion.div
