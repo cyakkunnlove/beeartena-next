@@ -3,6 +3,7 @@ import { reservationService as firebaseReservationService } from '@/lib/firebase
 import { userService } from '@/lib/firebase/users'
 import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
 import { emailService } from '@/lib/email/emailService'
+import { cache, Cache } from '@/lib/api/cache'
 
 // Test helper functions
 export function isTimeSlotAvailable(
@@ -136,6 +137,19 @@ class ReservationService {
     
     const newReservation = await firebaseReservationService.createReservation(reservationData)
 
+    // キャッシュを無効化
+    const reservationDate = new Date(newReservation.date)
+    const year = reservationDate.getFullYear()
+    const month = reservationDate.getMonth()
+    
+    // 関連するキャッシュを削除
+    await Promise.all([
+      cache.invalidateByTag(`month-${year}-${month}`),
+      cache.invalidateByTag(`date-${newReservation.date}`),
+      cache.delete(Cache.generateKey('time-slots', newReservation.date)),
+      cache.delete(Cache.generateKey('month-availability', year, month)),
+    ])
+
     // 予約完了時のポイント付与（予約金額の5%）
     if (reservation.price && reservation.customerId) {
       await pointService.addReservationPoints(reservation.customerId, reservation.price)
@@ -227,6 +241,15 @@ class ReservationService {
 
   // 特定の日付の予約可能な時間枠を取得
   async getTimeSlotsForDate(date: string): Promise<TimeSlot[]> {
+    // キャッシュキーを生成
+    const cacheKey = Cache.generateKey('time-slots', date)
+    
+    // キャッシュから取得を試みる
+    const cached = await cache.get<TimeSlot[]>(cacheKey)
+    if (cached) {
+      return cached
+    }
+
     const dateObj = new Date(date)
     const dayOfWeek = dateObj.getDay()
     const businessHours = this.settings.businessHours[dayOfWeek]
@@ -271,6 +294,11 @@ class ReservationService {
       })
     }
 
+    // 結果をキャッシュに保存（2分間）
+    await cache.set(cacheKey, slots, 120, {
+      tags: ['reservations', `date-${date}`],
+    })
+
     return slots
   }
 
@@ -280,14 +308,30 @@ class ReservationService {
     return slots.some((slot) => slot.available)
   }
 
-  // 月の予約状況サマリーを取得
+  // 月の予約状況サマリーを取得（最適化版）
   async getMonthAvailability(year: number, month: number): Promise<Map<string, boolean>> {
+    // キャッシュキーを生成
+    const cacheKey = Cache.generateKey('month-availability', year, month)
+    
+    // キャッシュから取得を試みる
+    const cached = await cache.get<{ [key: string]: boolean }>(cacheKey)
+    if (cached) {
+      return new Map(Object.entries(cached))
+    }
+
     const availability = new Map<string, boolean>()
     const daysInMonth = new Date(year, month + 1, 0).getDate()
 
     // Get today's date string for comparison
     const today = new Date()
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
+    // 月内の全予約を一度に取得
+    const monthReservations = await firebaseReservationService.getReservationsByMonth(year, month)
+    
+    // 営業時間の設定を事前に取得
+    const businessHours = this.settings.businessHours
+    const blockedDates = this.settings.blockedDates || []
 
     for (let day = 1; day <= daysInMonth; day++) {
       // Create date string in YYYY-MM-DD format
@@ -296,10 +340,62 @@ class ReservationService {
       // 過去の日付は予約不可
       if (dateStr < todayStr) {
         availability.set(dateStr, false)
-      } else {
-        availability.set(dateStr, await this.isDateAvailable(dateStr))
+        continue
       }
+
+      // ブロック日付をチェック
+      if (blockedDates.includes(dateStr)) {
+        availability.set(dateStr, false)
+        continue
+      }
+
+      // 曜日から営業日かチェック
+      const dateObj = new Date(year, month, day)
+      const dayOfWeek = dateObj.getDay()
+      const dayBusinessHours = businessHours[dayOfWeek]
+
+      if (!dayBusinessHours.isOpen) {
+        availability.set(dateStr, false)
+        continue
+      }
+
+      // その日の予約状況を取得
+      const dayReservations = monthReservations.get(dateStr) || []
+      
+      // 時間枠を計算して空きがあるかチェック
+      const [openHour, openMinute] = dayBusinessHours.open.split(':').map(Number)
+      const [closeHour, closeMinute] = dayBusinessHours.close.split(':').map(Number)
+      const openTimeInMinutes = openHour * 60 + openMinute
+      const closeTimeInMinutes = closeHour * 60 + closeMinute
+      const slotDuration = this.settings.slotDuration || 120
+      
+      let hasAvailableSlot = false
+      
+      for (let currentMinutes = openTimeInMinutes; currentMinutes < closeTimeInMinutes; currentMinutes += slotDuration) {
+        if (currentMinutes + slotDuration > closeTimeInMinutes) {
+          break
+        }
+        
+        const hour = Math.floor(currentMinutes / 60)
+        const minute = currentMinutes % 60
+        const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
+        
+        const bookingsAtTime = dayReservations.filter((r) => r.time === timeStr).length
+        
+        if (bookingsAtTime < this.settings.maxCapacityPerSlot) {
+          hasAvailableSlot = true
+          break
+        }
+      }
+      
+      availability.set(dateStr, hasAvailableSlot)
     }
+
+    // 結果をキャッシュに保存（5分間）
+    const cacheData = Object.fromEntries(availability)
+    await cache.set(cacheKey, cacheData, 300, {
+      tags: ['reservations', `month-${year}-${month}`],
+    })
 
     return availability
   }

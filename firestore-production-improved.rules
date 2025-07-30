@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isAdmin() {
+      return isAuthenticated() && 
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow delete: if isAdmin();
+    }
+    
+    // Reservations collection
+    match /reservations/{reservationId} {
+      // 管理者はすべての予約を見れる、ユーザーは自分の予約のみ
+      allow read: if isAuthenticated() && 
+        (resource.data.customerId == request.auth.uid || isAdmin());
+      // 認証されたユーザーは予約を作成できる
+      allow create: if isAuthenticated();
+      // 本人または管理者は更新可能
+      allow update: if isAuthenticated() && 
+        (resource.data.customerId == request.auth.uid || isAdmin());
+      // 管理者のみ削除可能
+      allow delete: if isAdmin();
+      
+      // リスト表示用（管理者は全件、ユーザーは自分のもののみ）
+      allow list: if isAuthenticated() && 
+        (request.auth.uid == resource.data.customerId || isAdmin());
+    }
+    
+    // Points collection
+    match /points/{userId} {
+      // ポイントはユーザーIDをドキュメントIDとして使用
+      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if false; // ポイントは削除不可
+    }
+    
+    // Point transactions collection
+    match /pointTransactions/{transactionId} {
+      // 本人と管理者のみ閲覧可能
+      allow read: if isAuthenticated() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+      allow create: if isAdmin();
+      allow update: if false; // 履歴は編集不可
+      allow delete: if false; // 履歴は削除不可
+    }
+    
+    // Inquiries collection
+    match /inquiries/{inquiryId} {
+      allow read: if isAdmin();
+      allow create: if true; // 誰でも問い合わせ可能
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+    
+    // Settings collection
+    match /settings/{settingId} {
+      allow read: if true; // 誰でも設定を読み取り可能（営業時間など）
+      allow write: if isAdmin();
+    }
+    
+    // 未ログインユーザーの予約を一覧で取得する場合の対応
+    match /reservations/{reservationId} {
+      allow list: if isAuthenticated() && isAdmin();
+    }
+  }
+}

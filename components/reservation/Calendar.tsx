@@ -12,15 +12,25 @@ interface CalendarProps {
 export default function Calendar({ onSelect, selected }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [monthAvailability, setMonthAvailability] = useState<Map<string, boolean>>(new Map())
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // Get actual availability for the current month
     const fetchAvailability = async () => {
-      const availability = await reservationService.getMonthAvailability(
-        currentMonth.getFullYear(),
-        currentMonth.getMonth(),
-      )
-      setMonthAvailability(availability)
+      setIsLoading(true)
+      try {
+        const availability = await reservationService.getMonthAvailability(
+          currentMonth.getFullYear(),
+          currentMonth.getMonth(),
+        )
+        setMonthAvailability(availability)
+      } catch (error) {
+        console.error('Failed to fetch availability:', error)
+        // エラー時は空のMapを設定
+        setMonthAvailability(new Map())
+      } finally {
+        setIsLoading(false)
+      }
     }
     fetchAvailability()
   }, [currentMonth])
@@ -126,22 +136,25 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
             <button
               key={dateStr}
               onClick={() => isAvailable && onSelect(dateStr)}
-              disabled={!isAvailable || isPast}
+              disabled={!isAvailable || isPast || isLoading}
               className={`
                 aspect-square rounded-lg text-sm font-medium transition-all relative
+                ${isLoading ? 'animate-pulse bg-gray-200' : ''}
                 ${
-                  isSelected
+                  !isLoading && isSelected
                     ? 'bg-primary text-white'
-                    : isAvailable && !isPast
+                    : !isLoading && isAvailable && !isPast
                       ? 'bg-white hover:bg-primary/10 border border-gray-200'
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                      : !isLoading
+                        ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                        : ''
                 }
-                ${isSunday ? 'text-red-500' : ''}
+                ${isSunday && !isLoading ? 'text-red-500' : ''}
               `}
               title={!isAvailable && !isPast && !isSunday ? '満員' : ''}
             >
-              {day.getDate()}
-              {!isAvailable && !isPast && !isSunday && (
+              {!isLoading && day.getDate()}
+              {!isLoading && !isAvailable && !isPast && !isSunday && (
                 <span className="absolute top-1 right-1 text-xs text-red-500">●</span>
               )}
             </button>

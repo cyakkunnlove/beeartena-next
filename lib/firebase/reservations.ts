@@ -209,4 +209,67 @@ export const reservationService = {
       throw new Error(error.message || '予約の検索に失敗しました')
     }
   },
+
+  // 月単位で予約をバッチ取得（パフォーマンス最適化）
+  async getReservationsByMonth(year: number, month: number): Promise<Map<string, Reservation[]>> {
+    if (!isFirebaseConfigured()) {
+      // モック実装
+      const result = new Map<string, Reservation[]>()
+      const daysInMonth = new Date(year, month + 1, 0).getDate()
+      
+      for (let day = 1; day <= daysInMonth; day++) {
+        const date = new Date(year, month, day)
+        const dateStr = date.toISOString().split('T')[0]
+        const reservations = await mockReservationService.getReservationsByDate(date)
+        if (reservations.length > 0) {
+          result.set(dateStr, reservations)
+        }
+      }
+      
+      return result
+    }
+
+    try {
+      // 月の開始日と終了日を計算
+      const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+      const endDate = `${year}-${String(month + 1).padStart(2, '0')}-31`
+
+      // 月内の全予約を一度に取得
+      // 注: '!=' クエリはパフォーマンスが悪いため、クライアント側でフィルタリング
+      const q = query(
+        collection(db, 'reservations'),
+        where('date', '>=', startDate),
+        where('date', '<=', endDate),
+        orderBy('date', 'asc')
+      )
+
+      const querySnapshot = await getDocs(q)
+      const reservationsByDate = new Map<string, Reservation[]>()
+
+      querySnapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        const reservation = {
+          ...data,
+          id: doc.id,
+          date: data.date,
+          createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(data.createdAt),
+        } as Reservation
+
+        // キャンセル済みの予約は除外
+        if (reservation.status === 'cancelled') {
+          return
+        }
+
+        const dateStr = reservation.date
+        if (!reservationsByDate.has(dateStr)) {
+          reservationsByDate.set(dateStr, [])
+        }
+        reservationsByDate.get(dateStr)!.push(reservation)
+      })
+
+      return reservationsByDate
+    } catch (error: any) {
+      throw new Error(error.message || '月間予約の取得に失敗しました')
+    }
+  },
 }
