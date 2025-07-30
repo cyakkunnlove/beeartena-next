@@ -274,20 +274,39 @@ class ReservationService {
     
     // 水曜日は複数枠、その他は1枠のみ
     if (dayOfWeek === 3) {
-      // 水曜日：複数の時間枠を生成
-      for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += slotDuration) {
+      // 水曜日：30分間隔で時間枠を生成
+      const interval = 30 // 30分間隔
+      for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += interval) {
         const hour = Math.floor(currentMinutes / 60)
         const minute = currentMinutes % 60
         const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
         
-        const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
+        // この時間に予約可能かチェック
+        let isAvailable = true
+        
+        // 既存の予約をチェック
+        for (const reservation of reservations) {
+          const [resHour, resMinute] = reservation.time.split(':').map(Number)
+          const resStartMinutes = resHour * 60 + resMinute
+          const resEndMinutes = resStartMinutes + slotDuration
+          
+          // 予約時間が既存予約と重なる場合は不可
+          if (
+            (currentMinutes >= resStartMinutes && currentMinutes < resEndMinutes) || // 開始時間が既存予約内
+            (currentMinutes + slotDuration > resStartMinutes && currentMinutes + slotDuration <= resEndMinutes) || // 終了時間が既存予約内
+            (currentMinutes <= resStartMinutes && currentMinutes + slotDuration >= resEndMinutes) // 既存予約を包含
+          ) {
+            isAvailable = false
+            break
+          }
+        }
 
         slots.push({
           time: timeStr,
-          available: bookingsAtTime < this.settings.maxCapacityPerSlot,
+          available: isAvailable,
           date: date,
           maxCapacity: this.settings.maxCapacityPerSlot,
-          currentBookings: bookingsAtTime,
+          currentBookings: isAvailable ? 0 : 1,
         })
       }
     } else {
