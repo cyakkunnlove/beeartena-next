@@ -89,12 +89,12 @@ class ReservationService {
     maxCapacityPerSlot: 1, // 1枠1人
     businessHours: [
       { dayOfWeek: 0, open: '', close: '', isOpen: false }, // 日曜休み
-      { dayOfWeek: 1, open: '18:30', close: '21:00', isOpen: true }, // 月曜
-      { dayOfWeek: 2, open: '18:30', close: '21:00', isOpen: true }, // 火曜
+      { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true }, // 月曜
+      { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true }, // 火曜
       { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true }, // 水曜
-      { dayOfWeek: 4, open: '18:30', close: '21:00', isOpen: true }, // 木曜
-      { dayOfWeek: 5, open: '18:30', close: '21:00', isOpen: true }, // 金曜
-      { dayOfWeek: 6, open: '18:30', close: '21:00', isOpen: true }, // 土曜
+      { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true }, // 木曜
+      { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true }, // 金曜
+      { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true }, // 土曜
     ],
     blockedDates: [],
   }
@@ -272,19 +272,29 @@ class ReservationService {
     // スロット時間（デフォルト120分）
     const slotDuration = this.settings.slotDuration || 120
     
-    // 時間枠を生成
-    for (let currentMinutes = openTimeInMinutes; currentMinutes < closeTimeInMinutes; currentMinutes += slotDuration) {
-      const hour = Math.floor(currentMinutes / 60)
-      const minute = currentMinutes % 60
-      const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
-      
-      // 営業終了時刻を超えないかチェック
-      if (currentMinutes + slotDuration > closeTimeInMinutes) {
-        break
-      }
-      
-      const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
+    // 水曜日は複数枠、その他は1枠のみ
+    if (dayOfWeek === 3) {
+      // 水曜日：複数の時間枠を生成
+      for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += slotDuration) {
+        const hour = Math.floor(currentMinutes / 60)
+        const minute = currentMinutes % 60
+        const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
+        
+        const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
 
+        slots.push({
+          time: timeStr,
+          available: bookingsAtTime < this.settings.maxCapacityPerSlot,
+          date: date,
+          maxCapacity: this.settings.maxCapacityPerSlot,
+          currentBookings: bookingsAtTime,
+        })
+      }
+    } else {
+      // 月火木金土：1日1枠のみ（受付開始時刻）
+      const timeStr = businessHours.open
+      const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
+      
       slots.push({
         time: timeStr,
         available: bookingsAtTime < this.settings.maxCapacityPerSlot,
@@ -371,20 +381,27 @@ class ReservationService {
       
       let hasAvailableSlot = false
       
-      for (let currentMinutes = openTimeInMinutes; currentMinutes < closeTimeInMinutes; currentMinutes += slotDuration) {
-        if (currentMinutes + slotDuration > closeTimeInMinutes) {
-          break
+      if (dayOfWeek === 3) {
+        // 水曜日：複数の時間枠をチェック
+        for (let currentMinutes = openTimeInMinutes; currentMinutes <= closeTimeInMinutes - slotDuration; currentMinutes += slotDuration) {
+          const hour = Math.floor(currentMinutes / 60)
+          const minute = currentMinutes % 60
+          const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
+          
+          const bookingsAtTime = dayReservations.filter((r) => r.time === timeStr).length
+          
+          if (bookingsAtTime < this.settings.maxCapacityPerSlot) {
+            hasAvailableSlot = true
+            break
+          }
         }
-        
-        const hour = Math.floor(currentMinutes / 60)
-        const minute = currentMinutes % 60
-        const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
-        
+      } else {
+        // 月火木金土：1日1枠のみ（受付開始時刻）
+        const timeStr = dayBusinessHours.open
         const bookingsAtTime = dayReservations.filter((r) => r.time === timeStr).length
         
         if (bookingsAtTime < this.settings.maxCapacityPerSlot) {
           hasAvailableSlot = true
-          break
         }
       }
       

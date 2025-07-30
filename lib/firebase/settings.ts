@@ -11,12 +11,12 @@ import { db, isFirebaseConfigured } from './config'
 // デフォルトの営業時間設定
 const defaultBusinessHours: BusinessHours[] = [
   { dayOfWeek: 0, open: '', close: '', isOpen: false }, // 日曜休み
-  { dayOfWeek: 1, open: '18:30', close: '21:00', isOpen: true }, // 月曜
-  { dayOfWeek: 2, open: '18:30', close: '21:00', isOpen: true }, // 火曜
+  { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true }, // 月曜
+  { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true }, // 火曜
   { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true }, // 水曜
-  { dayOfWeek: 4, open: '18:30', close: '21:00', isOpen: true }, // 木曜
-  { dayOfWeek: 5, open: '18:30', close: '21:00', isOpen: true }, // 金曜
-  { dayOfWeek: 6, open: '18:30', close: '21:00', isOpen: true }, // 土曜
+  { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true }, // 木曜
+  { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true }, // 金曜
+  { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true }, // 土曜
 ]
 
 const defaultSettings: ReservationSettings = {
