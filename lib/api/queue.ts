@@ -1,5 +1,6 @@
 import Redis from 'ioredis'
 import { v4 as uuidv4 } from 'uuid'
+import { QueueKeys } from './queue-keys'
 
 // Check if Redis should be disabled (for testing/CI environments)
 const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
@@ -9,13 +10,20 @@ let redis: Redis | null = null
 
 if (!isRedisDisabled) {
   try {
-    redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_QUEUE_DB || '2'), // Different DB for queue
-      lazyConnect: true, // Don't connect immediately
-    })
+    // Support both REDIS_URL and individual connection params
+    if (process.env.REDIS_URL) {
+      redis = new Redis(process.env.REDIS_URL, {
+        lazyConnect: true, // Don't connect immediately
+      })
+    } else {
+      redis = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD,
+        db: parseInt(process.env.REDIS_QUEUE_DB || '2'), // Different DB for queue
+        lazyConnect: true, // Don't connect immediately
+      })
+    }
 
     // Attempt to connect
     redis.connect().catch((err) => {
@@ -88,9 +96,9 @@ class Queue {
 
       // Add to queue with score (for priority and delay)
       if (options.delay) {
-        await redis.zadd('queue:delayed', score, job.id)
+        await redis.zadd(QueueKeys.delayed, score, job.id)
       } else {
-        await redis.zadd('queue:pending', score, job.id)
+        await redis.zadd(QueueKeys.pending, score, job.id)
       }
     } else {
       // Use memory queue as fallback
@@ -293,9 +301,9 @@ class Queue {
       const score = Date.now() + delay
 
       if (delay > 0) {
-        await redis.zadd('queue:delayed', score, job.id)
+        await redis.zadd(QueueKeys.delayed, score, job.id)
       } else {
-        await redis.zadd('queue:pending', score, job.id)
+        await redis.zadd(QueueKeys.pending, score, job.id)
       }
     }
   }

@@ -9,17 +9,28 @@ let redis: Redis | null = null
 
 if (!isRedisDisabled) {
   try {
-    redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_DB || '0'),
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000)
-        return delay
-      },
-      lazyConnect: true, // Don't connect immediately
-    })
+    // Support both REDIS_URL and individual connection params
+    if (process.env.REDIS_URL) {
+      redis = new Redis(process.env.REDIS_URL, {
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000)
+          return delay
+        },
+        lazyConnect: true, // Don't connect immediately
+      })
+    } else {
+      redis = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD,
+        db: parseInt(process.env.REDIS_DB || '0'),
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000)
+          return delay
+        },
+        lazyConnect: true, // Don't connect immediately
+      })
+    }
 
     // Attempt to connect
     redis.connect().catch((err) => {
@@ -49,7 +60,8 @@ class RateLimiter {
 
   async check(req: NextRequest, options: RateLimitOptions): Promise<boolean> {
     const identifier = this.getIdentifier(req)
-    const key = `rate_limit:${identifier}`
+    const appPrefix = process.env.REDIS_KEY_PREFIX || 'beeartena'
+    const key = `${appPrefix}:rate_limit:${identifier}`
     const now = Date.now()
     const window = options.window * 1000 // Convert to milliseconds
     const reset = now + window
@@ -72,7 +84,8 @@ class RateLimiter {
 
   async getRateLimitInfo(req: NextRequest, options: RateLimitOptions): Promise<RateLimitResult> {
     const identifier = this.getIdentifier(req)
-    const key = `rate_limit:${identifier}`
+    const appPrefix = process.env.REDIS_KEY_PREFIX || 'beeartena'
+    const key = `${appPrefix}:rate_limit:${identifier}`
     const now = Date.now()
     const window = options.window * 1000
     const reset = now + window

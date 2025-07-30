@@ -2,6 +2,7 @@ import { pointService } from '@/lib/firebase/points'
 import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { userService } from '@/lib/firebase/users'
 import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
+import { emailService } from '@/lib/email/emailService'
 
 // Test helper functions
 export function isTimeSlotAvailable(
@@ -83,7 +84,7 @@ export function validateReservationData(data: any): {
 
 class ReservationService {
   private settings: ReservationSettings = {
-    slotDuration: 120, // 2時間
+    slotDuration: 150, // 2時間30分
     maxCapacityPerSlot: 1, // 1枠1人
     businessHours: [
       { dayOfWeek: 0, open: '', close: '', isOpen: false }, // 日曜休み
@@ -140,6 +141,19 @@ class ReservationService {
       await pointService.addReservationPoints(reservation.customerId, reservation.price)
     }
 
+    // メール通知を送信
+    try {
+      // ユーザーへの確認メール
+      if (reservation.customerEmail) {
+        await emailService.sendReservationConfirmation(newReservation, reservation.customerEmail)
+      }
+      // 管理者への通知メール
+      await emailService.sendReservationNotificationToAdmin(newReservation)
+    } catch (error) {
+      console.error('メール送信エラー:', error)
+      // メール送信に失敗しても予約自体は成功とする
+    }
+
     return newReservation
   }
 
@@ -181,6 +195,18 @@ class ReservationService {
         pointAmount,
         `予約キャンセルによるポイント返却（予約ID: ${id}）`,
       )
+    }
+
+    // キャンセル通知メールを送信
+    try {
+      // ユーザーへの確認メール
+      if (reservation.customerEmail) {
+        await emailService.sendCancellationConfirmation(reservation, reservation.customerEmail)
+      }
+      // 管理者への通知メール
+      await emailService.sendCancellationNotificationToAdmin(reservation)
+    } catch (error) {
+      console.error('キャンセルメール送信エラー:', error)
     }
   }
 

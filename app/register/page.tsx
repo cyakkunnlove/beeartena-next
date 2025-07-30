@@ -7,6 +7,7 @@ import { useState, useEffect, Suspense } from 'react'
 import DatePicker from '@/components/ui/DatePicker'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 
 interface SavedReservation {
   serviceId: string
@@ -262,6 +263,8 @@ function RegisterContent() {
               </button>
             </div>
           </form>
+
+          <SocialLoginButtons />
         </div>
       </div>
     </div>

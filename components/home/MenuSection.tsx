@@ -6,18 +6,18 @@ const menuItems = [
     id: '2D',
     name: 'パウダーブロウ',
     description: 'ふんわりパウダー眉\nメイクしたような自然な仕上がり',
-    price: 20000,
-    monitorPrice: 18000,
-    duration: '約2時間',
+    price: 22000,
+    monitorPrice: 20000,
+    duration: '約2時間30分',
     image: '/images/2D.jpg',
   },
   {
     id: '3D',
     name: 'フェザーブロウ',
     description: '立体的な毛流れ眉\n1本1本丁寧に描く自然な眉',
-    price: 20000,
-    monitorPrice: 18000,
-    duration: '約2時間',
+    price: 23000,
+    monitorPrice: 20000,
+    duration: '約2時間30分',
     image: '/images/3D.jpg',
   },
   {
@@ -26,7 +26,7 @@ const menuItems = [
     description: '2D+3Dのいいとこ取り\n最も自然で立体的な仕上がり',
     price: 25000,
     monitorPrice: 22000,
-    duration: '約2時間',
+    duration: '約2時間30分',
     image: '/images/4D.jpg',
     featured: true,
   },
@@ -37,7 +37,7 @@ export default function MenuSection() {
     <section id="menu" className="py-20 bg-gray-50">
       <div className="container mx-auto px-4">
         <h2 className="section-title">メニュー & 料金</h2>
-        <p className="section-subtitle">2024年4月1日〜 新料金</p>
+        <p className="section-subtitle">2025年1月1日〜 新料金</p>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {menuItems.map((item) => (

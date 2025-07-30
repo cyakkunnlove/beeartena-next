@@ -35,8 +35,8 @@ export async function POST(request: NextRequest) {
     return setCorsHeaders(errorResponse('有効なメールアドレスを入力してください'))
   }
 
-  if (data.password.length < 6) {
-    return setCorsHeaders(errorResponse('パスワードは6文字以上で設定してください'))
+  if (data.password.length < 8) {
+    return setCorsHeaders(errorResponse('パスワードは8文字以上で設定してください'))
   }
 
   try {
@@ -70,6 +70,26 @@ export async function POST(request: NextRequest) {
       ),
     )
   } catch (error: any) {
-    return setCorsHeaders(errorResponse(error.message || '登録に失敗しました', 400))
+    console.error('Registration error:', error)
+    
+    // エラーメッセージを適切に返す
+    let errorMessage = '登録に失敗しました'
+    let statusCode = 400
+
+    if (error instanceof Error) {
+      // Firebase認証エラーの処理
+      if (error.message.includes('このメールアドレスは既に登録されています')) {
+        errorMessage = error.message
+      } else if (error.message.includes('パスワードは8文字以上で設定してください')) {
+        errorMessage = error.message
+      } else if (error.message.includes('有効なメールアドレスを入力してください')) {
+        errorMessage = error.message
+      } else if (error.message.includes('リクエストが多すぎます')) {
+        errorMessage = 'リクエストが多すぎます。しばらくしてからお試しください'
+        statusCode = 429
+      }
+    }
+
+    return setCorsHeaders(errorResponse(errorMessage, statusCode))
   }
 }

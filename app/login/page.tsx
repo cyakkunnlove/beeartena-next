@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -108,6 +109,8 @@ export default function LoginPage() {
           >
             {isLoading ? 'ログイン中...' : 'ログイン'}
           </button>
+
+          <SocialLoginButtons />
 
           <div className="text-center text-sm text-gray-600">
             <p>

@@ -39,17 +39,26 @@ export async function POST(request: NextRequest) {
         token,
       }),
     )
-  } catch (error) {
-    // Don't expose sensitive information in error messages
+  } catch (error: any) {
+    console.error('Login error:', error)
+    
+    // エラーメッセージを適切に返す
     let errorMessage = 'ログインに失敗しました'
+    let statusCode = 401
 
     if (error instanceof Error) {
-      // Only use specific error messages that don't contain user info
-      if (error.message === 'メールアドレスまたはパスワードが正しくありません') {
-        errorMessage = error.message
+      // Firebase認証エラーの処理
+      if (error.message.includes('メールアドレスまたはパスワードが正しくありません') ||
+          error.message.includes('ユーザーが見つかりません') ||
+          error.message.includes('パスワードが正しくありません') ||
+          error.message.includes('認証情報が無効です')) {
+        errorMessage = 'メールアドレスまたはパスワードが正しくありません'
+      } else if (error.message.includes('リクエストが多すぎます')) {
+        errorMessage = 'リクエストが多すぎます。しばらくしてからお試しください'
+        statusCode = 429
       }
     }
 
-    return setCorsHeaders(errorResponse(errorMessage, 401))
+    return setCorsHeaders(errorResponse(errorMessage, statusCode))
   }
 }

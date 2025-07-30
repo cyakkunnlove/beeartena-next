@@ -9,17 +9,28 @@ let redis: Redis | null = null
 
 if (!isRedisDisabled) {
   try {
-    redis = new Redis({
-      host: process.env.REDIS_HOST || 'localhost',
-      port: parseInt(process.env.REDIS_PORT || '6379'),
-      password: process.env.REDIS_PASSWORD,
-      db: parseInt(process.env.REDIS_CACHE_DB || '1'), // Different DB for cache
-      retryStrategy: (times) => {
-        const delay = Math.min(times * 50, 2000)
-        return delay
-      },
-      lazyConnect: true, // Don't connect immediately
-    })
+    // Support both REDIS_URL and individual connection params
+    if (process.env.REDIS_URL) {
+      redis = new Redis(process.env.REDIS_URL, {
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000)
+          return delay
+        },
+        lazyConnect: true, // Don't connect immediately
+      })
+    } else {
+      redis = new Redis({
+        host: process.env.REDIS_HOST || 'localhost',
+        port: parseInt(process.env.REDIS_PORT || '6379'),
+        password: process.env.REDIS_PASSWORD,
+        db: parseInt(process.env.REDIS_CACHE_DB || '1'), // Different DB for cache
+        retryStrategy: (times) => {
+          const delay = Math.min(times * 50, 2000)
+          return delay
+        },
+        lazyConnect: true, // Don't connect immediately
+      })
+    }
 
     // Attempt to connect
     redis.connect().catch((err) => {
@@ -219,7 +230,9 @@ class Cache {
     const serialized = parts.map((part) =>
       typeof part === 'object' ? JSON.stringify(part) : String(part),
     )
-    return `${prefix}:${serialized.join(':')}`
+    // Add app-specific prefix to avoid key collisions
+    const appPrefix = process.env.REDIS_KEY_PREFIX || 'beeartena'
+    return `${appPrefix}:${prefix}:${serialized.join(':')}`
   }
 
   // Decorator for caching method results

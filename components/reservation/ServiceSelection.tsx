@@ -13,7 +13,7 @@ const services = [
     name: '2D パウダーブロウ',
     description: 'まるでパウダーで描いたような、ふんわり優しい印象に',
     price: 22000,
-    duration: '約2時間',
+    duration: '約2時間30分',
     monitorPrice: 20000,
   },
   {
@@ -21,7 +21,7 @@ const services = [
     name: '3D フェザーブロウ',
     description: '一本一本丁寧に毛流れを描き、自眉のような自然で立体的な印象に',
     price: 23000,
-    duration: '約2時間',
+    duration: '約2時間30分',
     monitorPrice: 20000,
   },
   {
@@ -29,7 +29,7 @@ const services = [
     name: '4D パウダー＆フェザー',
     description: 'パウダーのふんわり感と、フェザーの立体感を組み合わせた、最も自然で洗練された印象に',
     price: 25000,
-    duration: '約2時間',
+    duration: '約2時間30分',
     featured: true,
     monitorPrice: 22000,
   },

@@ -58,7 +58,7 @@ class AuthService {
         throw new Error('このメールアドレスは既に登録されています')
       }
       if (error.message.includes('auth/weak-password')) {
-        throw new Error('パスワードは6文字以上で設定してください')
+        throw new Error('パスワードは8文字以上で設定してください')
       }
       throw error
     }

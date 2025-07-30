@@ -8,6 +8,10 @@ import {
   deleteUser,
   reauthenticateWithCredential,
   EmailAuthProvider,
+  sendEmailVerification,
+  applyActionCode,
+  GoogleAuthProvider,
+  signInWithPopup,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 
@@ -57,6 +61,14 @@ export const firebaseAuth = {
       }
 
       await setDoc(doc(db, 'users', user.uid), userData)
+
+      // メール認証を送信
+      try {
+        await sendEmailVerification(user)
+      } catch (error) {
+        console.error('メール認証送信エラー:', error)
+        // メール送信に失敗してもユーザー登録は成功とする
+      }
 
       return userData
     } catch (error) {
@@ -206,6 +218,97 @@ export const firebaseAuth = {
         throw new Error('パスワードが正しくありません')
       }
       throw new Error(getErrorMessage(error) || 'アカウントの削除に失敗しました')
+    }
+  },
+
+  // メール認証の確認
+  async verifyEmail(actionCode: string): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('メール認証機能は現在利用できません')
+    }
+
+    try {
+      await applyActionCode(auth, actionCode)
+    } catch (error: any) {
+      if (error.code === 'auth/invalid-action-code') {
+        throw new Error('認証リンクが無効です')
+      }
+      throw new Error(getErrorMessage(error) || 'メール認証に失敗しました')
+    }
+  },
+
+  // メール認証の再送信
+  async resendVerificationEmail(): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('メール認証機能は現在利用できません')
+    }
+
+    const user = auth.currentUser
+    if (!user) {
+      throw new Error('ユーザーがログインしていません')
+    }
+
+    try {
+      await sendEmailVerification(user)
+    } catch (error) {
+      throw new Error(getErrorMessage(error) || 'メール認証の送信に失敗しました')
+    }
+  },
+
+  // メール認証状態の確認
+  isEmailVerified(): boolean {
+    if (!isFirebaseConfigured()) {
+      return true // モック環境では常に認証済みとする
+    }
+
+    const user = auth.currentUser
+    return user?.emailVerified ?? false
+  },
+
+  // Googleログイン
+  async signInWithGoogle(): Promise<AppUser> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('Google認証は現在利用できません')
+    }
+
+    const provider = new GoogleAuthProvider()
+    
+    try {
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+
+      // Firestoreにユーザー情報が存在するか確認
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+      
+      if (userDoc.exists()) {
+        // 既存ユーザーの場合
+        return userDoc.data() as AppUser
+      } else {
+        // 新規ユーザーの場合、Firestoreにデータを作成
+        const userData: AppUser = {
+          id: user.uid,
+          email: user.email || '',
+          name: user.displayName || '',
+          phone: '', // 後で入力してもらう
+          role: 'customer',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+
+        await setDoc(doc(db, 'users', user.uid), userData)
+        return userData
+      }
+    } catch (error: any) {
+      console.error('Google login error:', error)
+      
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('ログインがキャンセルされました')
+      }
+      if (error.code === 'auth/popup-blocked') {
+        throw new Error('ポップアップがブロックされました。ブラウザの設定を確認してください')
+      }
+      
+      throw new Error(getErrorMessage(error) || 'Googleログインに失敗しました')
     }
   },
 }
