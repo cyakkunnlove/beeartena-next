@@ -5,12 +5,15 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
 import { Reservation } from '@/lib/types'
+import { reservationService } from '@/lib/reservationService'
 
 export default function ReservationsPage() {
   const { user } = useAuth()
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all')
+  const [cancellingId, setCancellingId] = useState<string | null>(null)
+  const [cancelError, setCancelError] = useState<string>('')
 
   const loadReservations = useCallback(async () => {
     try {
@@ -43,6 +46,31 @@ export default function ReservationsPage() {
     }
     return true
   })
+
+  const handleCancel = async (reservation: Reservation) => {
+    if (!reservationService.canCancelReservation(reservation)) {
+      setCancelError('キャンセル期限を過ぎているため、キャンセルできません。')
+      setTimeout(() => setCancelError(''), 5000)
+      return
+    }
+
+    if (!confirm('予約をキャンセルしてもよろしいですか？')) {
+      return
+    }
+
+    setCancellingId(reservation.id)
+    try {
+      await reservationService.cancelReservation(reservation.id, 'お客様によるキャンセル')
+      // 予約リストを再読み込み
+      await loadReservations()
+    } catch (error) {
+      console.error('キャンセルエラー:', error)
+      setCancelError('キャンセルに失敗しました。もう一度お試しください。')
+      setTimeout(() => setCancelError(''), 5000)
+    } finally {
+      setCancellingId(null)
+    }
+  }
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -81,6 +109,13 @@ export default function ReservationsPage() {
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-md p-6">
         <h1 className="text-2xl font-bold mb-4">予約履歴</h1>
+
+        {/* エラーメッセージ */}
+        {cancelError && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            {cancelError}
+          </div>
+        )}
 
         {/* フィルター */}
         <div className="flex gap-2 mb-6">
@@ -162,12 +197,29 @@ export default function ReservationsPage() {
                 )}
 
                 {reservation.status === 'confirmed' && new Date(reservation.date) > new Date() && (
-                  <div className="mt-3 pt-3 border-t flex gap-2">
-                    <button className="text-sm text-primary hover:text-dark-gold">
-                      予約を変更
-                    </button>
-                    <span className="text-gray-400">|</span>
-                    <button className="text-sm text-red-600 hover:text-red-700">キャンセル</button>
+                  <div className="mt-3 pt-3 border-t">
+                    <div className="flex gap-2 items-center">
+                      <button className="text-sm text-primary hover:text-dark-gold">
+                        予約を変更
+                      </button>
+                      <span className="text-gray-400">|</span>
+                      <button 
+                        onClick={() => handleCancel(reservation)}
+                        disabled={cancellingId === reservation.id}
+                        className={`text-sm ${
+                          reservationService.canCancelReservation(reservation)
+                            ? 'text-red-600 hover:text-red-700'
+                            : 'text-gray-400 cursor-not-allowed'
+                        } ${cancellingId === reservation.id ? 'opacity-50' : ''}`}
+                      >
+                        {cancellingId === reservation.id ? 'キャンセル中...' : 'キャンセル'}
+                      </button>
+                    </div>
+                    {!reservationService.canCancelReservation(reservation) && (
+                      <p className="text-xs text-gray-500 mt-2">
+                        ※ キャンセル期限を過ぎています。キャンセルをご希望の場合はお電話にてご連絡ください。
+                      </p>
+                    )}
                   </div>
                 )}
               </div>

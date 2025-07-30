@@ -167,6 +167,8 @@ export interface ReservationSettings {
   maxCapacityPerSlot: number
   businessHours: BusinessHours[]
   blockedDates?: string[] // ISO date strings
+  cancellationDeadlineHours?: number // キャンセル可能期限（予約日の何時間前まで）
+  cancellationPolicy?: string // キャンセルポリシーのテキスト
 }
 
 // Chart and Analytics types

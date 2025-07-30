@@ -186,8 +186,11 @@ export const reservationService = {
     }
 
     try {
-      // 日付を文字列形式に変換 (YYYY-MM-DD)
-      const dateStr = date.toISOString().split('T')[0]
+      // 日付を文字列形式に変換 (YYYY-MM-DD) - ローカルタイムで処理
+      const year = date.getFullYear()
+      const month = String(date.getMonth() + 1).padStart(2, '0')
+      const day = String(date.getDate()).padStart(2, '0')
+      const dateStr = `${year}-${month}-${day}`
       
       // 文字列で比較
       const q = query(
@@ -219,7 +222,7 @@ export const reservationService = {
       
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day)
-        const dateStr = date.toISOString().split('T')[0]
+        const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
         const reservations = await mockReservationService.getReservationsByDate(date)
         if (reservations.length > 0) {
           result.set(dateStr, reservations)

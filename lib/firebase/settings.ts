@@ -12,7 +12,22 @@ export const settingsService = {
       const docSnap = await getDoc(docRef)
       
       if (docSnap.exists()) {
-        return docSnap.data() as ReservationSettings
+        const data = docSnap.data() as ReservationSettings
+        
+        // 営業時間設定のフィールドを検証・補完
+        if (data.businessHours) {
+          data.businessHours = data.businessHours.map(hours => ({
+            dayOfWeek: hours.dayOfWeek,
+            open: hours.open,
+            close: hours.close,
+            isOpen: hours.isOpen,
+            allowMultipleSlots: hours.allowMultipleSlots ?? false,
+            slotInterval: hours.slotInterval,
+            maxCapacityPerDay: hours.maxCapacityPerDay ?? 1,
+          }))
+        }
+        
+        return data
       }
       
       return null
@@ -26,8 +41,21 @@ export const settingsService = {
   async saveSettings(settings: ReservationSettings): Promise<void> {
     try {
       const docRef = doc(db, 'settings', SETTINGS_DOC_ID)
+      
+      // 営業時間設定に必要なフィールドが含まれていることを確認
+      const businessHours = settings.businessHours.map(hours => ({
+        dayOfWeek: hours.dayOfWeek,
+        open: hours.open,
+        close: hours.close,
+        isOpen: hours.isOpen,
+        allowMultipleSlots: hours.allowMultipleSlots ?? false,
+        slotInterval: hours.slotInterval,
+        maxCapacityPerDay: hours.maxCapacityPerDay ?? 1,
+      }))
+      
       await setDoc(docRef, {
         ...settings,
+        businessHours,
         updatedAt: new Date(),
       })
     } catch (error) {

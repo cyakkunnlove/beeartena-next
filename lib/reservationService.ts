@@ -4,7 +4,47 @@ import { userService } from '@/lib/firebase/users'
 import { settingsService } from '@/lib/firebase/settings'
 import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
 import { emailService } from '@/lib/email/emailService'
-import { cache, Cache } from '@/lib/api/cache'
+
+// キャッシュ関連の型定義
+interface CacheInterface {
+  get<T = any>(key: string): Promise<T | null>
+  set(key: string, data: any, ttl?: number, options?: any): Promise<void>
+  delete(key: string): Promise<void>
+  invalidateByTag(tag: string): Promise<void>
+}
+
+// ダミーキャッシュ（クライアントサイド用）
+class DummyCache implements CacheInterface {
+  async get<T = any>(_key: string): Promise<T | null> {
+    return null
+  }
+  async set(_key: string, _data: any, _ttl?: number, _options?: any): Promise<void> {
+    // 何もしない
+  }
+  async delete(_key: string): Promise<void> {
+    // 何もしない
+  }
+  async invalidateByTag(_tag: string): Promise<void> {
+    // 何もしない
+  }
+}
+
+// サーバーサイドでのみ実際のキャッシュを使用
+let cache: CacheInterface = new DummyCache()
+let Cache: any = {
+  generateKey: (...args: any[]) => args.join(':')
+}
+
+if (typeof window === 'undefined') {
+  // サーバーサイドでのみキャッシュモジュールをインポート
+  try {
+    const cacheModule = require('@/lib/api/cache')
+    cache = cacheModule.cache
+    Cache = cacheModule.Cache
+  } catch (error) {
+    console.warn('Cache module not available:', error)
+  }
+}
 
 // Test helper functions
 export function isTimeSlotAvailable(
@@ -98,6 +138,8 @@ class ReservationService {
       { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 土曜
     ],
     blockedDates: [],
+    cancellationDeadlineHours: 24, // デフォルト24時間前
+    cancellationPolicy: '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
   }
   private isSettingsLoaded = false
   private settingsLoadPromise: Promise<void> | null = null
@@ -108,7 +150,29 @@ class ReservationService {
       const saved = localStorage.getItem('reservationSettings')
       if (saved) {
         try {
-          this.settings = JSON.parse(saved)
+          const savedSettings = JSON.parse(saved)
+          
+          // 営業時間の設定を修正（古い形式のデータを新しい形式に変換）
+          const businessHours = savedSettings.businessHours.map((hours: any) => {
+            // デフォルト設定から該当する曜日の設定を取得
+            const defaultHours = this.settings.businessHours.find(h => h.dayOfWeek === hours.dayOfWeek)
+            
+            return {
+              ...hours,
+              // 複数枠設定が欠けている場合はデフォルト値を使用
+              allowMultipleSlots: hours.allowMultipleSlots ?? defaultHours?.allowMultipleSlots,
+              slotInterval: hours.slotInterval ?? defaultHours?.slotInterval,
+              maxCapacityPerDay: hours.maxCapacityPerDay ?? defaultHours?.maxCapacityPerDay ?? 1,
+            }
+          })
+          
+          this.settings = {
+            ...savedSettings,
+            businessHours,
+            // デフォルト値を設定
+            cancellationDeadlineHours: savedSettings.cancellationDeadlineHours || 24,
+            cancellationPolicy: savedSettings.cancellationPolicy || '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+          }
           this.isSettingsLoaded = true
         } catch (error) {
           // If parsing fails, use default settings
@@ -125,11 +189,31 @@ class ReservationService {
     try {
       const firestoreSettings = await settingsService.getSettings()
       if (firestoreSettings) {
-        this.settings = firestoreSettings
+        // 営業時間の設定を修正（古い形式のデータを新しい形式に変換）
+        const businessHours = firestoreSettings.businessHours.map(hours => {
+          // デフォルト設定から該当する曜日の設定を取得
+          const defaultHours = this.settings.businessHours.find(h => h.dayOfWeek === hours.dayOfWeek)
+          
+          return {
+            ...hours,
+            // 複数枠設定が欠けている場合はデフォルト値を使用
+            allowMultipleSlots: hours.allowMultipleSlots ?? defaultHours?.allowMultipleSlots,
+            slotInterval: hours.slotInterval ?? defaultHours?.slotInterval,
+            maxCapacityPerDay: hours.maxCapacityPerDay ?? defaultHours?.maxCapacityPerDay ?? 1,
+          }
+        })
+        
+        this.settings = {
+          ...firestoreSettings,
+          businessHours,
+          // デフォルト値を設定
+          cancellationDeadlineHours: firestoreSettings.cancellationDeadlineHours || 24,
+          cancellationPolicy: firestoreSettings.cancellationPolicy || '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+        }
         this.isSettingsLoaded = true
         // localStorageも更新
         if (typeof window !== 'undefined') {
-          localStorage.setItem('reservationSettings', JSON.stringify(firestoreSettings))
+          localStorage.setItem('reservationSettings', JSON.stringify(this.settings))
         }
       }
     } catch (error) {
@@ -178,18 +262,20 @@ class ReservationService {
     
     const newReservation = await firebaseReservationService.createReservation(reservationData)
 
-    // キャッシュを無効化
-    const reservationDate = new Date(newReservation.date)
-    const year = reservationDate.getFullYear()
-    const month = reservationDate.getMonth()
-    
-    // 関連するキャッシュを削除
-    await Promise.all([
-      cache.invalidateByTag(`month-${year}-${month}`),
-      cache.invalidateByTag(`date-${newReservation.date}`),
-      cache.delete(Cache.generateKey('time-slots', newReservation.date)),
-      cache.delete(Cache.generateKey('month-availability', year, month)),
-    ])
+    // キャッシュを無効化（サーバーサイドのみ）
+    if (typeof window === 'undefined') {
+      const reservationDate = new Date(newReservation.date)
+      const year = reservationDate.getFullYear()
+      const month = reservationDate.getMonth()
+      
+      // 関連するキャッシュを削除
+      await Promise.all([
+        cache.invalidateByTag(`month-${year}-${month}`),
+        cache.invalidateByTag(`date-${newReservation.date}`),
+        cache.delete(Cache.generateKey('time-slots', newReservation.date)),
+        cache.delete(Cache.generateKey('month-availability', year, month)),
+      ])
+    }
 
     // 予約完了時のポイント付与（予約金額の5%）
     if (reservation.price && reservation.customerId) {
@@ -284,16 +370,18 @@ class ReservationService {
   async getTimeSlotsForDate(date: string): Promise<TimeSlot[]> {
     // 設定が読み込まれるまで待つ
     await this.waitForSettings()
-    // キャッシュキーを生成
-    const cacheKey = Cache.generateKey('time-slots', date)
-    
-    // キャッシュから取得を試みる
-    const cached = await cache.get<TimeSlot[]>(cacheKey)
-    if (cached) {
-      return cached
+    // キャッシュから取得を試みる（サーバーサイドのみ）
+    if (typeof window === 'undefined') {
+      const cacheKey = Cache.generateKey('time-slots', date)
+      const cached = await cache.get<TimeSlot[]>(cacheKey)
+      if (cached) {
+        return cached
+      }
     }
 
-    const dateObj = new Date(date)
+    // 日付文字列をローカルタイムで正確に解釈
+    const [year, month, day] = date.split('-').map(Number)
+    const dateObj = new Date(year, month - 1, day)
     const dayOfWeek = dateObj.getDay()
     const businessHours = this.settings.businessHours[dayOfWeek]
 
@@ -375,10 +463,13 @@ class ReservationService {
       })
     }
 
-    // 結果をキャッシュに保存（2分間）
-    await cache.set(cacheKey, slots, 120, {
-      tags: ['reservations', `date-${date}`],
-    })
+    // 結果をキャッシュに保存（2分間、サーバーサイドのみ）
+    if (typeof window === 'undefined') {
+      const cacheKey = Cache.generateKey('time-slots', date)
+      await cache.set(cacheKey, slots, 120, {
+        tags: ['reservations', `date-${date}`],
+      })
+    }
 
     return slots
   }
@@ -393,13 +484,13 @@ class ReservationService {
   async getMonthAvailability(year: number, month: number): Promise<Map<string, boolean>> {
     // 設定が読み込まれるまで待つ
     await this.waitForSettings()
-    // キャッシュキーを生成
-    const cacheKey = Cache.generateKey('month-availability', year, month)
-    
-    // キャッシュから取得を試みる
-    const cached = await cache.get<{ [key: string]: boolean }>(cacheKey)
-    if (cached) {
-      return new Map(Object.entries(cached))
+    // キャッシュから取得を試みる（サーバーサイドのみ）
+    if (typeof window === 'undefined') {
+      const cacheKey = Cache.generateKey('month-availability', year, month)
+      const cached = await cache.get<{ [key: string]: boolean }>(cacheKey)
+      if (cached) {
+        return new Map(Object.entries(cached))
+      }
     }
 
     const availability = new Map<string, boolean>()
@@ -511,11 +602,14 @@ class ReservationService {
       availability.set(dateStr, hasAvailableSlot)
     }
 
-    // 結果をキャッシュに保存（5分間）
-    const cacheData = Object.fromEntries(availability)
-    await cache.set(cacheKey, cacheData, 300, {
-      tags: ['reservations', `month-${year}-${month}`],
-    })
+    // 結果をキャッシュに保存（5分間、サーバーサイドのみ）
+    if (typeof window === 'undefined') {
+      const cacheKey = Cache.generateKey('month-availability', year, month)
+      const cacheData = Object.fromEntries(availability)
+      await cache.set(cacheKey, cacheData, 300, {
+        tags: ['reservations', `month-${year}-${month}`],
+      })
+    }
 
     return availability
   }
@@ -614,6 +708,44 @@ END:VCALENDAR`
     }
 
     this.saveSettings(this.settings)
+  }
+
+  // 予約がキャンセル可能かどうか判定
+  canCancelReservation(reservation: Reservation): boolean {
+    // すでにキャンセル済みまたは完了済みの場合はキャンセル不可
+    if (reservation.status === 'cancelled' || reservation.status === 'completed') {
+      return false
+    }
+
+    // キャンセル期限の設定を取得（デフォルト24時間）
+    const deadlineHours = this.settings.cancellationDeadlineHours || 24
+
+    // 予約日時を作成
+    const reservationDateTime = new Date(`${reservation.date}T${reservation.time}`)
+    const now = new Date()
+
+    // 予約日時までの時間差を計算（ミリ秒）
+    const timeDiff = reservationDateTime.getTime() - now.getTime()
+    const hoursUntilReservation = timeDiff / (1000 * 60 * 60)
+
+    // キャンセル期限内かどうか判定
+    return hoursUntilReservation >= deadlineHours
+  }
+
+  // キャンセル可能な残り時間を取得（時間単位）
+  getCancellationDeadlineRemaining(reservation: Reservation): number | null {
+    if (!this.canCancelReservation(reservation)) {
+      return null
+    }
+
+    const deadlineHours = this.settings.cancellationDeadlineHours || 24
+    const reservationDateTime = new Date(`${reservation.date}T${reservation.time}`)
+    const now = new Date()
+
+    const timeDiff = reservationDateTime.getTime() - now.getTime()
+    const hoursUntilReservation = timeDiff / (1000 * 60 * 60)
+
+    return Math.max(0, hoursUntilReservation - deadlineHours)
   }
 }
 

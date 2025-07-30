@@ -23,6 +23,21 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
+  webpack: (config, { isServer }) => {
+    if (!isServer) {
+      // クライアントサイドでNode.jsモジュールを使用しない
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        dns: false,
+        net: false,
+        tls: false,
+        fs: false,
+        path: false,
+        crypto: false,
+      }
+    }
+    return config
+  },
 }
 
 export default nextConfig

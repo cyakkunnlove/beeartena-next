@@ -1,3 +1,8 @@
+// Server-side only module
+if (typeof window !== 'undefined') {
+  throw new Error('This module is server-side only')
+}
+
 import Redis from 'ioredis'
 import { compress, decompress } from 'lz-string'
 
@@ -272,11 +277,13 @@ export const cache = new Cache()
 export { Cache }
 
 // Clean up expired memory cache entries periodically
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, value] of cache['memoryCache'].entries()) {
-    if (value.expires < now) {
-      cache['memoryCache'].delete(key)
+if (typeof global !== 'undefined') {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, value] of cache['memoryCache'].entries()) {
+      if (value.expires < now) {
+        cache['memoryCache'].delete(key)
+      }
     }
-  }
-}, 60000) // Every minute
+  }, 60000) // Every minute
+}

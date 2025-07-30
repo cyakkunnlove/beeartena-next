@@ -16,6 +16,8 @@ export default function AdminSettingsPage() {
     maxCapacityPerSlot: 1,
     businessHours: [],
     blockedDates: [],
+    cancellationDeadlineHours: 24, // デフォルト24時間前
+    cancellationPolicy: '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
   })
   const [newBlockedDate, setNewBlockedDate] = useState('')
   const [message, setMessage] = useState('')
@@ -137,6 +139,48 @@ export default function AdminSettingsPage() {
               min="1"
               max="5"
             />
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+        <h2 className="text-xl font-semibold mb-4">キャンセルポリシー設定</h2>
+        
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              キャンセル可能期限（予約日の何時間前まで）
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                value={settings.cancellationDeadlineHours || 24}
+                onChange={(e) => setSettings({ ...settings, cancellationDeadlineHours: parseInt(e.target.value) || 24 })}
+                className="w-32 border rounded-lg px-3 py-2"
+                min="1"
+                max="168"
+              />
+              <span className="text-gray-600">時間前まで</span>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">
+              ※ お客様がオンラインでキャンセルできる期限を設定します（1〜168時間）
+            </p>
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              キャンセルポリシー説明文
+            </label>
+            <textarea
+              value={settings.cancellationPolicy || ''}
+              onChange={(e) => setSettings({ ...settings, cancellationPolicy: e.target.value })}
+              className="w-full border rounded-lg px-3 py-2"
+              rows={4}
+              placeholder="予約フォームに表示されるキャンセルポリシーの説明文を入力してください"
+            />
+            <p className="text-sm text-gray-500 mt-1">
+              ※ 予約フォームで表示されるキャンセルポリシーの説明文です
+            </p>
           </div>
         </div>
       </div>

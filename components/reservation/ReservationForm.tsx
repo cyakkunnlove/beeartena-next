@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { reservationService } from '@/lib/reservationService'
 
 interface ReservationFormProps {
   formData: {
@@ -34,6 +35,7 @@ export default function ReservationForm({
   const [usePoints, setUsePoints] = useState(false)
   const [pointsToUse, setPointsToUse] = useState('')
   const [useMonitorPrice, setUseMonitorPrice] = useState(false)
+  const [cancellationPolicy, setCancellationPolicy] = useState<string>('')
   const availablePoints = user?.points || 0
   const currentPrice = useMonitorPrice && monitorPrice ? monitorPrice : servicePrice
   const maxPoints = Math.min(availablePoints, currentPrice)
@@ -52,6 +54,14 @@ export default function ReservationForm({
       onMonitorPriceSelected(useMonitorPrice)
     }
   }, [useMonitorPrice, onMonitorPriceSelected])
+
+  useEffect(() => {
+    // キャンセルポリシーを取得
+    const settings = reservationService.getSettings()
+    if (settings.cancellationPolicy) {
+      setCancellationPolicy(settings.cancellationPolicy)
+    }
+  }, [])
 
   const handlePointsChange = (value: string) => {
     const points = parseInt(value) || 0
@@ -230,7 +240,7 @@ export default function ReservationForm({
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">•</span>
-            <span>キャンセルは前日までにご連絡ください</span>
+            <span>{cancellationPolicy || 'キャンセルは前日までにご連絡ください'}</span>
           </li>
         </ul>
       </div>
