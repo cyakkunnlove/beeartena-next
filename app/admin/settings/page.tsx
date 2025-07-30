@@ -154,6 +154,7 @@ export default function AdminSettingsPage() {
                 <th className="text-left py-2 px-4">閉店時間</th>
                 <th className="text-left py-2 px-4">複数予約</th>
                 <th className="text-left py-2 px-4">スロット間隔（分）</th>
+                <th className="text-left py-2 px-4">最大受付人数</th>
               </tr>
             </thead>
             <tbody>
@@ -207,6 +208,17 @@ export default function AdminSettingsPage() {
                       step="15"
                     />
                   </td>
+                  <td className="py-2 px-4">
+                    <input
+                      type="number"
+                      value={hours.maxCapacityPerDay || 1}
+                      onChange={(e) => handleBusinessHoursChange(index, 'maxCapacityPerDay', parseInt(e.target.value) || 1)}
+                      disabled={!hours.isOpen}
+                      className="border rounded px-2 py-1 w-20 disabled:bg-gray-100"
+                      min="1"
+                      max="20"
+                    />
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -216,6 +228,8 @@ export default function AdminSettingsPage() {
           ※ 複数予約を有効にすると、指定した間隔で複数の予約枠が生成されます。
           <br />
           ※ スロット間隔は15分単位で設定できます。
+          <br />
+          ※ 最大受付人数は、その曜日の1日あたりの最大予約数を設定します（複数予約無効時は1日1枠のみ）。
         </p>
       </div>
 

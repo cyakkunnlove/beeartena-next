@@ -159,6 +159,7 @@ export interface BusinessHours {
   slots?: TimeSlot[]
   allowMultipleSlots?: boolean // 複数予約枠を許可するか
   slotInterval?: number // スロット間隔（分）、allowMultipleSlotsがtrueの場合のみ使用
+  maxCapacityPerDay?: number // 1日の最大受付人数（デフォルト: 1）
 }
 
 export interface ReservationSettings {

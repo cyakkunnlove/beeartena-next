@@ -89,13 +89,13 @@ class ReservationService {
     slotDuration: 150, // 2時間30分
     maxCapacityPerSlot: 1, // 1枠1人
     businessHours: [
-      { dayOfWeek: 0, open: '', close: '', isOpen: false }, // 日曜休み
-      { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true }, // 月曜
-      { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true }, // 火曜
-      { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true, allowMultipleSlots: true, slotInterval: 30 }, // 水曜（30分間隔で複数予約可）
-      { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true }, // 木曜
-      { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true }, // 金曜
-      { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true }, // 土曜
+      { dayOfWeek: 0, open: '', close: '', isOpen: false, maxCapacityPerDay: 1 }, // 日曜休み
+      { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 月曜
+      { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 火曜
+      { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true, allowMultipleSlots: true, slotInterval: 30, maxCapacityPerDay: 10 }, // 水曜（30分間隔で複数予約可）
+      { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 木曜
+      { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 金曜
+      { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 土曜
     ],
     blockedDates: [],
   }
@@ -289,6 +289,9 @@ class ReservationService {
 
     const slots: TimeSlot[] = []
     const reservations = await firebaseReservationService.getReservationsByDate(dateObj)
+    
+    // その日の最大受付人数を取得
+    const maxCapacityPerDay = businessHours.maxCapacityPerDay || 1
 
     // 営業時間から時間枠を生成
     const [openHour, openMinute] = businessHours.open.split(':').map(Number)
@@ -301,6 +304,10 @@ class ReservationService {
     // スロット時間（デフォルト120分）
     const slotDuration = this.settings.slotDuration || 120
     
+    // その日の合計予約数をチェック
+    const totalReservationsForDay = reservations.length
+    const isDayFullyBooked = totalReservationsForDay >= maxCapacityPerDay
+    
     // 複数予約が許可されている曜日は指定された間隔で時間枠を生成
     if (businessHours.allowMultipleSlots) {
       // 設定されたスロット間隔を使用（デフォルト30分）
@@ -311,22 +318,24 @@ class ReservationService {
         const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
         
         // この時間に予約可能かチェック
-        let isAvailable = true
+        let isAvailable = !isDayFullyBooked
         
-        // 既存の予約をチェック
-        for (const reservation of reservations) {
-          const [resHour, resMinute] = reservation.time.split(':').map(Number)
-          const resStartMinutes = resHour * 60 + resMinute
-          const resEndMinutes = resStartMinutes + slotDuration
-          
-          // 予約時間が既存予約と重なる場合は不可
-          if (
-            (currentMinutes >= resStartMinutes && currentMinutes < resEndMinutes) || // 開始時間が既存予約内
-            (currentMinutes + slotDuration > resStartMinutes && currentMinutes + slotDuration <= resEndMinutes) || // 終了時間が既存予約内
-            (currentMinutes <= resStartMinutes && currentMinutes + slotDuration >= resEndMinutes) // 既存予約を包含
-          ) {
-            isAvailable = false
-            break
+        if (isAvailable) {
+          // 既存の予約をチェック
+          for (const reservation of reservations) {
+            const [resHour, resMinute] = reservation.time.split(':').map(Number)
+            const resStartMinutes = resHour * 60 + resMinute
+            const resEndMinutes = resStartMinutes + slotDuration
+            
+            // 予約時間が既存予約と重なる場合は不可
+            if (
+              (currentMinutes >= resStartMinutes && currentMinutes < resEndMinutes) || // 開始時間が既存予約内
+              (currentMinutes + slotDuration > resStartMinutes && currentMinutes + slotDuration <= resEndMinutes) || // 終了時間が既存予約内
+              (currentMinutes <= resStartMinutes && currentMinutes + slotDuration >= resEndMinutes) // 既存予約を包含
+            ) {
+              isAvailable = false
+              break
+            }
           }
         }
 
@@ -345,7 +354,7 @@ class ReservationService {
       
       slots.push({
         time: timeStr,
-        available: bookingsAtTime < this.settings.maxCapacityPerSlot,
+        available: bookingsAtTime < this.settings.maxCapacityPerSlot && !isDayFullyBooked,
         date: date,
         maxCapacity: this.settings.maxCapacityPerSlot,
         currentBookings: bookingsAtTime,
@@ -420,6 +429,19 @@ class ReservationService {
       // その日の予約状況を取得
       const dayReservations = monthReservations.get(dateStr) || []
       
+      // その日の最大受付人数を取得
+      const maxCapacityPerDay = dayBusinessHours.maxCapacityPerDay || 1
+      
+      // その日の合計予約数をチェック
+      const totalReservationsForDay = dayReservations.length
+      const isDayFullyBooked = totalReservationsForDay >= maxCapacityPerDay
+      
+      // 既に1日の最大数に達していれば予約不可
+      if (isDayFullyBooked) {
+        availability.set(dateStr, false)
+        continue
+      }
+      
       // 時間枠を計算して空きがあるかチェック
       const [openHour, openMinute] = dayBusinessHours.open.split(':').map(Number)
       const [closeHour, closeMinute] = dayBusinessHours.close.split(':').map(Number)
@@ -437,9 +459,25 @@ class ReservationService {
           const minute = currentMinutes % 60
           const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
           
-          const bookingsAtTime = dayReservations.filter((r) => r.time === timeStr).length
+          // この時間に予約可能かチェック（時間重複チェック）
+          let isTimeSlotAvailable = true
           
-          if (bookingsAtTime < this.settings.maxCapacityPerSlot) {
+          for (const reservation of dayReservations) {
+            const [resHour, resMinute] = reservation.time.split(':').map(Number)
+            const resStartMinutes = resHour * 60 + resMinute
+            const resEndMinutes = resStartMinutes + slotDuration
+            
+            if (
+              (currentMinutes >= resStartMinutes && currentMinutes < resEndMinutes) ||
+              (currentMinutes + slotDuration > resStartMinutes && currentMinutes + slotDuration <= resEndMinutes) ||
+              (currentMinutes <= resStartMinutes && currentMinutes + slotDuration >= resEndMinutes)
+            ) {
+              isTimeSlotAvailable = false
+              break
+            }
+          }
+          
+          if (isTimeSlotAvailable) {
             hasAvailableSlot = true
             break
           }

@@ -15,13 +15,20 @@ export default function BusinessHoursInfo() {
   }
 
   const groupedHours = () => {
-    const groups: { days: string[]; hours: string }[] = []
+    const groups: { days: string[]; hours: string; maxCapacity?: number; hasMultipleSlots?: boolean }[] = []
 
     settings.businessHours.forEach((hours, index) => {
       if (!hours.isOpen) return
 
       const hoursStr = `${formatTime(hours.open)}〜${formatTime(hours.close)}`
-      const existingGroup = groups.find((g) => g.hours === hoursStr)
+      const maxCapacity = hours.maxCapacityPerDay || 1
+      const hasMultipleSlots = hours.allowMultipleSlots || false
+      
+      const existingGroup = groups.find((g) => 
+        g.hours === hoursStr && 
+        g.maxCapacity === maxCapacity && 
+        g.hasMultipleSlots === hasMultipleSlots
+      )
 
       if (existingGroup) {
         existingGroup.days.push(daysOfWeek[index])
@@ -29,6 +36,8 @@ export default function BusinessHoursInfo() {
         groups.push({
           days: [daysOfWeek[index]],
           hours: hoursStr,
+          maxCapacity,
+          hasMultipleSlots,
         })
       }
     })
@@ -56,6 +65,11 @@ export default function BusinessHoursInfo() {
           >
             <span className="font-medium">{group.days.join('・')}曜日:</span>
             <span className="ml-2">{group.hours}</span>
+            {group.hasMultipleSlots && (
+              <span className="ml-2 text-xs text-primary">
+                (複数予約可)
+              </span>
+            )}
           </motion.div>
         ))}
         {settings.businessHours.filter((h) => !h.isOpen).length > 0 && (
@@ -76,7 +90,33 @@ export default function BusinessHoursInfo() {
           </motion.div>
         )}
       </div>
-      <div className="mt-3 text-xs text-gray-500">※ 1日1名限定の完全予約制となっております</div>
+      <div className="mt-3 text-xs text-gray-500">
+        {(() => {
+          // 全ての営業日が1日1名限定かチェック
+          const allDaysLimited = settings.businessHours
+            .filter(h => h.isOpen)
+            .every(h => (h.maxCapacityPerDay || 1) === 1 && !h.allowMultipleSlots)
+          
+          // 一部の曜日が複数予約可能かチェック
+          const someDaysMultiple = settings.businessHours
+            .filter(h => h.isOpen)
+            .some(h => (h.maxCapacityPerDay || 1) > 1 || h.allowMultipleSlots)
+          
+          if (allDaysLimited) {
+            return '※ 1日1名限定の完全予約制となっております'
+          } else if (someDaysMultiple) {
+            // 複数予約可能な曜日を取得
+            const multipleDays = settings.businessHours
+              .filter(h => h.isOpen && ((h.maxCapacityPerDay || 1) > 1 || h.allowMultipleSlots))
+              .map(h => daysOfWeek[h.dayOfWeek])
+              .join('・')
+            
+            return `※ 完全予約制（${multipleDays}曜日は複数予約可）`
+          } else {
+            return '※ 完全予約制となっております'
+          }
+        })()}
+      </div>
     </motion.div>
   )
 }
