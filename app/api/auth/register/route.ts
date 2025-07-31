@@ -15,20 +15,46 @@ export async function OPTIONS(_request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('=== Register API called ===')
+  console.log('Method:', request.method)
+  console.log('URL:', request.url)
+  console.log('Headers:', Object.fromEntries(request.headers.entries()))
+  
   // レート制限チェック
   const rateLimitResponse = rateLimit(request, 3, 60000) // 1分間に3回まで
   if (rateLimitResponse) return setCorsHeaders(rateLimitResponse)
 
-  // リクエストボディの検証
-  const { data, error } = await validateRequestBody<{
+  // リクエストボディを直接パース
+  let body: any
+  try {
+    // まずボディを文字列として取得
+    const bodyText = await request.text()
+    console.log('Raw body text:', bodyText)
+    console.log('Body length:', bodyText.length)
+    
+    // JSONとしてパース
+    body = JSON.parse(bodyText)
+    console.log('Parsed body:', body)
+  } catch (error) {
+    console.error('JSON parse error in register route:', error)
+    return setCorsHeaders(errorResponse('不正なJSONフォーマットです', 400))
+  }
+
+  // 必須フィールドチェック
+  const requiredFields = ['email', 'password', 'name', 'phone'] as const
+  for (const field of requiredFields) {
+    if (!(field in body)) {
+      return setCorsHeaders(errorResponse(`必須フィールド '${field}' が不足しています`, 400))
+    }
+  }
+
+  const data = body as {
     email: string
     password: string
     name: string
     phone: string
     birthday?: string
-  }>(request, ['email', 'password', 'name', 'phone'])
-
-  if (error) return setCorsHeaders(error)
+  }
 
   // バリデーション
   if (!data.email.includes('@')) {
