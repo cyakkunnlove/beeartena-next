@@ -16,28 +16,42 @@ export async function OPTIONS(_request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   console.log('=== Register API called ===')
-  console.log('Method:', request.method)
-  console.log('URL:', request.url)
-  console.log('Headers:', Object.fromEntries(request.headers.entries()))
   
-  // レート制限チェック
-  const rateLimitResponse = rateLimit(request, 3, 60000) // 1分間に3回まで
+  // レート制限用にクローンを作成（ヘッダーのみ使用）
+  const rateLimitResponse = rateLimit(request, 3, 60000)
   if (rateLimitResponse) return setCorsHeaders(rateLimitResponse)
 
   // リクエストボディを直接パース
   let body: any
   try {
-    // まずボディを文字列として取得
-    const bodyText = await request.text()
-    console.log('Raw body text:', bodyText)
-    console.log('Body length:', bodyText.length)
+    const contentType = request.headers.get('content-type')
+    console.log('Content-Type:', contentType)
     
-    // JSONとしてパース
-    body = JSON.parse(bodyText)
-    console.log('Parsed body:', body)
+    // リクエストボディのテキストを取得してデバッグ
+    const text = await request.text()
+    console.log('Raw request body:', text)
+    
+    if (!text) {
+      console.error('Empty request body')
+      return setCorsHeaders(errorResponse('リクエストボディが空です', 400))
+    }
+    
+    try {
+      body = JSON.parse(text)
+      console.log('Successfully parsed JSON body:', body)
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      console.error('Failed to parse text:', text)
+      return setCorsHeaders(errorResponse('不正なJSONフォーマットです', 400))
+    }
   } catch (error) {
-    console.error('JSON parse error in register route:', error)
-    return setCorsHeaders(errorResponse('不正なJSONフォーマットです', 400))
+    console.error('Request body read error:', error)
+    console.error('Error details:', {
+      name: error instanceof Error ? error.name : 'unknown',
+      message: error instanceof Error ? error.message : 'unknown',
+      stack: error instanceof Error ? error.stack : 'unknown'
+    })
+    return setCorsHeaders(errorResponse('リクエストの読み取りに失敗しました', 400))
   }
 
   // 必須フィールドチェック
