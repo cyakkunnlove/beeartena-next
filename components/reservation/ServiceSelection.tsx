@@ -178,10 +178,10 @@ export default function ServiceSelection({ onSelect, selected, isMonitorPrice }:
             {service.monitorPrice && (
               <>
                 <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
-                  当店価格: ¥{service.otherShopPrice?.toLocaleString()}
+                  他店価格: ¥{service.otherShopPrice?.toLocaleString()}
                 </p>
                 <p className="text-xl font-bold">
-                  通常価格: ¥{service.price.toLocaleString()}
+                  当店価格: ¥{service.price.toLocaleString()}
                 </p>
                 <p className="text-lg font-bold text-primary">
                   モニター価格: ¥{service.monitorPrice.toLocaleString()}
@@ -216,7 +216,7 @@ export default function ServiceSelection({ onSelect, selected, isMonitorPrice }:
               !isMonitor ? 'border-primary bg-primary/5' : 'border-gray-200'
             }`}
           >
-            <p className="font-semibold mb-2">通常価格</p>
+            <p className="font-semibold mb-2">当店価格</p>
             <p className="text-2xl font-bold">
               ¥{services.find(s => s.id === selectedService)?.price.toLocaleString()}
             </p>
