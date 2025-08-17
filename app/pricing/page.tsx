@@ -184,7 +184,7 @@ export default function PricingPage() {
                         <div className="flex flex-wrap items-end justify-between gap-4">
                           <div>
                             <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
-                              他店価格 ¥{service.otherShopPrice.toLocaleString()}
+                              当店価格 ¥{service.otherShopPrice.toLocaleString()}
                             </p>
                             <p className="text-2xl font-bold">
                               通常価格 ¥{service.price.toLocaleString()}

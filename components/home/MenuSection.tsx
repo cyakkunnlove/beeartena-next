@@ -62,7 +62,7 @@ export default function MenuSection() {
               <div className="space-y-2">
                 <div className="relative">
                   <div className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
-                    他店価格 ¥{item.otherShopPrice.toLocaleString()}
+                    当店価格 ¥{item.otherShopPrice.toLocaleString()}
                   </div>
                   <div className="text-2xl font-bold">
                     通常価格 ¥{item.price.toLocaleString()}
