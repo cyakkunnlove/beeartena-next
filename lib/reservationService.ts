@@ -257,10 +257,40 @@ class ReservationService {
   ): Promise<Reservation> {
     const reservationData = {
       ...reservation,
-      createdBy: createdBy || reservation.customerId || undefined,
+      createdBy: createdBy || reservation.customerId || 'guest',
     }
     
     const newReservation = await firebaseReservationService.createReservation(reservationData)
+    
+    // メール送信処理（エラーが発生してもリザベーションは成功させる）
+    try {
+      // メールアドレスの取得（customerEmailが直接提供されている場合はそれを使用）
+      let userEmail = newReservation.customerEmail
+      
+      // customerIdがある場合はユーザー情報から取得を試みる
+      if (newReservation.customerId && newReservation.customerId !== 'guest') {
+        try {
+          const user = await userService.getUser(newReservation.customerId)
+          if (user && user.email) {
+            userEmail = user.email
+          }
+        } catch (userError) {
+          console.log('ユーザー情報取得エラー（メールアドレスは予約データから使用）:', userError)
+        }
+      }
+      
+      if (userEmail) {
+        // 顧客への確認メール
+        await emailService.sendReservationConfirmation(newReservation, userEmail)
+        // 管理者への通知メール
+        await emailService.sendReservationNotificationToAdmin(newReservation)
+      } else {
+        console.log('メールアドレスが見つからないため、メール送信をスキップしました')
+      }
+    } catch (error) {
+      console.error('メール送信エラー:', error)
+      // メール送信に失敗してもリザベーションは成功とする
+    }
 
     // キャッシュを無効化（サーバーサイドのみ）
     if (typeof window === 'undefined') {
@@ -340,12 +370,15 @@ class ReservationService {
 
     // キャンセル通知メールを送信
     try {
+      // キャンセル理由を含めた予約情報
+      const cancelledReservation = { ...reservation, cancelReason: reason }
+      
       // ユーザーへの確認メール
       if (reservation.customerEmail) {
-        await emailService.sendCancellationConfirmation(reservation, reservation.customerEmail)
+        await emailService.sendCancellationConfirmation(cancelledReservation, reservation.customerEmail)
       }
       // 管理者への通知メール
-      await emailService.sendCancellationNotificationToAdmin(reservation)
+      await emailService.sendCancellationNotificationToAdmin(cancelledReservation)
     } catch (error) {
       console.error('キャンセルメール送信エラー:', error)
     }

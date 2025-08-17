@@ -8,6 +8,8 @@ import ReservationEditModal from '@/components/admin/ReservationEditModal'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationService } from '@/lib/reservationService'
 import { storageService } from '@/lib/storage/storageService'
+import { reservationStatusManager } from '@/lib/firebase/reservationStatusManager'
+import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { Reservation } from '@/lib/types'
 
 export default function AdminReservations() {
@@ -20,6 +22,9 @@ export default function AdminReservations() {
   const [viewMode, setViewMode] = useState<'list' | 'calendar'>('calendar')
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
   const [editingReservation, setEditingReservation] = useState<Reservation | null>(null)
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showStatusAlert, setShowStatusAlert] = useState(false)
+  const [statusAlertMessage, setStatusAlertMessage] = useState('')
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -30,18 +35,84 @@ export default function AdminReservations() {
     loadReservations()
   }, [user, router])
 
-  const loadReservations = () => {
-    const allReservations = storageService.getAllReservations()
-    setReservations(
-      allReservations.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    )
+  const loadReservations = async () => {
+    try {
+      // Firebaseから予約データを取得
+      const allReservations = await firebaseReservationService.getAllReservations()
+      setReservations(
+        allReservations.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      )
+    } catch (error) {
+      console.error('Failed to load reservations:', error)
+      // フォールバック: LocalStorageから取得
+      const localReservations = storageService.getAllReservations()
+      setReservations(
+        localReservations.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      )
+    }
   }
 
-  const handleStatusUpdate = (reservationId: string, newStatus: Reservation['status']) => {
-    storageService.updateReservationStatus(reservationId, newStatus)
-    loadReservations()
+  const handleStatusUpdate = async (reservationId: string, newStatus: Reservation['status']) => {
+    try {
+      setIsProcessing(true)
+      
+      // ステータスが「完了」に変更される場合、ポイント付与処理も実行
+      if (newStatus === 'completed') {
+        await reservationStatusManager.completeReservationManually(reservationId, user?.id)
+        setStatusAlertMessage('予約を完了し、ポイントを付与しました')
+      } else if (newStatus === 'confirmed') {
+        await reservationStatusManager.confirmReservation(reservationId, user?.id)
+        setStatusAlertMessage('予約を確認済みにしました')
+      } else {
+        // その他のステータス更新
+        storageService.updateReservationStatus(reservationId, newStatus)
+        setStatusAlertMessage(`ステータスを${getStatusText(newStatus)}に更新しました`)
+      }
+      
+      loadReservations()
+      setShowStatusAlert(true)
+      setTimeout(() => setShowStatusAlert(false), 3000)
+    } catch (error: any) {
+      console.error('Status update error:', error)
+      alert(error.message || 'ステータスの更新に失敗しました')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+
+  const handleBatchProcessCompletedReservations = async () => {
+    if (!confirm('完了すべき予約を自動処理し、ポイントを付与しますか？')) {
+      return
+    }
+
+    try {
+      setIsProcessing(true)
+      const result = await reservationStatusManager.processCompletedReservations()
+      
+      if (result.processedCount > 0) {
+        setStatusAlertMessage(`${result.processedCount}件の予約を完了し、ポイントを付与しました`)
+        loadReservations()
+      } else {
+        setStatusAlertMessage('処理対象の予約はありませんでした')
+      }
+      
+      if (result.errors.length > 0) {
+        console.error('処理エラー:', result.errors)
+        alert(`${result.errors.length}件の予約でエラーが発生しました。詳細はコンソールを確認してください。`)
+      }
+      
+      setShowStatusAlert(true)
+      setTimeout(() => setShowStatusAlert(false), 5000)
+    } catch (error: any) {
+      console.error('Batch process error:', error)
+      alert(error.message || '一括処理に失敗しました')
+    } finally {
+      setIsProcessing(false)
+    }
   }
 
   const handleReservationUpdate = (updatedReservation: Reservation) => {
@@ -116,6 +187,13 @@ export default function AdminReservations() {
             <h1 className="text-3xl font-bold">予約管理</h1>
             <div className="flex gap-2">
               <button
+                onClick={handleBatchProcessCompletedReservations}
+                disabled={isProcessing}
+                className="px-4 py-2 bg-purple-500 text-white rounded-lg hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isProcessing ? '処理中...' : '🎁 完了予約のポイント付与'}
+              </button>
+              <button
                 onClick={handleExportICal}
                 className="px-4 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600"
               >
@@ -133,6 +211,13 @@ export default function AdminReservations() {
       </div>
 
       <div className="container mx-auto px-4 py-8">
+        {/* Status Alert */}
+        {showStatusAlert && (
+          <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-6">
+            {statusAlertMessage}
+          </div>
+        )}
+
         {/* View Mode Toggle */}
         <div className="bg-white rounded-lg shadow-md p-4 mb-6">
           <div className="flex items-center justify-between">

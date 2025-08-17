@@ -45,7 +45,7 @@ export default function HeroSection() {
             <p className="text-lg sm:text-xl md:text-2xl text-white/90 mb-8 sm:mb-10 drop-shadow-md">
               国家資格を持つ理容師による安全・安心の施術
               <br className="hidden sm:block" />
-              <span className="block sm:inline">半年以内リタッチ11,000円の安心プラン</span>
+              <span className="block sm:inline">3ヶ月以内リタッチ11,000円の安心プラン</span>
             </p>
           </SlideTransition>
           

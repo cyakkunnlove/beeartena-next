@@ -1,59 +1,30 @@
-/**
- * Firebase接続テストスクリプト
- */
+require('dotenv').config({ path: '.env.local' })
 
-const admin = require('firebase-admin')
-const serviceAccount = require('./firebase-service-account-key.json')
+const { initializeApp } = require('firebase/app')
+const { getAuth } = require('firebase/auth')
 
-// Firebase Admin SDKの初期化
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-  projectId: 'beeart-ena',
-})
-
-const db = admin.firestore()
-
-async function testConnection() {
-  try {
-    console.log('🔍 Firebase接続をテスト中...')
-
-    // Firestoreへの書き込みテスト
-    const testDoc = {
-      test: true,
-      timestamp: admin.firestore.FieldValue.serverTimestamp(),
-    }
-
-    await db.collection('test').doc('connection-test').set(testDoc)
-    console.log('✅ Firestoreへの書き込み: 成功')
-
-    // 読み取りテスト
-    const doc = await db.collection('test').doc('connection-test').get()
-    if (doc.exists) {
-      console.log('✅ Firestoreからの読み取り: 成功')
-    }
-
-    // クリーンアップ
-    await db.collection('test').doc('connection-test').delete()
-    console.log('✅ テストドキュメントを削除しました')
-
-    console.log('\n🎉 Firebase接続テスト完了！初期化スクリプトを実行できます。')
-  } catch (error) {
-    console.error('❌ エラー:', error.message)
-
-    if (error.code === 7) {
-      console.log('\n⚠️  Firestoreのセキュリティルールを一時的に開放してください:')
-      console.log('rules_version = "2";')
-      console.log('service cloud.firestore {')
-      console.log('  match /databases/{database}/documents {')
-      console.log('    match /{document=**} {')
-      console.log('      allow read, write: if true;')
-      console.log('    }')
-      console.log('  }')
-      console.log('}')
-    }
-  }
-
-  process.exit(0)
+const firebaseConfig = {
+  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
+  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
+  storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
 }
 
-testConnection()
+console.log('Firebase Configuration Test')
+console.log('==========================')
+console.log('API Key:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 10) + '...')
+console.log('Auth Domain:', process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN)
+console.log('Project ID:', process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID)
+
+try {
+  const app = initializeApp(firebaseConfig)
+  const auth = getAuth(app)
+  console.log('✅ Firebase initialized successfully')
+  console.log('Auth instance created:', !!auth)
+  console.log('Current user:', auth.currentUser)
+} catch (error) {
+  console.error('❌ Firebase initialization failed:', error.message)
+  console.error('Error code:', error.code)
+}

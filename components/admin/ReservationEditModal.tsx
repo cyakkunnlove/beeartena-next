@@ -193,8 +193,8 @@ export default function ReservationEditModal({
                     onChange={(e) => {
                       const serviceType = e.target.value as '2D' | '3D' | '4D'
                       const serviceMap = {
-                        '2D': { name: 'パウダーブロウ', price: 20000 },
-                        '3D': { name: 'フェザーブロウ', price: 20000 },
+                        '2D': { name: 'パウダーブロウ', price: 22000 },
+                        '3D': { name: 'フェザーブロウ', price: 23000 },
                         '4D': { name: 'パウダー&フェザー', price: 25000 },
                       }
                       const service = serviceMap[serviceType]

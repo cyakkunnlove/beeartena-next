@@ -6,6 +6,7 @@ import { useState, useEffect, Suspense } from 'react'
 
 import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
 import Calendar from '@/components/reservation/Calendar'
+import MaintenanceOptions from '@/components/reservation/MaintenanceOptions'
 import ReservationForm from '@/components/reservation/ReservationForm'
 import ServiceSelection from '@/components/reservation/ServiceSelection'
 import TimeSlots from '@/components/reservation/TimeSlots'
@@ -22,6 +23,8 @@ function ReservationContent() {
   const [selectedService, setSelectedService] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
   const [selectedTime, setSelectedTime] = useState('')
+  const [selectedMaintenanceOptions, setSelectedMaintenanceOptions] = useState<string[]>([])
+  const [maintenancePrice, setMaintenancePrice] = useState(0)
   const [_isSubmitting, setIsSubmitting] = useState(false)
   const [pointsToUse, setPointsToUse] = useState(0)
   const [_shouldAutoSubmit, _setShouldAutoSubmit] = useState(false)
@@ -43,13 +46,15 @@ function ReservationContent() {
       name: string
       price: number
       monitorPrice?: number
+      otherShopPrice?: number
     }
   } = {
-    '2D': { name: '2Dパウダーブロウ', price: 22000, monitorPrice: 20000 },
-    '3D': { name: '3Dフェザーブロウ', price: 23000, monitorPrice: 20000 },
-    '4D': { name: '4Dパウダー&フェザー', price: 25000, monitorPrice: 22000 },
+    '2D': { name: '2Dパウダーブロウ', price: 22000, monitorPrice: 20000, otherShopPrice: 35000 },
+    '3D': { name: '3Dフェザーブロウ', price: 23000, monitorPrice: 20000, otherShopPrice: 35000 },
+    '4D': { name: '4Dパウダー&フェザー', price: 25000, monitorPrice: 22000, otherShopPrice: 40000 },
     'wax': { name: '眉毛ワックス脱毛', price: 15000 },
-    'retouch': { name: '安心プラン（リタッチ）', price: 11000 },
+    'retouch3': { name: '3ヶ月以内リタッチ', price: 11000 },
+    'retouch6': { name: '半年以内リタッチ', price: 15000 },
   }
 
   // 会員登録から戻ってきた場合、保存した予約情報を復元
@@ -60,8 +65,10 @@ function ReservationContent() {
         setSelectedService(savedReservation.serviceId)
         setSelectedDate(savedReservation.date)
         setSelectedTime(savedReservation.time)
+        setSelectedMaintenanceOptions(savedReservation.maintenanceOptions || [])
+        setMaintenancePrice(savedReservation.maintenancePrice || 0)
         setFormData(savedReservation.formData)
-        setStep(savedReservation.step || 4) // 保存されたステップまたは確認画面へ
+        setStep(savedReservation.step || 5) // 保存されたステップまたは確認画面へ
         if (savedReservation.pointsToUse !== undefined) {
           setPointsToUse(savedReservation.pointsToUse)
         }
@@ -80,7 +87,7 @@ function ReservationContent() {
 
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
-    if (user && step === 4) {
+    if (user && step === 5) {
       // フォームデータが初期状態の場合のみ自動入力
       if (!formData.name && !formData.email && !formData.phone) {
         setFormData((prevData) => ({
@@ -93,8 +100,9 @@ function ReservationContent() {
     }
   }, [user, step])
 
-  const handleServiceSelect = (service: string) => {
+  const handleServiceSelect = (service: string, isMonitor?: boolean) => {
     setSelectedService(service)
+    setIsMonitorPrice(isMonitor || false)
     setStep(2)
   }
 
@@ -106,6 +114,15 @@ function ReservationContent() {
   const handleTimeSelect = (time: string) => {
     setSelectedTime(time)
     setStep(4)
+  }
+
+  const handleMaintenanceSelect = (options: string[], totalPrice: number) => {
+    setSelectedMaintenanceOptions(options)
+    // メンテナンス料金 = 合計価格 - ベースサービス価格
+    const service = serviceData[selectedService as keyof typeof serviceData]
+    const basePrice = isMonitorPrice && service.monitorPrice ? service.monitorPrice : service.price
+    setMaintenancePrice(totalPrice - basePrice)
+    setStep(5)
   }
 
   const handleFormSubmit = async (data: {
@@ -126,8 +143,10 @@ function ReservationContent() {
         serviceName: serviceData[selectedService as keyof typeof serviceData].name,
         date: selectedDate,
         time: selectedTime,
+        maintenanceOptions: selectedMaintenanceOptions,
+        maintenancePrice: maintenancePrice,
         formData: data,
-        step: 4, // 予約確認画面のステップ
+        step: 5, // 予約確認画面のステップ
         pointsToUse: pointsToUse,
         isReadyToSubmit: true, // 予約確定ボタンを押した状態
       })
@@ -140,12 +159,16 @@ function ReservationContent() {
     try {
       const service = serviceData[selectedService as keyof typeof serviceData]
       const basePrice = isMonitorPrice && service.monitorPrice ? service.monitorPrice : service.price
-      const _finalPrice = basePrice - pointsToUse
+      const totalPrice = basePrice + maintenancePrice
+      const _finalPrice = totalPrice - pointsToUse
 
       const reservationData = {
         serviceType: selectedService as '2D' | '3D' | '4D',
         serviceName: service.name,
         price: basePrice,
+        maintenanceOptions: selectedMaintenanceOptions,
+        maintenancePrice: maintenancePrice,
+        totalPrice: totalPrice,
         date: selectedDate,
         time: selectedTime,
         customerName: formData.name,
@@ -155,23 +178,16 @@ function ReservationContent() {
         notes: isMonitorPrice ? `${formData.notes}\n【モニター価格適用】写真撮影にご協力いただきます` : formData.notes,
         status: 'pending' as const,
         updatedAt: new Date(),
+        isMonitor: isMonitorPrice,
+        finalPrice: _finalPrice,
+        pointsUsed: pointsToUse,
       }
 
       // Firebaseに直接保存
       await reservationService.createReservation(reservationData)
-
-      // ポイント使用の記録
-      if (user && pointsToUse > 0) {
-        const updatedUser = { ...user, points: (user.points || 0) - pointsToUse }
-        localStorage.setItem(
-          'users',
-          JSON.stringify(
-            JSON.parse(localStorage.getItem('users') || '[]').map((u: { id: string }) =>
-              u.id === user.id ? updatedUser : u,
-            ),
-          ),
-        )
-      }
+      
+      // 注: ポイント付与は予約完了時（施術後）に行われます
+      // ポイント使用はFirebase側で処理されます
 
       router.push('/reservation/complete')
     } catch (error) {
@@ -192,7 +208,8 @@ function ReservationContent() {
     1: 'サービス選択',
     2: '日付選択',
     3: '時間選択',
-    4: '予約情報入力',
+    4: 'メンテナンスオプション',
+    5: '予約情報入力',
   }
 
   return (
@@ -203,12 +220,12 @@ function ReservationContent() {
           <div className="mb-8">
             <div className="flex items-center justify-between mb-4">
               <h1 className="text-2xl font-bold">予約フォーム</h1>
-              <span className="text-sm text-gray-600">ステップ {step} / 4</span>
+              <span className="text-sm text-gray-600">ステップ {step} / 5</span>
             </div>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(step / 4) * 100}%` }}
+                style={{ width: `${(step / 5) * 100}%` }}
               />
             </div>
           </div>
@@ -232,7 +249,11 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <ServiceSelection onSelect={handleServiceSelect} selected={selectedService} />
+                  <ServiceSelection 
+                    onSelect={handleServiceSelect} 
+                    selected={selectedService}
+                    isMonitorPrice={isMonitorPrice}
+                  />
                 </motion.div>
               )}
 
@@ -269,13 +290,35 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
+                  <MaintenanceOptions
+                    onNext={handleMaintenanceSelect}
+                    baseServicePrice={
+                      selectedService && serviceData[selectedService]
+                        ? isMonitorPrice && serviceData[selectedService]?.monitorPrice
+                          ? serviceData[selectedService].monitorPrice!
+                          : serviceData[selectedService].price
+                        : 0
+                    }
+                    isMonitorPrice={isMonitorPrice}
+                  />
+                </motion.div>
+              )}
+
+              {step === 5 && (
+                <motion.div
+                  key="step5"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
                   <ReservationForm
                     formData={formData}
                     onChange={(field, value) => setFormData({ ...formData, [field]: value })}
                     onSubmit={() => handleFormSubmit(formData)}
                     isLoggedIn={!!user}
-                    servicePrice={serviceData[selectedService].price}
-                    monitorPrice={serviceData[selectedService]?.monitorPrice}
+                    servicePrice={selectedService && serviceData[selectedService] ? serviceData[selectedService].price : 0}
+                    monitorPrice={selectedService && serviceData[selectedService] ? serviceData[selectedService].monitorPrice : undefined}
+                    maintenancePrice={maintenancePrice}
                     onPointsUsed={setPointsToUse}
                     onMonitorPriceSelected={setIsMonitorPrice}
                   />

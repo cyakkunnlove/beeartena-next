@@ -1,5 +1,10 @@
 const admin = require('firebase-admin');
 const readline = require('readline');
+const dotenv = require('dotenv');
+const path = require('path');
+
+// 環境変数を読み込む
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // 環境変数から読み込み
 const serviceAccount = {
@@ -28,8 +33,8 @@ async function createAdminUser() {
   console.log('=== Firebase 管理者ユーザー作成スクリプト ===\n');
   
   // 管理者情報
-  const adminEmail = 'admin@beeartena.jp';
-  const adminPassword = process.env.ADMIN_PASSWORD || 'BeeArtEna2024Admin!';
+  const adminEmail = 'sm383838@gmail.com';
+  const adminPassword = 'BeeArtEna2024Secure#383838';
   const adminName = '管理者';
   const adminPhone = '090-0000-0000';
 

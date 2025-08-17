@@ -15,6 +15,7 @@ const services = [
     description: 'ふんわりパウダー眉。メイクしたような自然な仕上がり',
     price: 22000,
     monitorPrice: 20000,
+    otherShopPrice: 35000,
     duration: '約2時間30分',
     image: '/images/2D.jpg',
     features: [
@@ -36,6 +37,7 @@ const services = [
     description: '立体的な毛流れ眉。1本1本丁寧に描く自然な眉',
     price: 23000,
     monitorPrice: 20000,
+    otherShopPrice: 35000,
     duration: '約2時間30分',
     image: '/images/3D.jpg',
     features: ['毛並みを1本1本再現', '自眉のような自然さ', '立体的な仕上がり', '男性にも人気'],
@@ -52,6 +54,7 @@ const services = [
     description: '2D+3Dのいいとこ取り。最も自然で立体的な仕上がり',
     price: 25000,
     monitorPrice: 22000,
+    otherShopPrice: 40000,
     duration: '約2時間30分',
     image: '/images/4D.jpg',
     featured: true,
@@ -72,14 +75,14 @@ const services = [
 
 const additionalServices = [
   {
-    name: 'リタッチ（半年以内）',
+    name: '3ヶ月以内リタッチ',
     price: 11000,
-    description: '初回施術から2回目完了後、半年以内の再施術',
+    description: '初回施術から2回目完了後、3ヶ月以内の再施術',
   },
   {
-    name: 'リタッチ（1年以内）',
+    name: '半年以内リタッチ',
     price: 15000,
-    description: '半年を過ぎて1年以内の再施術',
+    description: '3ヶ月を過ぎて半年以内の再施術',
   },
   {
     name: 'カラー変更',
@@ -180,10 +183,13 @@ export default function PricingPage() {
                       <div className="border-t pt-6">
                         <div className="flex flex-wrap items-end justify-between gap-4">
                           <div>
-                            <p className="text-3xl font-bold text-primary">
-                              ¥{service.price.toLocaleString()}
+                            <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
+                              他店価格 ¥{service.otherShopPrice.toLocaleString()}
                             </p>
-                            <p className="text-lg text-gray-600">
+                            <p className="text-2xl font-bold">
+                              通常価格 ¥{service.price.toLocaleString()}
+                            </p>
+                            <p className="text-xl font-bold text-primary">
                               モニター価格 ¥{service.monitorPrice.toLocaleString()}
                             </p>
                             <p className="text-sm text-gray-500 mt-1">

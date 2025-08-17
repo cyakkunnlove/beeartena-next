@@ -40,7 +40,12 @@ export default function Footer({ className = '' }: FooterProps) {
                 </Link>
               </li>
               <li>
-                <Link href="/privacy-policy" className="hover:text-primary transition-colors">
+                <Link href="/terms" className="hover:text-primary transition-colors">
+                  利用規約
+                </Link>
+              </li>
+              <li>
+                <Link href="/privacy" className="hover:text-primary transition-colors">
                   プライバシーポリシー
                 </Link>
               </li>

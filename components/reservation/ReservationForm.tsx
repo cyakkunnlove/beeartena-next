@@ -18,6 +18,7 @@ interface ReservationFormProps {
   servicePrice: number
   onPointsUsed: (points: number) => void
   monitorPrice?: number
+  maintenancePrice?: number
   onMonitorPriceSelected?: (selected: boolean) => void
 }
 
@@ -29,6 +30,7 @@ export default function ReservationForm({
   servicePrice,
   onPointsUsed,
   monitorPrice,
+  maintenancePrice = 0,
   onMonitorPriceSelected,
 }: ReservationFormProps) {
   const { user } = useAuth()
@@ -37,8 +39,9 @@ export default function ReservationForm({
   const [useMonitorPrice, setUseMonitorPrice] = useState(false)
   const [cancellationPolicy, setCancellationPolicy] = useState<string>('')
   const availablePoints = user?.points || 0
-  const currentPrice = useMonitorPrice && monitorPrice ? monitorPrice : servicePrice
-  const maxPoints = Math.min(availablePoints, currentPrice)
+  const basePrice = useMonitorPrice && monitorPrice ? monitorPrice : servicePrice
+  const totalPrice = basePrice + maintenancePrice
+  const maxPoints = Math.min(availablePoints, totalPrice)
 
   useEffect(() => {
     // ポイント使用をリセット
@@ -164,7 +167,7 @@ export default function ReservationForm({
             施術前後の写真撮影にご協力いただくことで、特別価格でご利用いただけます。
           </p>
           <div className="mt-3 text-sm">
-            <p className="line-through text-gray-500">通常価格: ¥{servicePrice.toLocaleString()}</p>
+            <p className="text-gray-700">通常価格: ¥{servicePrice.toLocaleString()}</p>
             <p className="text-lg font-bold text-primary">モニター価格: ¥{monitorPrice.toLocaleString()}</p>
             <p className="text-xs text-gray-500 mt-1">※写真は施術例として使用させていただく場合があります</p>
           </div>
@@ -212,10 +215,14 @@ export default function ReservationForm({
               </div>
 
               <div className="text-sm text-gray-600">
-                <p>サービス料金: ¥{currentPrice.toLocaleString()}</p>
+                <p>サービス料金: ¥{basePrice.toLocaleString()}</p>
+                {maintenancePrice > 0 && (
+                  <p>メンテナンス料金: ¥{maintenancePrice.toLocaleString()}</p>
+                )}
+                <p>小計: ¥{totalPrice.toLocaleString()}</p>
                 <p>ポイント利用: -{parseInt(pointsToUse) || 0}pt</p>
                 <p className="font-medium text-gray-900">
-                  お支払い金額: ¥{(currentPrice - (parseInt(pointsToUse) || 0)).toLocaleString()}
+                  お支払い金額: ¥{(totalPrice - (parseInt(pointsToUse) || 0)).toLocaleString()}
                 </p>
               </div>
             </div>
@@ -248,7 +255,10 @@ export default function ReservationForm({
       <div className="flex items-start gap-2">
         <input type="checkbox" id="agreement" required className="mt-1" />
         <label htmlFor="agreement" className="text-sm text-gray-600">
-          注意事項を確認し、同意します <span className="text-red-500">*</span>
+          <a href="/terms" target="_blank" className="text-primary hover:text-dark-gold underline">
+            利用規約
+          </a>
+          および注意事項を確認し、同意します <span className="text-red-500">*</span>
         </label>
       </div>
 

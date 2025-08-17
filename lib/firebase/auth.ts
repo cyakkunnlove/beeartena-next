@@ -55,7 +55,7 @@ export const firebaseAuth = {
         name: name,
         phone: phone,
         role: 'customer',
-        birthday: birthday,
+        ...(birthday && { birthday: birthday }), // birthdayがある場合のみ含める
         createdAt: new Date(),
         updatedAt: new Date(),
       }

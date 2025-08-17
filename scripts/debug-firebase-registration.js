@@ -1,4 +1,64 @@
 const admin = require('firebase-admin');
+const path = require('path');
+const fs = require('fs');
+
+// .env.local ファイルを手動で読み込む
+const envPath = path.join(__dirname, '..', '.env.local');
+if (fs.existsSync(envPath)) {
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  const lines = envContent.split('\n');
+  let currentKey = '';
+  let currentValue = '';
+  let inQuotes = false;
+  
+  lines.forEach(line => {
+    // コメント行をスキップ
+    if (line.trim().startsWith('#') || line.trim() === '') {
+      if (currentKey && !inQuotes) {
+        process.env[currentKey] = currentValue;
+        currentKey = '';
+        currentValue = '';
+      }
+      return;
+    }
+    
+    // 新しいキー=値のペアかチェック
+    const equalIndex = line.indexOf('=');
+    if (equalIndex > 0 && !inQuotes) {
+      // 前のキー=値を保存
+      if (currentKey) {
+        process.env[currentKey] = currentValue;
+      }
+      
+      currentKey = line.substring(0, equalIndex).trim();
+      currentValue = line.substring(equalIndex + 1);
+      
+      // 引用符で始まるかチェック
+      if (currentValue.startsWith('"')) {
+        inQuotes = true;
+        currentValue = currentValue.substring(1);
+        if (currentValue.endsWith('"') && !currentValue.endsWith('\\"')) {
+          inQuotes = false;
+          currentValue = currentValue.substring(0, currentValue.length - 1);
+        }
+      }
+    } else if (inQuotes) {
+      // 複数行にまたがる値の続き
+      currentValue += '\n' + line;
+      if (line.endsWith('"') && !line.endsWith('\\"')) {
+        inQuotes = false;
+        currentValue = currentValue.substring(0, currentValue.length - 1);
+      }
+    }
+  });
+  
+  // 最後のキー=値を保存
+  if (currentKey) {
+    process.env[currentKey] = currentValue;
+  }
+  
+  console.log('.env.local ファイルを読み込みました');
+}
 
 // 環境変数の確認
 console.log('=== Firebase環境変数チェック ===');

@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>新規登録テスト</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; font-weight: bold; }
+        input[type="email"], input[type="password"], input[type="text"], input[type="tel"] { 
+            width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; 
+        }
+        button { 
+            background: #007bff; color: white; padding: 12px 24px; border: none; 
+            border-radius: 4px; cursor: pointer; width: 100%; 
+        }
+        button:hover { background: #0056b3; }
+        .result { 
+            margin-top: 20px; padding: 15px; border-radius: 4px; 
+            background: #f8f9fa; border: 1px solid #dee2e6; 
+        }
+        .success { background: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .error { background: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>新規登録テスト</h1>
+    <p>本番環境相当のテストデータで新規登録機能をテストします。</p>
+    
+    <form id="registrationForm">
+        <div class="form-group">
+            <label for="name">名前:</label>
+            <input type="text" id="name" name="name" value="本番テストユーザー" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="email">メールアドレス:</label>
+            <input type="email" id="email" name="email" value="prod-test-1753930800@example.com" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="phone">電話番号:</label>
+            <input type="tel" id="phone" name="phone" value="090-9876-5432" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="password">パスワード:</label>
+            <input type="password" id="password" name="password" value="ProdTest123!" required>
+        </div>
+        
+        <button type="submit">新規登録テスト実行</button>
+    </form>
+    
+    <div id="result" class="result" style="display: none;">
+        <h3>テスト結果:</h3>
+        <pre id="resultContent"></pre>
+    </div>
+
+    <script>
+        document.getElementById('registrationForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const form = e.target;
+            const submitButton = form.querySelector('button');
+            const resultDiv = document.getElementById('result');
+            const resultContent = document.getElementById('resultContent');
+            
+            // ボタンを無効化
+            submitButton.disabled = true;
+            submitButton.textContent = '登録中...';
+            
+            // フォームデータを取得
+            const formData = {
+                name: form.name.value,
+                email: form.email.value,
+                phone: form.phone.value,
+                password: form.password.value
+            };
+            
+            try {
+                console.log('送信データ:', formData);
+                
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+                
+                const data = await response.json();
+                
+                // 結果を表示
+                resultDiv.style.display = 'block';
+                
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultContent.textContent = `✅ 登録成功!\n\nレスポンス:\n${JSON.stringify(data, null, 2)}`;
+                    
+                    // ログインテストも実行
+                    setTimeout(async () => {
+                        try {
+                            const loginResponse = await fetch('/api/auth/login', {
+                                method: 'POST',
+                                headers: {
+                                    'Content-Type': 'application/json',
+                                },
+                                body: JSON.stringify({
+                                    email: formData.email,
+                                    password: formData.password
+                                })
+                            });
+                            
+                            const loginData = await loginResponse.json();
+                            
+                            if (loginResponse.ok) {
+                                resultContent.textContent += `\n\n✅ ログインテストも成功!\n\nログインレスポンス:\n${JSON.stringify(loginData, null, 2)}`;
+                            } else {
+                                resultContent.textContent += `\n\n❌ ログインテスト失敗:\n${JSON.stringify(loginData, null, 2)}`;
+                            }
+                        } catch (loginError) {
+                            resultContent.textContent += `\n\n❌ ログインテストエラー:\n${loginError.message}`;
+                        }
+                    }, 1000);
+                    
+                } else {
+                    resultDiv.className = 'result error';
+                    resultContent.textContent = `❌ 登録失敗\n\nステータス: ${response.status}\nレスポンス:\n${JSON.stringify(data, null, 2)}`;
+                }
+                
+            } catch (error) {
+                console.error('エラー:', error);
+                resultDiv.style.display = 'block';
+                resultDiv.className = 'result error';
+                resultContent.textContent = `❌ ネットワークエラー:\n${error.message}`;
+            } finally {
+                // ボタンを復元
+                submitButton.disabled = false;
+                submitButton.textContent = '新規登録テスト実行';
+            }
+        });
+        
+        // ページ読み込み時にタイムスタンプ付きメールアドレスを生成
+        window.addEventListener('load', function() {
+            const emailField = document.getElementById('email');
+            const timestamp = Date.now();
+            emailField.value = `prod-test-${timestamp}@example.com`;
+        });
+    </script>
+</body>
+</html>

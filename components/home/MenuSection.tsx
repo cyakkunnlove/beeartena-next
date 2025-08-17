@@ -8,6 +8,7 @@ const menuItems = [
     description: 'ふんわりパウダー眉\nメイクしたような自然な仕上がり',
     price: 22000,
     monitorPrice: 20000,
+    otherShopPrice: 35000,
     duration: '約2時間30分',
     image: '/images/2D.jpg',
   },
@@ -17,6 +18,7 @@ const menuItems = [
     description: '立体的な毛流れ眉\n1本1本丁寧に描く自然な眉',
     price: 23000,
     monitorPrice: 20000,
+    otherShopPrice: 35000,
     duration: '約2時間30分',
     image: '/images/3D.jpg',
   },
@@ -26,6 +28,7 @@ const menuItems = [
     description: '2D+3Dのいいとこ取り\n最も自然で立体的な仕上がり',
     price: 25000,
     monitorPrice: 22000,
+    otherShopPrice: 40000,
     duration: '約2時間30分',
     image: '/images/4D.jpg',
     featured: true,
@@ -57,11 +60,16 @@ export default function MenuSection() {
               </div>
 
               <div className="space-y-2">
-                <div className="text-3xl font-bold text-primary">
-                  ¥{item.price.toLocaleString()}
-                </div>
-                <div className="text-lg text-gray-600">
-                  モニター価格 ¥{item.monitorPrice.toLocaleString()}
+                <div className="relative">
+                  <div className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
+                    他店価格 ¥{item.otherShopPrice.toLocaleString()}
+                  </div>
+                  <div className="text-2xl font-bold">
+                    通常価格 ¥{item.price.toLocaleString()}
+                  </div>
+                  <div className="text-xl font-bold text-primary">
+                    モニター価格 ¥{item.monitorPrice.toLocaleString()}
+                  </div>
                 </div>
                 <p className="text-sm text-gray-500">所要時間：{item.duration}</p>
               </div>

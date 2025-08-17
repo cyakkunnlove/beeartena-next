@@ -10,6 +10,8 @@ export interface PendingReservation {
   serviceName: string
   date: string
   time: string
+  maintenanceOptions?: string[]
+  maintenancePrice?: number
   formData: {
     name: string
     email: string

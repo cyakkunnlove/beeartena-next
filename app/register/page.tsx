@@ -249,6 +249,10 @@ function RegisterContent() {
                 <Link href="/terms" className="text-primary hover:text-primary/80" target="_blank">
                   利用規約
                 </Link>
+                および
+                <Link href="/privacy" className="text-primary hover:text-primary/80" target="_blank">
+                  プライバシーポリシー
+                </Link>
                 に同意します
               </label>
             </div>

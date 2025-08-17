@@ -78,6 +78,9 @@ export interface Reservation {
   serviceType: '2D' | '3D' | '4D' | 'wax' | string // 柔軟に対応
   serviceName: string
   price: number
+  maintenanceOptions?: string[] // 選択されたメンテナンスオプション
+  maintenancePrice?: number // メンテナンス料金
+  totalPrice?: number // サービス料金 + メンテナンス料金
   date: string
   time: string
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
@@ -88,6 +91,9 @@ export interface Reservation {
   completedAt?: Date // 予約完了日時
   cancelReason?: string // キャンセル理由
   cancelledAt?: Date // キャンセル日時
+  isMonitor?: boolean // モニター価格の予約
+  finalPrice?: number // 実際の支払い金額（ポイント利用後）
+  pointsUsed?: number // 利用したポイント数
 }
 
 // Inquiry types

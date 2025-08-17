@@ -1,6 +1,6 @@
 import { Reservation } from '@/lib/types'
 
-interface EmailTemplate {
+export interface EmailTemplate {
   subject: string
   body: string
   to: string
@@ -223,6 +223,12 @@ function formatPrice(price: number): string {
 
 // 環境に応じてサービスを切り替え
 export function createEmailService(): EmailService {
+  // Resend APIキーが設定されている場合はResendサービスを使用
+  if (process.env.RESEND_API_KEY) {
+    const { ResendEmailService } = require('./resendService')
+    return new ResendEmailService(process.env.RESEND_API_KEY)
+  }
+  
   // 本番環境では実際のメールサービス（SendGrid、AWS SES等）を使用
   if (process.env.NODE_ENV === 'production' && process.env.SENDGRID_API_KEY) {
     // TODO: SendGridサービスの実装

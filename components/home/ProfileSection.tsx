@@ -30,7 +30,7 @@ export default function ProfileSection() {
               </div>
 
               <p className="text-gray-600 mb-8 leading-relaxed">
-                理容師として10年以上の経験を持ち、衛生管理を徹底した安全な施術を提供しています。
+                理容師として25年以上の経験を持ち、衛生管理を徹底した安全な施術を提供しています。
                 お客様一人ひとりの骨格や表情に合わせた、自然で美しい眉デザインを心がけています。
               </p>
 

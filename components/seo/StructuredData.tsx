@@ -38,14 +38,14 @@ export default function StructuredData() {
           '@type': 'Offer',
           name: '2D パウダーブロウ',
           description: 'ふんわりパウダー眉',
-          price: '20000',
+          price: '22000',
           priceCurrency: 'JPY',
         },
         {
           '@type': 'Offer',
           name: '3D フェザーブロウ',
           description: '立体的な毛流れ眉',
-          price: '20000',
+          price: '23000',
           priceCurrency: 'JPY',
         },
         {

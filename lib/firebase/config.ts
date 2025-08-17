@@ -27,6 +27,16 @@ if (typeof window !== 'undefined') {
     hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
     apiKeyPrefix: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 10) + '...',
   })
+  
+  // 環境変数の詳細デバッグ
+  const rawApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+  if (rawApiKey) {
+    console.log('Raw API Key length:', rawApiKey.length)
+    console.log('Raw API Key last char code:', rawApiKey.charCodeAt(rawApiKey.length - 1))
+    console.log('Trimmed API Key:', firebaseConfig.apiKey)
+    console.log('Trimmed length:', firebaseConfig.apiKey.length)
+    console.log('Expected length:', 39) // AIzaSyBXYa8FeHyHQa0jHRfhZjJ4xLYUb4YvFFuA
+  }
 }
 
 // Initialize Firebase (シングルトンパターン)

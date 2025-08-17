@@ -111,7 +111,18 @@ export default function MaintenancePage() {
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
-                <span>メンテナンスメニューのみのご予約も承っております</span>
+                <span>
+                  メンテナンスメニューのみのご予約は
+                  <a
+                    href="https://line.me/R/ti/p/@174geemy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary font-semibold hover:text-dark-gold underline"
+                  >
+                    LINE
+                  </a>
+                  にてご連絡ください
+                </span>
               </li>
               <li className="flex items-start gap-2">
                 <span className="text-primary">•</span>
@@ -121,19 +132,45 @@ export default function MaintenancePage() {
           </div>
 
           {/* CTA */}
-          <div className="text-center mt-12">
-            <Link href="/reservation">
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                className="btn btn-primary text-lg px-8 py-4"
-              >
-                メンテナンス予約はこちら
-              </motion.button>
-            </Link>
-            <p className="text-sm text-gray-500 mt-4">
-              ご不明な点はお気軽にお問い合わせください
-            </p>
+          <div className="mt-12">
+            <div className="bg-gray-50 rounded-xl p-8 space-y-6">
+              {/* アートメイクと一緒に予約 */}
+              <div className="text-center">
+                <h4 className="font-semibold text-lg mb-3">アートメイクと一緒にご予約の場合</h4>
+                <Link href="/reservation">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="btn btn-primary text-lg px-8 py-3"
+                  >
+                    予約システムから予約
+                  </motion.button>
+                </Link>
+              </div>
+
+              <div className="border-t pt-6">
+                {/* メンテナンスのみの予約 */}
+                <div className="text-center">
+                  <h4 className="font-semibold text-lg mb-3">メンテナンスメニューのみのご予約</h4>
+                  <a
+                    href="https://line.me/R/ti/p/@174geemy"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <motion.button
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                      className="bg-green-600 hover:bg-green-700 text-white font-bold text-lg px-8 py-3 rounded-lg transition-colors"
+                    >
+                      LINEで予約する
+                    </motion.button>
+                  </a>
+                  <p className="text-sm text-gray-600 mt-2">
+                    LINEでお気軽にお問い合わせください
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         </motion.div>
       </div>
