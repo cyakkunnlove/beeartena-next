@@ -31,7 +31,7 @@ jobs:
           echo "🔐 Checking permissions for ${{ github.actor }}"
           # ロールバック権限の確認（GitHub環境保護ルールで管理）
 
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           ref: ${{ github.event.inputs.version }}
 
