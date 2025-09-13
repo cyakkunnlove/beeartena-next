@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return { reservationId: reservationRef.id, reservation: reservationData }
+      return { reservationId: reservationRef.id, reservation: data }
     })
 
     // メール送信処理
