@@ -70,7 +70,7 @@ export default function ProfilePage() {
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
-        birthDate: formData.birthDate,
+        birthday: formData.birthDate,
         gender: formData.gender,
         postalCode: formData.postalCode,
         prefecture: formData.prefecture,
