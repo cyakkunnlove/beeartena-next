@@ -74,11 +74,17 @@ export async function GET(request: NextRequest) {
       // 曜日に応じた営業時間枠数を設定
       let maxSlotsPerDay: number
       if (date.getDay() === 3) {
-        // 水曜日は延長営業（9:00-20:00、11枠）
-        maxSlotsPerDay = 11
+        // 水曜日は日中営業（9:00-17:00、30分刻みで16枠）
+        maxSlotsPerDay = 16
+      } else if (date.getDay() === 0) {
+        // 日曜日は定休日なので0枠
+        maxSlotsPerDay = 0
+      } else if (date.getDay() >= 1 && date.getDay() <= 5 && date.getDay() !== 3) {
+        // 平日（月、火、木、金）は1日1枠のみ
+        maxSlotsPerDay = 1
       } else {
-        // その他の曜日は通常営業（10:00-19:00、9枠）
-        maxSlotsPerDay = 9
+        // 土曜日は複数枠可能（夜間営業で4枠）
+        maxSlotsPerDay = 4
       }
 
       // 予約済みスロット数を確認
