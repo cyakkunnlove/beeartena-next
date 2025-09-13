@@ -3,21 +3,37 @@
 import { motion } from 'framer-motion'
 import { useState, useEffect } from 'react'
 
-import { reservationService } from '@/lib/reservationService'
 import { ReservationSettings } from '@/lib/types'
 
 export default function BusinessHoursInfo() {
-  const [settings, setSettings] = useState<ReservationSettings>(reservationService.getSettings())
+  const [settings, setSettings] = useState<ReservationSettings | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
 
   useEffect(() => {
-    // 設定の読み込みを待つ
+    // 設定の読み込み
     const loadSettings = async () => {
       setIsLoading(true)
-      await reservationService.waitForSettings()
-      setSettings(reservationService.getSettings())
-      setIsLoading(false)
+      try {
+        // まずlocalStorageから読み込み
+        const saved = localStorage.getItem('reservationSettings')
+        if (saved) {
+          setSettings(JSON.parse(saved))
+        }
+
+        // APIから最新の設定を取得
+        const response = await fetch('/api/settings')
+        if (response.ok) {
+          const data = await response.json()
+          setSettings(data)
+          // localStorageに保存
+          localStorage.setItem('reservationSettings', JSON.stringify(data))
+        }
+      } catch (error) {
+        console.error('Failed to load settings:', error)
+      } finally {
+        setIsLoading(false)
+      }
     }
     loadSettings()
 

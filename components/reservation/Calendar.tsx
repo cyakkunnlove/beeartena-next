@@ -2,8 +2,6 @@
 
 import { useState, useEffect } from 'react'
 
-import { reservationService } from '@/lib/reservationService'
-
 interface CalendarProps {
   onSelect: (date: string) => void
   selected: string
@@ -19,10 +17,16 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
     const fetchAvailability = async () => {
       setIsLoading(true)
       try {
-        const availability = await reservationService.getMonthAvailability(
-          currentMonth.getFullYear(),
-          currentMonth.getMonth(),
-        )
+        const year = currentMonth.getFullYear()
+        const month = currentMonth.getMonth() + 1 // APIは1-based monthを期待
+        const response = await fetch(`/api/reservations/availability?year=${year}&month=${month}`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch availability')
+        }
+
+        const data = await response.json()
+        const availability = new Map<string, boolean>(Object.entries(data.availability))
         setMonthAvailability(availability)
       } catch (error) {
         console.error('Failed to fetch availability:', error)

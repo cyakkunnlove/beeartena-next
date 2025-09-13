@@ -5,7 +5,6 @@ import { useState, useCallback, useMemo } from 'react'
 import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar'
 
 import 'moment/locale/ja'
-import { reservationService } from '@/lib/reservationService'
 import { Reservation, CalendarEvent, CalendarEventProps, CalendarToolbarProps } from '@/lib/types'
 
 moment.locale('ja')
@@ -27,7 +26,20 @@ export default function ReservationCalendar({
 
   // 予約をカレンダーイベントに変換
   const events = useMemo(() => {
-    return reservationService.getCalendarEvents(reservations)
+    return reservations.map((reservation) => {
+      const startDate = new Date(`${reservation.date}T${reservation.time}`)
+      const endDate = new Date(startDate)
+      endDate.setHours(startDate.getHours() + 2) // 2時間の施術
+
+      return {
+        id: reservation.id,
+        title: `${reservation.serviceName} - ${reservation.customerName}`,
+        start: startDate,
+        end: endDate,
+        resource: reservation,
+        status: reservation.status,
+      }
+    })
   }, [reservations])
 
   // イベントクリックハンドラー

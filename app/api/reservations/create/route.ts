@@ -20,12 +20,14 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .get()
 
-    if (usersSnapshot.empty) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
-    }
+    let userData = null
+    let userId = null
 
-    const userData = usersSnapshot.docs[0].data()
-    const userId = usersSnapshot.docs[0].id
+    if (!usersSnapshot.empty) {
+      // 登録済みユーザーの場合
+      userData = usersSnapshot.docs[0].data()
+      userId = usersSnapshot.docs[0].id
+    }
 
     // トランザクションで予約とポイントを同時に処理
     const result = await db.runTransaction(async (transaction) => {
@@ -38,45 +40,47 @@ export async function POST(request: NextRequest) {
         updatedAt: admin.firestore.FieldValue.serverTimestamp()
       })
 
-      // 2. 誕生日ポイント確認・付与
-      const today = new Date()
-      const userBirthday = userData.birthday ? new Date(userData.birthday) : null
+      // 2. 誕生日ポイント確認・付与（登録済みユーザーのみ）
+      if (userId && userData) {
+        const today = new Date()
+        const userBirthday = userData.birthday ? new Date(userData.birthday) : null
 
-      if (userBirthday &&
-          today.getMonth() === userBirthday.getMonth() &&
-          today.getDate() === userBirthday.getDate()) {
+        if (userBirthday &&
+            today.getMonth() === userBirthday.getMonth() &&
+            today.getDate() === userBirthday.getDate()) {
 
-        // 今年の誕生日ポイントが付与済みか確認
-        const thisYear = today.getFullYear()
-        const pointsSnapshot = await transaction.get(
-          db.collection('points')
-            .where('userId', '==', userId)
-            .where('type', '==', 'birthday')
-            .where('year', '==', thisYear)
-        )
+          // 今年の誕生日ポイントが付与済みか確認
+          const thisYear = today.getFullYear()
+          const pointsSnapshot = await transaction.get(
+            db.collection('points')
+              .where('userId', '==', userId)
+              .where('type', '==', 'birthday')
+              .where('year', '==', thisYear)
+          )
 
-        if (pointsSnapshot.empty) {
-          // 誕生日ポイント付与
-          const pointRef = db.collection('points').doc()
-          transaction.set(pointRef, {
-            userId: userId,
-            type: 'birthday',
-            amount: 500,
-            year: thisYear,
-            description: `${thisYear}年誕生日ポイント`,
-            createdAt: admin.firestore.FieldValue.serverTimestamp()
-          })
+          if (pointsSnapshot.empty) {
+            // 誕生日ポイント付与
+            const pointRef = db.collection('points').doc()
+            transaction.set(pointRef, {
+              userId: userId,
+              type: 'birthday',
+              amount: 500,
+              year: thisYear,
+              description: `${thisYear}年誕生日ポイント`,
+              createdAt: admin.firestore.FieldValue.serverTimestamp()
+            })
 
-          // ユーザーのポイント残高更新
-          const userRef = db.collection('users').doc(userId)
-          transaction.update(userRef, {
-            points: admin.firestore.FieldValue.increment(500)
-          })
+            // ユーザーのポイント残高更新
+            const userRef = db.collection('users').doc(userId)
+            transaction.update(userRef, {
+              points: admin.firestore.FieldValue.increment(500)
+            })
+          }
         }
       }
 
-      // 3. ポイント使用処理
-      if (data.pointsUsed && data.pointsUsed > 0) {
+      // 3. ポイント使用処理（登録済みユーザーのみ）
+      if (userId && data.pointsUsed && data.pointsUsed > 0) {
         const pointRef = db.collection('points').doc()
         transaction.set(pointRef, {
           userId: userId,

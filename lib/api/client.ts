@@ -95,6 +95,13 @@ class ApiClient {
     return this.request<any>('/auth/me')
   }
 
+  async updateProfile(data: any) {
+    return this.request<any>('/auth/me', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    })
+  }
+
   // 予約関連
   async getReservations() {
     return this.request<any[]>('/reservations')

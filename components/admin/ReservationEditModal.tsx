@@ -3,8 +3,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { useState } from 'react'
 
-import { reservationService } from '@/lib/reservationService'
-import { Reservation } from '@/lib/types'
+import { Reservation, TimeSlot } from '@/lib/types'
 
 interface ReservationEditModalProps {
   reservation: Reservation | null
@@ -30,11 +29,20 @@ export default function ReservationEditModal({
     })
 
     // Get available slots for the new date
-    const slots = await reservationService.getTimeSlotsForDate(date)
-    const available = slots
-      .filter((slot) => slot.available || slot.time === reservation?.time)
-      .map((slot) => slot.time)
-    setAvailableSlots(available)
+    try {
+      const response = await fetch(`/api/reservations/by-date?date=${date}`)
+      if (response.ok) {
+        const data = await response.json()
+        const slots: TimeSlot[] = data.timeSlots || []
+        const available = slots
+          .filter((slot) => slot.available || slot.time === reservation?.time)
+          .map((slot) => slot.time)
+        setAvailableSlots(available)
+      }
+    } catch (error) {
+      console.error('Failed to fetch time slots:', error)
+      setAvailableSlots([])
+    }
   }
 
   const handleSave = () => {

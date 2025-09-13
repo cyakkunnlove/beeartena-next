@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react'
 
-import { reservationService } from '@/lib/reservationService'
 import { TimeSlot } from '@/lib/types'
 
 interface TimeSlotsProps {
@@ -22,8 +21,14 @@ export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) 
     const fetchTimeSlots = async () => {
       try {
         setLoading(true)
-        const slots = await reservationService.getTimeSlotsForDate(date)
-        setTimeSlots(slots)
+        const response = await fetch(`/api/reservations/by-date?date=${date}`)
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch time slots')
+        }
+
+        const data = await response.json()
+        setTimeSlots(data.timeSlots || [])
       } catch (error) {
         console.error('時間枠の取得に失敗しました:', error)
         setTimeSlots([])

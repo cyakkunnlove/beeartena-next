@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
-import { reservationService } from '@/lib/reservationService'
 
 interface ReservationFormProps {
   formData: {
@@ -60,10 +59,20 @@ export default function ReservationForm({
 
   useEffect(() => {
     // キャンセルポリシーを取得
-    const settings = reservationService.getSettings()
-    if (settings.cancellationPolicy) {
-      setCancellationPolicy(settings.cancellationPolicy)
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings')
+        if (response.ok) {
+          const settings = await response.json()
+          if (settings.cancellationPolicy) {
+            setCancellationPolicy(settings.cancellationPolicy)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings:', error)
+      }
     }
+    fetchSettings()
   }, [])
 
   const handlePointsChange = (value: string) => {

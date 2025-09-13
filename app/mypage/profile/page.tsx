@@ -66,27 +66,17 @@ export default function ProfilePage() {
     setMessage('')
 
     try {
-      // Update auth profile
+      // Update profile via API
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
+        birthDate: formData.birthDate,
+        gender: formData.gender,
+        postalCode: formData.postalCode,
+        prefecture: formData.prefecture,
+        city: formData.city,
+        address: formData.street,
       })
-
-      // Update customer profile
-      const customerUpdate: Partial<Customer> = {
-        name: formData.name,
-        phone: formData.phone,
-        birthDate: formData.birthDate ? new Date(formData.birthDate) : undefined,
-        gender: formData.gender as any,
-        address: {
-          prefecture: formData.prefecture,
-          city: formData.city,
-          street: formData.street,
-          postalCode: formData.postalCode,
-        },
-      }
-
-      storageService.updateCustomer(user!.id, customerUpdate)
 
       setMessage('プロフィールを更新しました')
       setIsEditing(false)

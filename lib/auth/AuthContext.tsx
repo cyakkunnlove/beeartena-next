@@ -69,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const updateProfile = async (updates: Partial<User>): Promise<User> => {
     if (!user) throw new Error('ユーザーがログインしていません')
-    const updatedUser = await apiClient.updateCustomer(user.id, updates)
+    const updatedUser = await apiClient.updateProfile(updates)
     setUser(updatedUser)
     return updatedUser
   }
