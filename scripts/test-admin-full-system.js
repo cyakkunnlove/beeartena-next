@@ -190,7 +190,7 @@ async function testAdminFullSystem() {
         customerPhone: '090-9999-8888',
         serviceType: 'wax',
         serviceName: '眉毛ワックス脱毛',
-        price: 15000,
+        price: 3000,
         date: dateStr,
         time: '10:00',
         status: 'confirmed',
@@ -213,7 +213,7 @@ async function testAdminFullSystem() {
       logTest('予約ステータスの変更', true)
 
       // 完了後のポイント付与（売上の5%）
-      const earnedPoints = Math.floor(15000 * 0.05)
+      const earnedPoints = Math.floor(3000 * 0.05)
       const userDoc = await db.collection('users').doc(testUserId).get()
       const currentBalance = userDoc.data().points || 0
 
@@ -228,7 +228,7 @@ async function testAdminFullSystem() {
         userId: testUserId,
         type: 'earn',
         amount: earnedPoints,
-        description: '眉毛ワックス脱毛（¥15,000の5%）',
+        description: '眉毛ワックス脱毛（¥3,000の5%）',
         balance: currentBalance + earnedPoints,
         reservationId: testReservationId,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),

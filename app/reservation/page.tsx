@@ -52,7 +52,7 @@ function ReservationContent() {
     '2D': { name: '2Dパウダーブロウ', price: 22000, monitorPrice: 20000, otherShopPrice: 35000 },
     '3D': { name: '3Dフェザーブロウ', price: 23000, monitorPrice: 20000, otherShopPrice: 35000 },
     '4D': { name: '4Dパウダー&フェザー', price: 25000, monitorPrice: 22000, otherShopPrice: 40000 },
-    'wax': { name: '眉毛ワックス脱毛', price: 15000 },
+    'wax': { name: '眉毛ワックス脱毛', price: 3000 },
     'retouch3': { name: '3ヶ月以内リタッチ', price: 11000 },
     'retouch6': { name: '半年以内リタッチ', price: 15000 },
   }
@@ -88,15 +88,13 @@ function ReservationContent() {
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
     if (user && step === 5) {
-      // フォームデータが初期状態の場合のみ自動入力
-      if (!formData.name && !formData.email && !formData.phone) {
-        setFormData((prevData) => ({
-          name: user.name || '',
-          email: user.email || '',
-          phone: user.phone || '',
-          notes: prevData.notes || '',
-        }))
-      }
+      // 各フィールドが空の場合、ユーザー情報で自動補完
+      setFormData((prevData) => ({
+        name: prevData.name || user.name || '',
+        email: prevData.email || user.email || '',
+        phone: prevData.phone || user.phone || '',
+        notes: prevData.notes || '',
+      }))
     }
   }, [user, step])
 
@@ -160,7 +158,7 @@ function ReservationContent() {
       const service = serviceData[selectedService as keyof typeof serviceData]
       const basePrice = isMonitorPrice && service.monitorPrice ? service.monitorPrice : service.price
       const totalPrice = basePrice + maintenancePrice
-      const _finalPrice = totalPrice - pointsToUse
+      const finalPrice = totalPrice - pointsToUse
 
       const reservationData = {
         serviceType: selectedService as '2D' | '3D' | '4D',
@@ -174,20 +172,29 @@ function ReservationContent() {
         customerName: formData.name,
         customerPhone: formData.phone,
         customerEmail: formData.email,
-        customerId: user?.id || null,
         notes: isMonitorPrice ? `${formData.notes}\n【モニター価格適用】写真撮影にご協力いただきます` : formData.notes,
         status: 'pending' as const,
-        updatedAt: new Date(),
         isMonitor: isMonitorPrice,
-        finalPrice: _finalPrice,
+        finalPrice: finalPrice,
         pointsUsed: pointsToUse,
       }
 
-      // Firebaseに直接保存
-      await reservationService.createReservation(reservationData)
-      
-      // 注: ポイント付与は予約完了時（施術後）に行われます
-      // ポイント使用はFirebase側で処理されます
+      // API経由で予約を作成（サーバーサイドでFirebase Admin SDKを使用）
+      const response = await fetch('/api/reservations/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(reservationData),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || '予約の作成に失敗しました')
+      }
+
+      const result = await response.json()
+      console.log('Reservation created:', result.reservationId)
 
       router.push('/reservation/complete')
     } catch (error) {

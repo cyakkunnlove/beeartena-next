@@ -1,14 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, Suspense } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 
-export default function LoginPage() {
+function LoginContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { login } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
@@ -16,6 +17,10 @@ export default function LoginPage() {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+
+  // 予約から来た場合のリダイレクト先を決定
+  const fromReservation = searchParams.get('reservation') === 'true'
+  const redirectTo = fromReservation ? '/reservation?from=login' : '/mypage'
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({
@@ -31,11 +36,11 @@ export default function LoginPage() {
 
     try {
       const user = await login(formData.email, formData.password)
-      // 管理者の場合は管理画面へ、一般ユーザーの場合はマイページへ
+      // 管理者の場合は管理画面へ、一般ユーザーの場合は指定されたリダイレクト先へ
       if (user.role === 'admin') {
         router.push('/admin')
       } else {
-        router.push('/mypage')
+        router.push(redirectTo)
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ログインに失敗しました')
@@ -110,17 +115,7 @@ export default function LoginPage() {
             {isLoading ? 'ログイン中...' : 'ログイン'}
           </button>
 
-          <SocialLoginButtons />
-
-          <div className="text-center text-sm text-gray-600">
-            <p>
-              デモアカウント（顧客）：
-              <br />
-              メール: yamada@example.com
-              <br />
-              パスワード: password123
-            </p>
-          </div>
+          <SocialLoginButtons redirectTo={redirectTo} />
         </form>
 
         {process.env.NODE_ENV === 'development' && (
@@ -135,5 +130,13 @@ export default function LoginPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <LoginContent />
+    </Suspense>
   )
 }

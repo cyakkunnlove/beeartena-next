@@ -57,13 +57,8 @@ export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitor
 
   const toggleFullSet = () => {
     setUseFullSet(!useFullSet)
-    if (!useFullSet) {
-      // セットを選択したら全て選択
-      setSelectedOptions(maintenanceOptions.map(opt => opt.id))
-    } else {
-      // セットを解除したら全て解除
-      setSelectedOptions([])
-    }
+    // フルセット選択時は個別選択をクリア
+    setSelectedOptions([])
   }
 
   const calculateMaintenancePrice = () => {

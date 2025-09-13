@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Google認証テスト</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 20px;
+        }
+        button {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #357ae8;
+        }
+        .error {
+            color: #d93025;
+            margin: 10px 0;
+            padding: 10px;
+            background: #fce8e6;
+            border-radius: 4px;
+        }
+        .success {
+            color: #188038;
+            margin: 10px 0;
+            padding: 10px;
+            background: #e6f4ea;
+            border-radius: 4px;
+        }
+        .log {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-family: monospace;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Firebase Google認証テスト</h1>
+
+    <div>
+        <button onclick="testGoogleAuth()">Googleでログイン</button>
+        <button onclick="checkAuthState()">認証状態確認</button>
+        <button onclick="checkFirebaseConfig()">Firebase設定確認</button>
+        <button onclick="signOut()">ログアウト</button>
+    </div>
+
+    <div id="status"></div>
+    <div id="log" class="log"></div>
+
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+        import {
+            getAuth,
+            signInWithPopup,
+            GoogleAuthProvider,
+            onAuthStateChanged,
+            signOut as firebaseSignOut
+        } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
+
+        // Firebase設定
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXYa8FeHyHQa0jHRfhZJ4xLYUb4YvFFuA",
+            authDomain: "beeart-ena.firebaseapp.com",
+            projectId: "beeart-ena",
+            storageBucket: "beeart-ena.firebasestorage.app",
+            messagingSenderId: "47862693911",
+            appId: "1:47862693911:web:f7181ecac113393d5c9c52"
+        };
+
+        // Initialize Firebase
+        let app, auth;
+
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            addLog('Firebase初期化成功');
+
+            // 認証状態監視
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    addLog(`ログイン中: ${user.email}`);
+                    showStatus(`ログイン中: ${user.email}`, 'success');
+                } else {
+                    addLog('未ログイン');
+                    showStatus('未ログイン', '');
+                }
+            });
+        } catch (error) {
+            addLog(`Firebase初期化エラー: ${error.message}`);
+            showStatus(`Firebase初期化エラー: ${error.message}`, 'error');
+        }
+
+        // グローバル関数として公開
+        window.testGoogleAuth = async function() {
+            addLog('Google認証開始...');
+            const provider = new GoogleAuthProvider();
+
+            // 追加スコープ設定
+            provider.addScope('email');
+            provider.addScope('profile');
+
+            try {
+                addLog('signInWithPopup呼び出し中...');
+                const result = await signInWithPopup(auth, provider);
+
+                const credential = GoogleAuthProvider.credentialFromResult(result);
+                const token = credential.accessToken;
+                const user = result.user;
+
+                addLog(`認証成功!`);
+                addLog(`ユーザー: ${user.displayName} (${user.email})`);
+                addLog(`UID: ${user.uid}`);
+                showStatus(`認証成功: ${user.email}`, 'success');
+
+            } catch (error) {
+                addLog(`エラー詳細:`);
+                addLog(`Code: ${error.code}`);
+                addLog(`Message: ${error.message}`);
+
+                if (error.code === 'auth/popup-blocked') {
+                    addLog('ポップアップがブロックされました。ブラウザの設定を確認してください。');
+                } else if (error.code === 'auth/cancelled-popup-request') {
+                    addLog('認証がキャンセルされました。');
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    addLog('認証ドメインが許可されていません。Firebaseコンソールで設定を確認してください。');
+                    addLog(`現在のドメイン: ${window.location.hostname}`);
+                }
+
+                showStatus(`エラー: ${error.message}`, 'error');
+            }
+        };
+
+        window.checkAuthState = function() {
+            const user = auth.currentUser;
+            if (user) {
+                addLog(`現在のユーザー: ${user.email}`);
+                showStatus(`ログイン中: ${user.email}`, 'success');
+            } else {
+                addLog('ログインしていません');
+                showStatus('ログインしていません', '');
+            }
+        };
+
+        window.checkFirebaseConfig = function() {
+            addLog('Firebase設定:');
+            addLog(JSON.stringify(firebaseConfig, null, 2));
+            addLog(`現在のドメイン: ${window.location.hostname}`);
+            addLog(`現在のURL: ${window.location.href}`);
+        };
+
+        window.signOut = async function() {
+            try {
+                await firebaseSignOut(auth);
+                addLog('ログアウトしました');
+                showStatus('ログアウトしました', 'success');
+            } catch (error) {
+                addLog(`ログアウトエラー: ${error.message}`);
+                showStatus(`ログアウトエラー: ${error.message}`, 'error');
+            }
+        };
+
+        function addLog(message) {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            logDiv.textContent += `[${timestamp}] ${message}\n`;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+
+        function showStatus(message, type) {
+            const statusDiv = document.getElementById('status');
+            statusDiv.className = type;
+            statusDiv.textContent = message;
+        }
+    </script>
+</body>
+</html>

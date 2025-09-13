@@ -268,7 +268,7 @@ function RegisterContent() {
             </div>
           </form>
 
-          <SocialLoginButtons />
+          <SocialLoginButtons redirectTo={hasReservation ? '/reservation?from=register' : '/mypage'} />
         </div>
       </div>
     </div>

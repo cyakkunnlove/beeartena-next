@@ -12,6 +12,7 @@ import {
   applyActionCode,
   GoogleAuthProvider,
   signInWithPopup,
+  sendPasswordResetEmail,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
 
@@ -301,14 +302,14 @@ export const firebaseAuth = {
     }
 
     const provider = new GoogleAuthProvider()
-    
+
     try {
       const result = await signInWithPopup(auth, provider)
       const user = result.user
 
       // Firestoreにユーザー情報が存在するか確認
       const userDoc = await getDoc(doc(db, 'users', user.uid))
-      
+
       if (userDoc.exists()) {
         // 既存ユーザーの場合
         return userDoc.data() as AppUser
@@ -329,15 +330,40 @@ export const firebaseAuth = {
       }
     } catch (error: any) {
       console.error('Google login error:', error)
-      
+
       if (error.code === 'auth/popup-closed-by-user') {
         throw new Error('ログインがキャンセルされました')
       }
       if (error.code === 'auth/popup-blocked') {
         throw new Error('ポップアップがブロックされました。ブラウザの設定を確認してください')
       }
-      
+
       throw new Error(getErrorMessage(error) || 'Googleログインに失敗しました')
+    }
+  },
+
+  // パスワードリセットメール送信
+  async sendPasswordResetEmail(email: string): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('パスワードリセット機能は現在利用できません')
+    }
+
+    try {
+      await sendPasswordResetEmail(auth, email)
+    } catch (error: any) {
+      console.error('Password reset error:', error)
+
+      if (error.code === 'auth/user-not-found') {
+        throw new Error('このメールアドレスは登録されていません')
+      }
+      if (error.code === 'auth/invalid-email') {
+        throw new Error('有効なメールアドレスを入力してください')
+      }
+      if (error.code === 'auth/too-many-requests') {
+        throw new Error('リクエストが多すぎます。しばらくしてからお試しください')
+      }
+
+      throw new Error(getErrorMessage(error) || 'パスワードリセットメールの送信に失敗しました')
     }
   },
 }

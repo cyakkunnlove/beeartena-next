@@ -36,9 +36,9 @@ service cloud.firestore {
     
     // Points collection
     match /points/{pointId} {
-      allow read: if isAuthenticated() && 
+      allow read: if isAuthenticated() &&
         (resource.data.userId == request.auth.uid || isAdmin());
-      allow create: if isAdmin();
+      allow create: if false; // サーバーサイドのみでポイント追加
       allow update: if false; // ポイントは編集不可
       allow delete: if false; // ポイントは削除不可
     }

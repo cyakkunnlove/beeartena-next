@@ -59,7 +59,7 @@ export default function PlanSection() {
           {/* 半年プラン */}
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center">
             <h3 className="text-2xl font-bold mb-4">半年リタッチプラン</h3>
-            <div className="text-4xl font-bold text-primary mb-4">¥15,000</div>
+            <div className="text-4xl font-bold text-primary mb-4">¥3,000</div>
             <p className="text-gray-600 mb-6">
               3ヶ月を過ぎて
               <br />

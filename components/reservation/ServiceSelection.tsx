@@ -53,7 +53,7 @@ const services: Array<{
     id: 'wax',
     name: '眉毛ワックス脱毛',
     description: 'すっきり整った眉毛に',
-    price: 15000,
+    price: 3000,
     duration: '約30分',
   },
   {

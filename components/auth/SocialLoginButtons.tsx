@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { firebaseAuth } from '@/lib/firebase/auth'
+import { isProfileComplete } from '@/lib/utils/profileUtils'
 
 interface SocialLoginButtonsProps {
   redirectTo?: string
@@ -18,11 +19,17 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
     try {
       setLoading(true)
       setError('')
-      
-      await firebaseAuth.signInWithGoogle()
-      
-      // 成功したらリダイレクト
-      router.push(redirectTo)
+
+      const user = await firebaseAuth.signInWithGoogle()
+
+      // プロフィールが未完成の場合は補完ページへ
+      if (!isProfileComplete(user)) {
+        // 元のリダイレクト先を保持して補完ページへ
+        router.push(`/complete-profile?redirect=${encodeURIComponent(redirectTo)}`)
+      } else {
+        // プロフィールが完成している場合は通常のリダイレクト
+        router.push(redirectTo)
+      }
     } catch (error: any) {
       console.error('Googleログインエラー:', error)
       setError(error.message || 'Googleログインに失敗しました')
