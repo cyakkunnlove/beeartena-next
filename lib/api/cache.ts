@@ -42,6 +42,14 @@ if (!isRedisDisabled) {
       console.warn('Redis connection failed, falling back to memory cache:', err.message)
       redis = null
     })
+
+    // Handle connection errors
+    redis.on('error', (err: any) => {
+      if (err.code === 'ENOTFOUND') {
+        console.warn('Redis host not found, falling back to memory cache')
+        redis = null
+      }
+    })
   } catch (err) {
     console.warn('Redis initialization failed, falling back to memory cache:', err)
     redis = null

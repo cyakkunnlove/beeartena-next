@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin from '@/lib/firebase/admin'
+import { cacheService } from '@/lib/api/cache'
 
 export async function GET(request: NextRequest) {
   try {
@@ -10,24 +11,84 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Date is required' }, { status: 400 })
     }
 
+    // キャッシュから取得を試みる（10分間有効）
+    const cacheKey = `slots:${date}`
+    const cached = await cacheService.get(cacheKey)
+    if (cached) {
+      return NextResponse.json({ timeSlots: cached, cached: true })
+    }
+
     const db = admin.firestore()
 
     // 指定日の予約を取得
     const reservationsSnapshot = await db.collection('reservations')
       .where('date', '==', date)
+      .where('status', 'in', ['pending', 'confirmed'])
       .get()
 
-    const reservations = reservationsSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
+    // 予約済みの時間を収集
+    const reservedTimes = new Set<string>()
+    reservationsSnapshot.docs.forEach(doc => {
+      const data = doc.data()
+      if (data.time) {
+        reservedTimes.add(data.time)
+      }
+    })
+
+    // 曜日に応じて営業時間枠を設定
+    const now = new Date()
+    const [year, month, day] = date.split('-').map(Number)
+    const selectedDate = new Date(year, month - 1, day)
+
+    let allTimeSlots: string[]
+
+    // 水曜日は延長営業（9:00-20:00）
+    if (selectedDate.getDay() === 3) {
+      allTimeSlots = [
+        '09:00', '10:00', '11:00', '12:00', '13:00',
+        '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
+      ]
+    } else {
+      // その他の曜日は通常営業（10:00-19:00）
+      allTimeSlots = [
+        '10:00', '11:00', '12:00', '13:00',
+        '14:00', '15:00', '16:00', '17:00', '18:00'
+      ]
+    }
+
+    // 各時間枠の利用可能状況をチェック
+    const timeSlots = allTimeSlots.map(time => ({
+      time,
+      available: !reservedTimes.has(time)
     }))
 
-    return NextResponse.json({ reservations })
+    // 日曜日は定休日なので全ての時間枠を利用不可にする
+    if (selectedDate.getDay() === 0) {
+      timeSlots.forEach(slot => {
+        slot.available = false
+      })
+    }
+
+    // 今日の場合、現在時刻より前の時間枠は利用不可
+    if (selectedDate.toDateString() === now.toDateString()) {
+      const currentHour = now.getHours()
+      timeSlots.forEach(slot => {
+        const slotHour = parseInt(slot.time.split(':')[0])
+        if (slotHour <= currentHour) {
+          slot.available = false
+        }
+      })
+    }
+
+    // キャッシュに保存（10分間）
+    await cacheService.set(cacheKey, timeSlots, 600)
+
+    return NextResponse.json({ timeSlots })
   } catch (error: any) {
     console.error('Failed to fetch reservations by date:', error)
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch reservations' },
-      { status: 500 }
+      { timeSlots: [] },  // エラー時も空の配列を返す
+      { status: 200 }  // エラーでもステータス200で返してクライアント側の処理を継続
     )
   }
 }

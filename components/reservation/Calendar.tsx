@@ -26,7 +26,9 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
         }
 
         const data = await response.json()
-        const availability = new Map<string, boolean>(Object.entries(data.availability))
+        // data.availabilityが存在しない場合のフォールバック
+        const availabilityData = data.availability || {}
+        const availability = new Map<string, boolean>(Object.entries(availabilityData))
         setMonthAvailability(availability)
       } catch (error) {
         console.error('Failed to fetch availability:', error)

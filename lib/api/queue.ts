@@ -30,6 +30,14 @@ if (!isRedisDisabled) {
       console.warn('Redis connection failed for queue, queue functionality disabled:', err.message)
       redis = null
     })
+
+    // Handle connection errors
+    redis.on('error', (err: any) => {
+      if (err.code === 'ENOTFOUND') {
+        console.warn('Redis host not found for queue, queue functionality disabled')
+        redis = null
+      }
+    })
   } catch (err) {
     console.warn('Redis initialization failed for queue, queue functionality disabled:', err)
     redis = null

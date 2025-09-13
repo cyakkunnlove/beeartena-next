@@ -9,6 +9,7 @@ import {
 } from '@/lib/api/middleware'
 import { reservationService } from '@/lib/reservationService'
 import admin from '@/lib/firebase/admin'
+import { cacheService } from '@/lib/api/cache'
 
 export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
@@ -22,6 +23,21 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    // キャッシュキーを生成（ユーザーごとに異なるキャッシュ）
+    const cacheKey = authUser.role === 'admin'
+      ? 'reservations:admin'
+      : `reservations:user:${authUser.userId}`
+
+    // キャッシュから取得を試みる（5分間有効）
+    const cached = await cacheService.get(cacheKey)
+    if (cached) {
+      return setCorsHeaders(NextResponse.json({
+        success: true,
+        reservations: cached,
+        cached: true
+      }))
+    }
+
     const db = admin.firestore()
     let reservations
 
@@ -30,7 +46,7 @@ export async function GET(request: NextRequest) {
       const snapshot = await db.collection('reservations')
         .orderBy('date', 'desc')
         .get()
-      
+
       reservations = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -41,7 +57,7 @@ export async function GET(request: NextRequest) {
         .where('customerId', '==', authUser.userId)
         .orderBy('date', 'desc')
         .get()
-      
+
       reservations = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
@@ -49,9 +65,21 @@ export async function GET(request: NextRequest) {
       }))
     }
 
-    return setCorsHeaders(successResponse(reservations))
+    // キャッシュに保存（5分間）
+    await cacheService.set(cacheKey, reservations, 300)
+
+    // 正しいフォーマットで返す
+    return setCorsHeaders(NextResponse.json({
+      success: true,
+      reservations: reservations
+    }))
   } catch (error: any) {
-    return setCorsHeaders(errorResponse(error.message || '予約一覧の取得に失敗しました', 500))
+    console.error('Failed to fetch reservations:', error)
+    return setCorsHeaders(NextResponse.json({
+      success: false,
+      error: error.message || '予約一覧の取得に失敗しました',
+      reservations: []
+    }, { status: 500 }))
   }
 }
 
@@ -101,6 +129,14 @@ export async function POST(request: NextRequest) {
       status: 'pending',
       updatedAt: new Date(),
     })
+
+    // 関連するキャッシュをクリア
+    if (authUser?.userId) {
+      await cacheService.del(`reservations:user:${authUser.userId}`)
+    }
+    await cacheService.del('reservations:admin')
+    await cacheService.del(`availability:${data.date.substring(0, 7)}`)
+    await cacheService.del(`slots:${data.date}`)
 
     return setCorsHeaders(successResponse(reservation, 201))
   } catch (error: any) {

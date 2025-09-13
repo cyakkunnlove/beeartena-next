@@ -37,6 +37,14 @@ if (!isRedisDisabled) {
       console.warn('Redis connection failed for rate limiting, using memory fallback:', err.message)
       redis = null
     })
+
+    // Handle connection errors
+    redis.on('error', (err: any) => {
+      if (err.code === 'ENOTFOUND') {
+        console.warn('Redis host not found for rate limiting, using memory fallback')
+        redis = null
+      }
+    })
   } catch (err) {
     console.warn('Redis initialization failed for rate limiting, using memory fallback:', err)
     redis = null
