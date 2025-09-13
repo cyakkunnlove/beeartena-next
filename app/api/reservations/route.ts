@@ -7,7 +7,7 @@ import {
   setCorsHeaders,
   verifyAuth,
 } from '@/lib/api/middleware'
-import { reservationService } from '@/lib/reservationService'
+import admin from '@/lib/firebase/admin'
 
 export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
@@ -21,13 +21,31 @@ export async function GET(request: NextRequest) {
   }
 
   try {
+    const db = admin.firestore()
     let reservations
 
     // 管理者は全予約を取得、一般ユーザーは自分の予約のみ
     if (authUser.role === 'admin') {
-      reservations = await reservationService.getAllReservations()
+      const snapshot = await db.collection('reservations')
+        .orderBy('date', 'desc')
+        .get()
+      
+      reservations = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt
+      }))
     } else {
-      reservations = await reservationService.getUserReservations(authUser.userId)
+      const snapshot = await db.collection('reservations')
+        .where('customerId', '==', authUser.userId)
+        .orderBy('date', 'desc')
+        .get()
+      
+      reservations = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate ? doc.data().createdAt.toDate() : doc.data().createdAt
+      }))
     }
 
     return setCorsHeaders(successResponse(reservations))
