@@ -16,7 +16,26 @@ class BirthdayPointsService {
    */
   async checkAndGrantBirthdayPoints(userId: string): Promise<boolean> {
     try {
-      // ユーザー情報を取得
+      // クライアントサイドの場合はAPIを使用
+      if (typeof window !== 'undefined') {
+        const response = await fetch('/api/points/birthday', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ userId }),
+        })
+
+        if (!response.ok) {
+          console.error('Failed to check birthday points')
+          return false
+        }
+
+        const result = await response.json()
+        return result.granted || false
+      }
+
+      // サーバーサイドの場合は直接処理
       const user = isFirebaseConfigured()
         ? await userService.getUser(userId)
         : await mockUserService.getUser(userId)

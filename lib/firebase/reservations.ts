@@ -219,7 +219,7 @@ export const reservationService = {
       // モック実装
       const result = new Map<string, Reservation[]>()
       const daysInMonth = new Date(year, month + 1, 0).getDate()
-      
+
       for (let day = 1; day <= daysInMonth; day++) {
         const date = new Date(year, month, day)
         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -228,17 +228,37 @@ export const reservationService = {
           result.set(dateStr, reservations)
         }
       }
-      
+
       return result
     }
 
     try {
-      // 月の開始日と終了日を計算
+      // クライアントサイドの場合はAPIを使用
+      if (typeof window !== 'undefined') {
+        const response = await fetch(`/api/reservations/availability?year=${year}&month=${month + 1}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch reservations')
+        }
+
+        const data = await response.json()
+        const reservationsByDate = new Map<string, Reservation[]>()
+
+        // APIレスポンスをMap形式に変換
+        data.reservations.forEach((reservation: Reservation) => {
+          const dateStr = reservation.date
+          if (!reservationsByDate.has(dateStr)) {
+            reservationsByDate.set(dateStr, [])
+          }
+          reservationsByDate.get(dateStr)!.push(reservation)
+        })
+
+        return reservationsByDate
+      }
+
+      // サーバーサイドの場合は直接Firestoreにアクセス
       const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
       const endDate = `${year}-${String(month + 1).padStart(2, '0')}-31`
 
-      // 月内の全予約を一度に取得
-      // 注: '!=' クエリはパフォーマンスが悪いため、クライアント側でフィルタリング
       const q = query(
         collection(db, 'reservations'),
         where('date', '>=', startDate),
