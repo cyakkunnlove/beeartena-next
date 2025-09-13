@@ -5,7 +5,6 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
 import { Reservation } from '@/lib/types'
-import { reservationService } from '@/lib/reservationService'
 
 export default function ReservationsPage() {
   const { user } = useAuth()
@@ -47,8 +46,22 @@ export default function ReservationsPage() {
     return true
   })
 
+  const canCancelReservation = (reservation: Reservation): boolean => {
+    // すでにキャンセル済みまたは完了済みの場合はキャンセル不可
+    if (reservation.status === 'cancelled' || reservation.status === 'completed') {
+      return false
+    }
+
+    // 予約日時の24時間前までキャンセル可能
+    const reservationDate = new Date(`${reservation.date}T${reservation.time}`)
+    const now = new Date()
+    const hoursUntilReservation = (reservationDate.getTime() - now.getTime()) / (1000 * 60 * 60)
+
+    return hoursUntilReservation >= 24
+  }
+
   const handleCancel = async (reservation: Reservation) => {
-    if (!reservationService.canCancelReservation(reservation)) {
+    if (!canCancelReservation(reservation)) {
       setCancelError('キャンセル期限を過ぎているため、キャンセルできません。')
       setTimeout(() => setCancelError(''), 5000)
       return
@@ -60,7 +73,18 @@ export default function ReservationsPage() {
 
     setCancellingId(reservation.id)
     try {
-      await reservationService.cancelReservation(reservation.id, 'お客様によるキャンセル')
+      const response = await fetch(`/api/reservations/${reservation.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ reason: 'お客様によるキャンセル' }),
+      })
+
+      if (!response.ok) {
+        throw new Error('キャンセルに失敗しました')
+      }
+
       // 予約リストを再読み込み
       await loadReservations()
     } catch (error) {
@@ -207,7 +231,7 @@ export default function ReservationsPage() {
                         onClick={() => handleCancel(reservation)}
                         disabled={cancellingId === reservation.id}
                         className={`text-sm ${
-                          reservationService.canCancelReservation(reservation)
+                          canCancelReservation(reservation)
                             ? 'text-red-600 hover:text-red-700'
                             : 'text-gray-400 cursor-not-allowed'
                         } ${cancellingId === reservation.id ? 'opacity-50' : ''}`}
@@ -215,7 +239,7 @@ export default function ReservationsPage() {
                         {cancellingId === reservation.id ? 'キャンセル中...' : 'キャンセル'}
                       </button>
                     </div>
-                    {!reservationService.canCancelReservation(reservation) && (
+                    {!canCancelReservation(reservation) && (
                       <p className="text-xs text-gray-500 mt-2">
                         ※ キャンセル期限を過ぎています。キャンセルをご希望の場合はお電話にてご連絡ください。
                       </p>

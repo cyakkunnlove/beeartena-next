@@ -11,7 +11,6 @@ import ReservationForm from '@/components/reservation/ReservationForm'
 import ServiceSelection from '@/components/reservation/ServiceSelection'
 import TimeSlots from '@/components/reservation/TimeSlots'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { reservationService } from '@/lib/reservationService'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 import { ReservationFormData } from '@/lib/types'
 
