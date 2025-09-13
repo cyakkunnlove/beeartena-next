@@ -71,11 +71,6 @@ export default function ProfilePage() {
         name: formData.name,
         phone: formData.phone,
         birthday: formData.birthDate,
-        gender: formData.gender,
-        postalCode: formData.postalCode,
-        prefecture: formData.prefecture,
-        city: formData.city,
-        address: formData.street,
       })
 
       setMessage('プロフィールを更新しました')
