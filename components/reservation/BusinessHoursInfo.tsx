@@ -62,6 +62,8 @@ export default function BusinessHoursInfo() {
   const groupedHours = () => {
     const groups: { days: string[]; hours: string; maxCapacity?: number; hasMultipleSlots?: boolean }[] = []
 
+    if (!settings) return groups
+
     settings.businessHours.forEach((hours, index) => {
       if (!hours.isOpen) return
 
@@ -92,7 +94,7 @@ export default function BusinessHoursInfo() {
 
   const groups = groupedHours()
 
-  if (isLoading) {
+  if (isLoading || !settings) {
     return (
       <div className="bg-light-accent rounded-lg p-4 mb-6 animate-pulse">
         <div className="h-5 bg-gray-300 rounded w-20 mb-2"></div>
