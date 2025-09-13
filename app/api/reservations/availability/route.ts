@@ -20,22 +20,17 @@ export async function GET(request: NextRequest) {
     const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`
     const endDateStr = `${year}-${String(month).padStart(2, '0')}-${endDate.getDate()}`
 
-    // 指定月の予約を取得（statusフィルタをクライアント側で実行）
+    // 指定月の予約を取得
     const reservationsSnapshot = await db.collection('reservations')
       .where('date', '>=', startDateStr)
       .where('date', '<=', endDateStr)
+      .where('status', 'in', ['pending', 'confirmed'])
       .get()
 
-    // statusでフィルタリング（pending, confirmed のみ）
-    const reservations = reservationsSnapshot.docs
-      .map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }))
-      .filter(reservation =>
-        reservation.status === 'pending' ||
-        reservation.status === 'confirmed'
-      )
+    const reservations = reservationsSnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }))
 
     return NextResponse.json({ reservations })
   } catch (error: any) {
