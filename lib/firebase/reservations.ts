@@ -191,8 +191,22 @@ export const reservationService = {
       const month = String(date.getMonth() + 1).padStart(2, '0')
       const day = String(date.getDate()).padStart(2, '0')
       const dateStr = `${year}-${month}-${day}`
-      
-      // 文字列で比較
+
+      // クライアントサイドの場合はAPIを使用
+      if (typeof window !== 'undefined') {
+        const response = await fetch(`/api/reservations/by-date?date=${dateStr}`)
+        if (!response.ok) {
+          throw new Error('Failed to fetch reservations')
+        }
+
+        const data = await response.json()
+        return data.reservations.map((reservation: any) => ({
+          ...reservation,
+          createdAt: reservation.createdAt ? new Date(reservation.createdAt) : new Date()
+        }))
+      }
+
+      // サーバーサイドの場合は直接Firestoreにアクセス
       const q = query(
         collection(db, 'reservations'),
         where('date', '==', dateStr),
