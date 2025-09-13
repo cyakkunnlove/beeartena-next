@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
-import { storageService } from '@/lib/storage/storageService'
 import { Reservation } from '@/lib/types'
 
 export default function ReservationsPage() {
@@ -16,12 +15,28 @@ export default function ReservationsPage() {
 
   const loadReservations = useCallback(async () => {
     try {
-      const userReservations = storageService.getReservations(user!.id)
+      // APIから予約データを取得
+      const token = localStorage.getItem('auth_token')
+      const response = await fetch('/api/reservations', {
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
+        },
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch reservations')
+      }
+
+      const data = await response.json()
       setReservations(
-        userReservations.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()),
+        data.reservations.sort((a: Reservation, b: Reservation) =>
+          new Date(b.date).getTime() - new Date(a.date).getTime()
+        ),
       )
     } catch (error) {
       console.error('Failed to load reservations:', error)
+      setReservations([])
     } finally {
       setLoading(false)
     }
@@ -73,10 +88,12 @@ export default function ReservationsPage() {
 
     setCancellingId(reservation.id)
     try {
+      const token = localStorage.getItem('auth_token')
       const response = await fetch(`/api/reservations/${reservation.id}`, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` }),
         },
         body: JSON.stringify({ reason: 'お客様によるキャンセル' }),
       })
