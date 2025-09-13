@@ -1,23 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin from '@/lib/firebase/admin'
-import { cookies } from 'next/headers'
 
 export async function POST(request: NextRequest) {
   try {
-    // 認証トークン確認
-    const cookieStore = await cookies()
-    const token = cookieStore.get('auth_token')?.value ||
-                  request.headers.get('Authorization')?.replace('Bearer ', '')
-
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
 
     const data = await request.json()
     const db = admin.firestore()
 
-    // トークンからユーザーIDを取得（簡易実装 - 本来はJWT検証が必要）
-    // ここでは、フロントエンドから送信されたcustomerEmailを信頼する
+    // フロントエンドから送信されたcustomerEmailを使用
     const customerEmail = data.customerEmail
     if (!customerEmail) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
