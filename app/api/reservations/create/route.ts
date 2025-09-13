@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin from '@/lib/firebase/admin'
+import { emailService } from '@/lib/email/emailService'
 
 export async function POST(request: NextRequest) {
   try {
@@ -92,8 +93,30 @@ export async function POST(request: NextRequest) {
         })
       }
 
-      return { reservationId: reservationRef.id }
+      return { reservationId: reservationRef.id, reservation: reservationData }
     })
+
+    // メール送信処理
+    try {
+      // 予約データの取得（表示用）
+      const createdReservation = {
+        id: result.reservationId,
+        ...data,
+        customerId: userId,
+        status: 'pending' as const
+      }
+
+      // 顧客への確認メール送信
+      if (customerEmail) {
+        await emailService.sendReservationConfirmation(createdReservation, customerEmail)
+      }
+
+      // 管理者への通知メール送信
+      await emailService.sendReservationNotificationToAdmin(createdReservation)
+    } catch (emailError) {
+      // メール送信失敗してもエラーにしない（予約は成功しているため）
+      console.error('Email sending failed:', emailError)
+    }
 
     return NextResponse.json({
       success: true,
