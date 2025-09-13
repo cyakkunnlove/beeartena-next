@@ -7,6 +7,7 @@ import {
   setCorsHeaders,
   verifyAuth,
 } from '@/lib/api/middleware'
+import { reservationService } from '@/lib/reservationService'
 import admin from '@/lib/firebase/admin'
 
 export async function OPTIONS(_request: NextRequest) {
