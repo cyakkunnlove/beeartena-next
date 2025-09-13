@@ -9,7 +9,7 @@ import {
 } from '@/lib/api/middleware'
 import { reservationService } from '@/lib/reservationService'
 import admin from '@/lib/firebase/admin'
-import { cacheService } from '@/lib/api/cache'
+import { cache as cacheService } from '@/lib/api/cache'
 
 export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
@@ -132,11 +132,11 @@ export async function POST(request: NextRequest) {
 
     // 関連するキャッシュをクリア
     if (authUser?.userId) {
-      await cacheService.del(`reservations:user:${authUser.userId}`)
+      await cacheService.delete(`reservations:user:${authUser.userId}`)
     }
-    await cacheService.del('reservations:admin')
-    await cacheService.del(`availability:${data.date.substring(0, 7)}`)
-    await cacheService.del(`slots:${data.date}`)
+    await cacheService.delete('reservations:admin')
+    await cacheService.delete(`availability:${data.date.substring(0, 7)}`)
+    await cacheService.delete(`slots:${data.date}`)
 
     return setCorsHeaders(successResponse(reservation, 201))
   } catch (error: any) {

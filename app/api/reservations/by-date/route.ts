@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin from '@/lib/firebase/admin'
-import { cacheService } from '@/lib/api/cache'
+import { cache as cacheService } from '@/lib/api/cache'
 
 export async function GET(request: NextRequest) {
   try {
