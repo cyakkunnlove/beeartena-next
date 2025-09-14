@@ -483,16 +483,17 @@ class ReservationService {
         })
       }
     } else {
-      // 単一予約の曜日：1日1枠のみ（受付開始時刻）
+      // 単一予約の曜日（平日）：1日1枠のみ
+      // 平日（月、火、木、金）は1件でも予約があれば不可
       const timeStr = businessHours.open
-      const bookingsAtTime = reservations.filter((r) => r.time === timeStr).length
-      
+      const isAvailable = reservations.length === 0 // 平日は1件でも予約があれば不可
+
       slots.push({
         time: timeStr,
-        available: bookingsAtTime < this.settings.maxCapacityPerSlot && !isDayFullyBooked,
+        available: isAvailable,
         date: date,
-        maxCapacity: this.settings.maxCapacityPerSlot,
-        currentBookings: bookingsAtTime,
+        maxCapacity: 1, // 平日は1日1枠のみ
+        currentBookings: reservations.length,
       })
     }
 
@@ -623,11 +624,9 @@ class ReservationService {
           }
         }
       } else {
-        // 単一予約の曜日：1日1枠のみ（受付開始時刻）
-        const timeStr = dayBusinessHours.open
-        const bookingsAtTime = dayReservations.filter((r) => r.time === timeStr).length
-        
-        if (bookingsAtTime < this.settings.maxCapacityPerSlot) {
+        // 単一予約の曜日（平日）：1日1枠のみ
+        // 平日（月、火、木、金）は1件でも予約があれば不可
+        if (dayReservations.length === 0) {
           hasAvailableSlot = true
         }
       }

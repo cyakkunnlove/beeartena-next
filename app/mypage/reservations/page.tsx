@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import { Reservation } from '@/lib/types'
+import ReservationDetailModal from '@/components/ReservationDetailModal'
 
 export default function ReservationsPage() {
   const { user } = useAuth()
@@ -12,11 +13,15 @@ export default function ReservationsPage() {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'past'>('all')
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string>('')
+  const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+  const [isModalOpen, setIsModalOpen] = useState(false)
 
   const loadReservations = useCallback(async () => {
     try {
       // APIから予約データを取得
       const token = localStorage.getItem('auth_token')
+      console.log('Loading reservations with token:', token ? 'exists' : 'missing')
+
       const response = await fetch('/api/reservations', {
         headers: {
           'Content-Type': 'application/json',
@@ -24,16 +29,28 @@ export default function ReservationsPage() {
         },
       })
 
+      console.log('Response status:', response.status)
+
       if (!response.ok) {
-        throw new Error('Failed to fetch reservations')
+        const errorText = await response.text()
+        console.error('API Error:', errorText)
+        throw new Error(`Failed to fetch reservations: ${response.status}`)
       }
 
       const data = await response.json()
-      setReservations(
-        data.reservations.sort((a: Reservation, b: Reservation) =>
-          new Date(b.date).getTime() - new Date(a.date).getTime()
-        ),
-      )
+      console.log('Fetched reservations:', data)
+
+      // data.reservationsが存在し、配列であることを確認
+      if (data.reservations && Array.isArray(data.reservations)) {
+        setReservations(
+          data.reservations.sort((a: Reservation, b: Reservation) =>
+            new Date(b.date).getTime() - new Date(a.date).getTime()
+          ),
+        )
+      } else {
+        console.error('Invalid response format:', data)
+        setReservations([])
+      }
     } catch (error) {
       console.error('Failed to load reservations:', error)
       setReservations([])
@@ -82,10 +99,6 @@ export default function ReservationsPage() {
       return
     }
 
-    if (!confirm('予約をキャンセルしてもよろしいですか？')) {
-      return
-    }
-
     setCancellingId(reservation.id)
     try {
       const token = localStorage.getItem('auth_token')
@@ -104,6 +117,9 @@ export default function ReservationsPage() {
 
       // 予約リストを再読み込み
       await loadReservations()
+      // モーダルを閉じる
+      setIsModalOpen(false)
+      setSelectedReservation(null)
     } catch (error) {
       console.error('キャンセルエラー:', error)
       setCancelError('キャンセルに失敗しました。もう一度お試しください。')
@@ -111,6 +127,16 @@ export default function ReservationsPage() {
     } finally {
       setCancellingId(null)
     }
+  }
+
+  const openReservationDetail = (reservation: Reservation) => {
+    setSelectedReservation(reservation)
+    setIsModalOpen(true)
+  }
+
+  const closeModal = () => {
+    setIsModalOpen(false)
+    setSelectedReservation(null)
   }
 
   const getStatusBadge = (status: string) => {
@@ -192,7 +218,8 @@ export default function ReservationsPage() {
             {filteredReservations.map((reservation) => (
               <div
                 key={reservation.id}
-                className="border rounded-lg p-4 hover:shadow-md transition-shadow"
+                className="border rounded-lg p-4 hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => openReservationDetail(reservation)}
               >
                 <div className="flex justify-between items-start mb-3">
                   <div>
@@ -239,28 +266,9 @@ export default function ReservationsPage() {
 
                 {reservation.status === 'confirmed' && new Date(reservation.date) > new Date() && (
                   <div className="mt-3 pt-3 border-t">
-                    <div className="flex gap-2 items-center">
-                      <button className="text-sm text-primary hover:text-dark-gold">
-                        予約を変更
-                      </button>
-                      <span className="text-gray-400">|</span>
-                      <button 
-                        onClick={() => handleCancel(reservation)}
-                        disabled={cancellingId === reservation.id}
-                        className={`text-sm ${
-                          canCancelReservation(reservation)
-                            ? 'text-red-600 hover:text-red-700'
-                            : 'text-gray-400 cursor-not-allowed'
-                        } ${cancellingId === reservation.id ? 'opacity-50' : ''}`}
-                      >
-                        {cancellingId === reservation.id ? 'キャンセル中...' : 'キャンセル'}
-                      </button>
-                    </div>
-                    {!canCancelReservation(reservation) && (
-                      <p className="text-xs text-gray-500 mt-2">
-                        ※ キャンセル期限を過ぎています。キャンセルをご希望の場合はお電話にてご連絡ください。
-                      </p>
-                    )}
+                    <p className="text-xs text-gray-500">
+                      クリックして詳細を表示・キャンセル可能
+                    </p>
                   </div>
                 )}
               </div>
@@ -277,6 +285,16 @@ export default function ReservationsPage() {
           </div>
         )}
       </div>
+
+      {/* 予約詳細モーダル */}
+      <ReservationDetailModal
+        reservation={selectedReservation}
+        isOpen={isModalOpen}
+        onClose={closeModal}
+        onCancel={handleCancel}
+        canCancel={canCancelReservation}
+        isCancelling={cancellingId === selectedReservation?.id}
+      />
     </div>
   )
 }

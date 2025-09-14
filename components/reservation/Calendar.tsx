@@ -89,11 +89,25 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
   })
 
   const handlePrevMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1)
+    const today = new Date()
+    // 今月より前には戻れない
+    if (newMonth.getFullYear() === today.getFullYear() && newMonth.getMonth() >= today.getMonth()) {
+      setCurrentMonth(newMonth)
+    } else if (newMonth.getFullYear() > today.getFullYear()) {
+      setCurrentMonth(newMonth)
+    }
   }
 
   const handleNextMonth = () => {
-    setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))
+    const newMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1)
+    const maxDate = new Date()
+    maxDate.setMonth(maxDate.getMonth() + 3) // 3ヶ月先まで
+
+    // 3ヶ月先より後には進めない
+    if (newMonth <= maxDate) {
+      setCurrentMonth(newMonth)
+    }
   }
 
   return (
@@ -101,8 +115,11 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
       <div className="flex justify-between items-center mb-4">
         <button
           onClick={handlePrevMonth}
-          className="p-2 hover:bg-gray-100 rounded-lg"
-          disabled={currentMonth.getMonth() === new Date().getMonth()}
+          className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={
+            currentMonth.getFullYear() === new Date().getFullYear() &&
+            currentMonth.getMonth() === new Date().getMonth()
+          }
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path
@@ -114,7 +131,16 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
           </svg>
         </button>
         <h3 className="text-lg font-semibold">{monthYear}</h3>
-        <button onClick={handleNextMonth} className="p-2 hover:bg-gray-100 rounded-lg">
+        <button
+          onClick={handleNextMonth}
+          className="p-2 hover:bg-gray-100 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          disabled={(() => {
+            const maxDate = new Date()
+            maxDate.setMonth(maxDate.getMonth() + 3)
+            return currentMonth.getFullYear() === maxDate.getFullYear() &&
+                   currentMonth.getMonth() >= maxDate.getMonth()
+          })()}
+        >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
           </svg>

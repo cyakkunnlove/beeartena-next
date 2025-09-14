@@ -96,6 +96,25 @@ export async function DELETE(
     const body = await request.json().catch(() => ({ reason: '' }))
     await reservationService.cancelReservation(id, body.reason)
 
+    // キャッシュをクリア（全ページネーションのキャッシュを削除）
+    const { cache: cacheService } = await import('@/lib/api/cache')
+
+    // ユーザー用の全キャッシュをクリア
+    if (reservation.customerId) {
+      for (let offset = 0; offset <= 500; offset += 50) {
+        await cacheService.delete(`reservations:user:${reservation.customerId}:50:${offset}`)
+      }
+    }
+
+    // 管理者用の全キャッシュをクリア
+    for (let offset = 0; offset <= 500; offset += 50) {
+      await cacheService.delete(`reservations:admin:50:${offset}`)
+    }
+
+    // availability と slots のキャッシュもクリア
+    await cacheService.delete(`availability:${reservation.date.substring(0, 7)}`)
+    await cacheService.delete(`slots:${reservation.date}`)
+
     return setCorsHeaders(successResponse({ message: '予約をキャンセルしました' }))
   } catch (error: any) {
     return setCorsHeaders(errorResponse(error.message || '予約のキャンセルに失敗しました', 500))

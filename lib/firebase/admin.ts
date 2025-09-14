@@ -37,6 +37,21 @@ if (!admin.apps.length) {
   }
 }
 
+// Firestore設定の最適化
+admin.firestore().settings({
+  // 接続プーリングの最適化
+  maxIdleChannels: 10, // アイドル時のチャンネル数を増やす
+  grpcChannelOptions: {
+    // キープアライブ設定で接続を維持
+    'grpc.keepalive_time_ms': 30000,
+    'grpc.keepalive_timeout_ms': 10000,
+    'grpc.keepalive_permit_without_calls': 1,
+    'grpc.http2.max_pings_without_data': 0,
+    // 接続の再利用を促進
+    'grpc.http2.min_time_between_pings_ms': 10000,
+  }
+})
+
 export const adminAuth = admin.auth()
 export const adminDb = admin.firestore()
 export const adminStorage = admin.storage()

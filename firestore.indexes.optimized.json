@@ -46,6 +46,17 @@
       ]
     },
     {
+      "__comment": "最適化: 管理者用の日付降順インデックス",
+      "collectionGroup": "reservations",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "date",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "__comment": "最適化: 月次availability確認用の複合インデックス",
       "collectionGroup": "reservations",
       "queryScope": "COLLECTION",
@@ -56,9 +67,21 @@
         },
         {
           "fieldPath": "status",
-          "order": "ASCENDING"
+          "array": true
         }
       ]
+    },
+    {
+      "__comment": "将来の最適化: select()を使用する場合のインデックス（必要時にコメント解除）",
+      "__fields_to_index": [
+        "customerId",
+        "date",
+        "time",
+        "status",
+        "serviceName",
+        "price"
+      ],
+      "__note": "select()を使用する場合は、上記フィールドを含む複合インデックスが必要"
     }
   ],
   "fieldOverrides": [
