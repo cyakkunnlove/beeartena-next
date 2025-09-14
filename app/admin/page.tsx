@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { collection, getDocs, query, where } from 'firebase/firestore'
+import { db } from '@/lib/firebase/config'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import { User, Reservation, Inquiry } from '@/lib/types'
@@ -10,6 +12,7 @@ import { User, Reservation, Inquiry } from '@/lib/types'
 export default function AdminDashboard() {
   const router = useRouter()
   const { user } = useAuth()
+  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     totalCustomers: 0,
     totalReservations: 0,
@@ -27,58 +30,106 @@ export default function AdminDashboard() {
       return
     }
 
-    // Calculate stats from localStorage
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
-    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
-    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]')
+    const fetchStats = async () => {
+      try {
+        // Firebaseから実際のデータを取得
+        // 顧客数を取得
+        const usersSnapshot = await getDocs(collection(db, 'users'))
+        const customers = usersSnapshot.docs.filter(doc => {
+          const data = doc.data()
+          return data.role === 'customer' || !data.role // roleがない場合も顧客として扱う
+        })
 
-    const today = new Date().toISOString().split('T')[0]
-    const currentMonth = new Date().getMonth()
-    const currentYear = new Date().getFullYear()
-    const thirtyDaysAgo = new Date()
-    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+        // 予約を取得
+        const reservationsSnapshot = await getDocs(collection(db, 'reservations'))
+        const reservations = reservationsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Reservation[]
 
-    const customers = users.filter((u: User) => u.role === 'customer')
-    const todayRes = reservations.filter((r: Reservation) => r.date === today)
-    const pendingRes = reservations.filter((r: Reservation) => r.status === 'pending')
-    const unreadInq = inquiries.filter((i: Inquiry) => i.status === 'unread')
+        // お問い合わせを取得
+        const inquiriesSnapshot = await getDocs(collection(db, 'inquiries'))
+        const inquiries = inquiriesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        })) as Inquiry[]
 
-    // アクティブ顧客（過去30日以内に予約があった顧客）
-    const activeCustomerIds = new Set(
-      reservations
-        .filter((r: Reservation) => new Date(r.date) >= thirtyDaysAgo)
-        .map((r: Reservation) => r.customerId),
-    )
+        const today = new Date().toISOString().split('T')[0]
+        const currentMonth = new Date().getMonth()
+        const currentYear = new Date().getFullYear()
+        const thirtyDaysAgo = new Date()
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 
-    const monthlyRev = reservations
-      .filter((r: Reservation) => {
-        const resDate = new Date(r.date)
-        return (
-          resDate.getMonth() === currentMonth &&
-          resDate.getFullYear() === currentYear &&
-          r.status !== 'cancelled'
+        const todayRes = reservations.filter(r => r.date === today)
+        const pendingRes = reservations.filter(r => r.status === 'pending')
+        const unreadInq = inquiries.filter(i => i.status === 'unread')
+
+        // アクティブ顧客（過去30日以内に予約があった顧客）
+        const activeCustomerIds = new Set(
+          reservations
+            .filter(r => new Date(r.date) >= thirtyDaysAgo)
+            .map(r => r.customerId)
+            .filter(id => id !== null)
         )
-      })
-      .reduce((sum: number, r: Reservation) => sum + r.price, 0)
 
-    const totalRev = reservations
-      .filter((r: Reservation) => r.status !== 'cancelled')
-      .reduce((sum: number, r: Reservation) => sum + r.price, 0)
+        const monthlyRev = reservations
+          .filter(r => {
+            const resDate = new Date(r.date)
+            return (
+              resDate.getMonth() === currentMonth &&
+              resDate.getFullYear() === currentYear &&
+              r.status !== 'cancelled'
+            )
+          })
+          .reduce((sum, r) => {
+            // totalPriceがある場合はそれを使用、なければpriceを使用
+            const amount = r.totalPrice || r.price || 0
+            // finalPriceがある場合（ポイント利用後）はそれを使用
+            const finalAmount = r.finalPrice || amount
+            return sum + finalAmount
+          }, 0)
 
-    setStats({
-      totalCustomers: customers.length,
-      totalReservations: reservations.length,
-      pendingReservations: pendingRes.length,
-      totalRevenue: totalRev,
-      todayReservations: todayRes.length,
-      monthlyRevenue: monthlyRev,
-      unreadInquiries: unreadInq.length,
-      activeCustomers: activeCustomerIds.size,
-    })
+        const totalRev = reservations
+          .filter(r => r.status !== 'cancelled')
+          .reduce((sum, r) => {
+            const amount = r.totalPrice || r.price || 0
+            const finalAmount = r.finalPrice || amount
+            return sum + finalAmount
+          }, 0)
+
+        setStats({
+          totalCustomers: customers.length,
+          totalReservations: reservations.length,
+          pendingReservations: pendingRes.length,
+          totalRevenue: totalRev,
+          todayReservations: todayRes.length,
+          monthlyRevenue: monthlyRev,
+          unreadInquiries: unreadInq.length,
+          activeCustomers: activeCustomerIds.size,
+        })
+      } catch (error) {
+        console.error('Error fetching admin stats:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchStats()
   }, [user, router])
 
   if (!user || user.role !== 'admin') {
     return null
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-gray-600">読み込み中...</p>
+        </div>
+      </div>
+    )
   }
 
   const statCards = [
@@ -147,32 +198,37 @@ export default function AdminDashboard() {
     },
     {
       title: '予約設定',
-      description: '営業時間・休業日設定',
+      description: '予約枠・時間帯の設定',
       href: '/admin/settings',
       icon: '⚙️',
+    },
+    {
+      title: '売上分析',
+      description: '売上・予約データ分析',
+      href: '/admin/analytics',
+      icon: '📊',
     },
   ]
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow">
-        <div className="container mx-auto px-4 py-6">
-          <h1 className="text-3xl font-bold">管理画面</h1>
-        </div>
-      </div>
-
       <div className="container mx-auto px-4 py-8">
-        {/* Stats Grid */}
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">管理画面</h1>
+          <p className="text-gray-600 mt-2">BEE ART ENAの予約・顧客管理システム</p>
+        </div>
+
+        {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-          {statCards.map((stat) => (
-            <div key={stat.title} className="bg-white rounded-lg shadow-md p-6">
+          {statCards.map((stat, index) => (
+            <div key={index} className="bg-white rounded-lg shadow-md p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-gray-600 text-sm">{stat.title}</p>
-                  <p className="text-2xl font-bold mt-2">{stat.value}</p>
+                  <p className="text-sm text-gray-600">{stat.title}</p>
+                  <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
                 </div>
-                <div className={`${stat.color} bg-opacity-20 p-3 rounded-lg`}>
-                  <span className="text-3xl">{stat.icon}</span>
+                <div className={`${stat.color} rounded-full p-3 text-white text-2xl`}>
+                  {stat.icon}
                 </div>
               </div>
             </div>
@@ -180,57 +236,50 @@ export default function AdminDashboard() {
         </div>
 
         {/* Quick Actions */}
-        <h2 className="text-2xl font-bold mb-6">クイックアクション</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          {quickActions.map((action) => (
-            <Link
-              key={action.title}
-              href={action.href}
-              className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow"
-            >
-              <div className="text-3xl mb-3">{action.icon}</div>
-              <h3 className="font-semibold text-lg mb-1">{action.title}</h3>
-              <p className="text-gray-600 text-sm">{action.description}</p>
-            </Link>
-          ))}
-        </div>
-
-        {/* Recent Activity */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">最近のアクティビティ</h2>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">🆕</span>
-                <div>
-                  <p className="font-medium">新規予約</p>
-                  <p className="text-sm text-gray-600">山田花子様 - 4Dパウダー&フェザー</p>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">クイックアクション</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {quickActions.map((action, index) => (
+              <Link
+                key={index}
+                href={action.href}
+                className="border border-gray-200 rounded-lg p-4 hover:border-primary hover:shadow-lg transition-all duration-200"
+              >
+                <div className="flex items-center space-x-3">
+                  <span className="text-3xl">{action.icon}</span>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">{action.title}</h3>
+                    <p className="text-sm text-gray-600">{action.description}</p>
+                  </div>
                 </div>
-              </div>
-              <p className="text-sm text-gray-500">5分前</p>
-            </div>
-            <div className="flex items-center justify-between py-3 border-b">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">👤</span>
-                <div>
-                  <p className="font-medium">新規会員登録</p>
-                  <p className="text-sm text-gray-600">佐藤太郎様</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">1時間前</p>
-            </div>
-            <div className="flex items-center justify-between py-3">
-              <div className="flex items-center gap-3">
-                <span className="text-2xl">💬</span>
-                <div>
-                  <p className="font-medium">新規お問い合わせ</p>
-                  <p className="text-sm text-gray-600">アートメイクについて</p>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500">3時間前</p>
-            </div>
+              </Link>
+            ))}
           </div>
         </div>
+
+        {/* Alerts/Notifications */}
+        {(stats.pendingReservations > 0 || stats.unreadInquiries > 0) && (
+          <div className="mt-8 bg-yellow-50 border-l-4 border-yellow-400 p-4 rounded-lg">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <span className="text-yellow-400 text-xl">⚠️</span>
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-yellow-800">対応が必要な項目があります</h3>
+                <div className="mt-2 text-sm text-yellow-700">
+                  <ul className="list-disc list-inside space-y-1">
+                    {stats.pendingReservations > 0 && (
+                      <li>承認待ちの予約が {stats.pendingReservations} 件あります</li>
+                    )}
+                    {stats.unreadInquiries > 0 && (
+                      <li>未読のお問い合わせが {stats.unreadInquiries} 件あります</li>
+                    )}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
