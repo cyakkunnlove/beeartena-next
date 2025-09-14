@@ -123,9 +123,35 @@ export default function ReservationDetailModal({
 
             <div className="space-y-2">
               <div className="flex justify-between">
-                <span className="text-gray-600">基本料金</span>
+                <span className="text-gray-600">基本料金（{reservation.serviceName}）</span>
                 <span className="font-semibold">¥{reservation.price.toLocaleString()}</span>
               </div>
+
+              {/* メンテナンスオプション料金の詳細表示 */}
+              {reservation.maintenanceOptions && reservation.maintenanceOptions.length > 0 && (
+                <>
+                  <div className="mt-2 mb-1 text-sm font-semibold text-gray-700">メンテナンスオプション：</div>
+                  {reservation.maintenanceOptions.map((option, index) => (
+                    <div key={index} className="flex justify-between pl-4 text-sm">
+                      <span className="text-gray-600">・{option}</span>
+                    </div>
+                  ))}
+                  {reservation.maintenancePrice && reservation.maintenancePrice > 0 && (
+                    <div className="flex justify-between pl-4">
+                      <span className="text-gray-600">メンテナンス料金</span>
+                      <span className="font-semibold">+¥{reservation.maintenancePrice.toLocaleString()}</span>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* 合計金額（基本料金＋メンテナンス料金） */}
+              {reservation.totalPrice && reservation.totalPrice !== reservation.price && (
+                <div className="flex justify-between border-t pt-2">
+                  <span className="text-gray-700 font-semibold">小計</span>
+                  <span className="font-semibold">¥{reservation.totalPrice.toLocaleString()}</span>
+                </div>
+              )}
 
               {reservation.pointsUsed && reservation.pointsUsed > 0 && (
                 <div className="flex justify-between text-red-600">
