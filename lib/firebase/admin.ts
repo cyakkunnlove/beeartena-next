@@ -1,59 +1,99 @@
 import * as admin from 'firebase-admin'
 
-// Initialize Firebase Admin SDK
-if (!admin.apps.length) {
-  try {
-    // 開発環境ではサービスアカウントキーを使用
-    if (process.env.NODE_ENV === 'development') {
-      try {
-        // eslint-disable-next-line @typescript-eslint/no-var-requires
-        const serviceAccount = require('../../scripts/firebase-service-account-key.json')
-        admin.initializeApp({
-          credential: admin.credential.cert(serviceAccount),
-          projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-        })
-      } catch (error) {
-        console.error('Service account key not found, using environment variables')
-        admin.initializeApp({
-          credential: admin.credential.cert({
-            projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-            clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-            privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-          }),
-        })
+import { logger } from '@/lib/utils/logger'
+
+type ServiceAccount = admin.ServiceAccount & { project_id?: string }
+
+let adminApp: admin.app.App | null = admin.apps.length ? admin.app() : null
+
+if (!adminApp) {
+  const envProjectId = (process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '').trim()
+  const envClientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.trim()
+  const envPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n').trim()
+
+  let serviceAccount: ServiceAccount | null = null
+
+  if (process.env.NODE_ENV === 'development') {
+    try {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const raw = require('../../scripts/firebase-service-account-key.json') as ServiceAccount & {
+        project_id?: string
+        client_email?: string
+        private_key?: string
       }
-    } else {
-      // 本番環境では環境変数から認証情報を取得
-      admin.initializeApp({
-        credential: admin.credential.cert({
-          projectId: process.env.FIREBASE_ADMIN_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_ADMIN_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-        }),
+      serviceAccount = {
+        projectId: raw.projectId || raw.project_id,
+        clientEmail: raw.clientEmail || raw.client_email,
+        privateKey: raw.privateKey || raw.private_key,
+      }
+    } catch {
+      logger.debug('Local service account file not found; falling back to environment variables')
+    }
+  }
+
+  try {
+    if (serviceAccount && serviceAccount.projectId && serviceAccount.clientEmail && serviceAccount.privateKey) {
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: serviceAccount.projectId,
       })
+    } else if (envProjectId && envClientEmail && envPrivateKey) {
+      adminApp = admin.initializeApp({
+        credential: admin.credential.cert({
+          projectId: envProjectId,
+          clientEmail: envClientEmail,
+          privateKey: envPrivateKey,
+        }),
+        projectId: envProjectId,
+      })
+    } else if (envProjectId) {
+      adminApp = admin.initializeApp({ projectId: envProjectId })
+      logger.warn('Firebase admin initialised without explicit credentials; ensure ADC is configured for production use')
+    } else {
+      logger.warn('Firebase admin credentials not provided; admin features will be disabled')
     }
   } catch (error) {
-    console.error('Firebase admin initialization error:', error)
+    logger.error('Firebase admin initialization error', { error })
+    adminApp = null
   }
 }
 
-// Firestore設定の最適化
-admin.firestore().settings({
-  // 接続プーリングの最適化
-  maxIdleChannels: 10, // アイドル時のチャンネル数を増やす
-  grpcChannelOptions: {
-    // キープアライブ設定で接続を維持
-    'grpc.keepalive_time_ms': 30000,
-    'grpc.keepalive_timeout_ms': 10000,
-    'grpc.keepalive_permit_without_calls': 1,
-    'grpc.http2.max_pings_without_data': 0,
-    // 接続の再利用を促進
-    'grpc.http2.min_time_between_pings_ms': 10000,
-  }
-})
+export const isAdminInitialized = adminApp !== null
 
-export const adminAuth = admin.auth()
-export const adminDb = admin.firestore()
-export const adminStorage = admin.storage()
+if (isAdminInitialized) {
+  try {
+    admin.firestore().settings({
+      maxIdleChannels: 10,
+      grpcChannelOptions: {
+        'grpc.keepalive_time_ms': 30000,
+        'grpc.keepalive_timeout_ms': 10000,
+        'grpc.keepalive_permit_without_calls': 1,
+        'grpc.http2.max_pings_without_data': 0,
+        'grpc.http2.min_time_between_pings_ms': 10000,
+      },
+    })
+  } catch (error) {
+    logger.warn('Failed to apply Firestore settings', { error })
+  }
+}
+
+export function ensureAdminApp(): admin.app.App {
+  if (!adminApp) {
+    throw new Error('Firebase admin is not configured')
+  }
+  return adminApp
+}
+
+export function getAdminAuth() {
+  return ensureAdminApp().auth()
+}
+
+export function getAdminDb() {
+  return ensureAdminApp().firestore()
+}
+
+export function getAdminStorage() {
+  return ensureAdminApp().storage()
+}
 
 export default admin

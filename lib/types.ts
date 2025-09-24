@@ -195,6 +195,7 @@ export interface TierChartData {
   name: string
   value: number
   fill: string
+  [key: string]: string | number
 }
 
 export interface TimeSlotChartData {

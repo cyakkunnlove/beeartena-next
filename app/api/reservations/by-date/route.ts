@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebase/admin'
+import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 
 export async function GET(request: NextRequest) {
@@ -18,7 +18,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ timeSlots: cached, cached: true })
     }
 
-    const db = admin.firestore()
+    if (!isAdminInitialized) {
+      return NextResponse.json({ error: 'Firebase admin is not configured', timeSlots: [] }, { status: 503 })
+    }
+
+    const db = getAdminDb()
 
     // 指定日の予約を取得
     const reservationsSnapshot = await db.collection('reservations')

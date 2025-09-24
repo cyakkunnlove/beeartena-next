@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebase/admin'
+import admin, { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { errorResponse, successResponse, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 
 export async function OPTIONS(_request: NextRequest) {
@@ -14,8 +14,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // Firebase Admin SDKを使用してユーザー情報を取得
-    const db = admin.firestore()
+    if (!isAdminInitialized) {
+      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
+    }
+
+    const db = getAdminDb()
     const userDoc = await db.collection('users').doc(authUser.userId).get()
 
     if (!userDoc.exists) {
@@ -44,6 +47,10 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
+    if (!isAdminInitialized) {
+      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
+    }
+
     const body = await request.json()
     const {
       name,
@@ -56,8 +63,7 @@ export async function PUT(request: NextRequest) {
       address
     } = body
 
-    // Firebase Admin SDKを使用してユーザー情報を更新
-    const db = admin.firestore()
+    const db = getAdminDb()
     const updateData: any = {
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }

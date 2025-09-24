@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebase/admin'
+import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
 
@@ -36,7 +36,11 @@ export async function GET(request: NextRequest) {
       console.log('Cache miss or timeout, fetching from DB')
     }
 
-    const db = admin.firestore()
+    if (!isAdminInitialized) {
+      return NextResponse.json({ error: 'Firebase admin is not configured', availability: {} }, { status: 503 })
+    }
+
+    const db = getAdminDb()
 
     // 月の開始日と終了日を計算
     const startDate = new Date(year, month - 1, 1)

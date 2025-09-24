@@ -1,12 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebase/admin'
+import admin, { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { emailService } from '@/lib/email/emailService'
 
 export async function POST(request: NextRequest) {
   try {
 
     const data = await request.json()
-    const db = admin.firestore()
+
+    if (!isAdminInitialized) {
+      return NextResponse.json({ error: 'Firebase admin is not configured' }, { status: 503 })
+    }
+
+    const db = getAdminDb()
 
     // フロントエンドから送信されたcustomerEmailを使用
     const customerEmail = data.customerEmail

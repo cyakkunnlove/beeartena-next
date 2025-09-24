@@ -8,7 +8,7 @@ import {
   verifyAuth,
 } from '@/lib/api/middleware'
 import { reservationService } from '@/lib/reservationService'
-import admin from '@/lib/firebase/admin'
+import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
 
@@ -61,7 +61,15 @@ export async function GET(request: NextRequest) {
       console.log('Cache miss or timeout, fetching from DB')
     }
 
-    const db = admin.firestore()
+    if (!isAdminInitialized) {
+      return setCorsHeaders(NextResponse.json({
+        success: false,
+        error: 'Firebase admin is not configured',
+        reservations: [],
+      }, { status: 503 }))
+    }
+
+    const db = getAdminDb()
     let reservations = []
     let query
 

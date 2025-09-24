@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/api/middleware'
-import admin from '@/lib/firebase/admin'
+import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 
 interface PerformanceMetrics {
   endpoint: string
@@ -22,9 +22,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  if (!isAdminInitialized) {
+    return NextResponse.json({ error: 'Firebase admin is not configured' }, { status: 503 })
+  }
+
   try {
-    // 過去24時間のパフォーマンスメトリクスを取得
-    const db = admin.firestore()
+    const db = getAdminDb()
     const now = new Date()
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
