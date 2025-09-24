@@ -1,33 +1,72 @@
-import { SignJWT } from 'jose'
+import { JWTPayload, SignJWT, jwtVerify } from 'jose'
 
 import { User } from '@/lib/types'
+import { logger } from '@/lib/utils/logger'
 
-// JWTシークレット（環境変数から取得）
-const getJwtSecret = () => {
-  const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production'
-  return new TextEncoder().encode(secret)
+const FALLBACK_SECRET = 'development-secret-change-me'
+const DEFAULT_EXPIRATION = '7d'
+
+let warnedAboutFallback = false
+
+function resolveSecret(): string {
+  const configured = process.env.JWT_SECRET?.trim()
+  if (configured && configured.length >= 16) {
+    return configured
+  }
+
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET is not configured for production environment')
+  }
+
+  if (!warnedAboutFallback) {
+    logger.warn('Using fallback JWT secret; configure JWT_SECRET for production usage')
+    warnedAboutFallback = true
+  }
+
+  return FALLBACK_SECRET
 }
 
-// JWTトークンを生成
-export async function generateToken(user: User): Promise<string> {
-  const token = await new SignJWT({
+function getJwtSecret(): Uint8Array {
+  return new TextEncoder().encode(resolveSecret())
+}
+
+export interface TokenPayload extends JWTPayload {
+  userId: string
+  email?: string
+  role?: string
+}
+
+export interface GenerateTokenOptions {
+  expiresIn?: string
+}
+
+export async function generateToken(user: User, options: GenerateTokenOptions = {}): Promise<string> {
+  const expiresIn = options.expiresIn || DEFAULT_EXPIRATION
+
+  return await new SignJWT({
     userId: user.id,
     email: user.email,
     role: user.role,
-  })
+  } satisfies TokenPayload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d') // 7日間有効
+    .setExpirationTime(expiresIn)
     .sign(getJwtSecret())
-
-  return token
 }
 
-// エイリアス（テスト用）
 export const signJWT = generateToken
 
-// JWT検証用（テスト用のプレースホルダー）
-export async function verifyJWT(_token: string): Promise<any> {
-  // TODO: 実装
-  return { userId: 'test-user-id', email: 'test@example.com', role: 'customer' }
+export async function verifyJWT(token: string): Promise<TokenPayload> {
+  try {
+    const { payload } = await jwtVerify<TokenPayload>(token, getJwtSecret())
+
+    if (!payload.userId) {
+      throw new Error('Token payload missing userId')
+    }
+
+    return payload
+  } catch (error) {
+    logger.warn('JWT verification failed', { error })
+    throw new Error('トークンの検証に失敗しました')
+  }
 }

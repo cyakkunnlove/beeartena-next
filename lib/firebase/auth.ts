@@ -18,6 +18,7 @@ import { doc, setDoc, getDoc } from 'firebase/firestore'
 
 import { mockAuth } from '../mock/mockFirebase'
 import { User as AppUser, getErrorMessage } from '../types'
+import { logger } from '../utils/logger'
 
 import { auth, db } from './config'
 
@@ -67,19 +68,20 @@ export const firebaseAuth = {
       try {
         await sendEmailVerification(user)
       } catch (error) {
-        console.error('メール認証送信エラー:', error)
+        logger.warn('Failed to send verification email', {
+          code: (error as { code?: string })?.code,
+          message: (error as { message?: string })?.message,
+        })
         // メール送信に失敗してもユーザー登録は成功とする
       }
 
       return userData
     } catch (error: any) {
-      // Firebase エラーの詳細をログに記録
-      console.error('Firebase register error:', {
+      logger.error('Firebase register error', {
         code: error?.code,
         message: error?.message,
         customData: error?.customData,
         serverResponse: error?.serverResponse,
-        timestamp: new Date().toISOString(),
       })
 
       // Firebase Auth のエラーコードに基づいてメッセージを返す
@@ -125,10 +127,11 @@ export const firebaseAuth = {
 
       return userDoc.data() as AppUser
     } catch (error: any) {
-      console.error('Firebase login error:', error)
-      console.error('Error code:', error.code)
-      console.error('Error message:', error.message)
-      
+      logger.warn('Firebase login error', {
+        code: error?.code,
+        message: error?.message,
+      })
+
       // より詳細なエラーメッセージを返す
       if (error.code === 'auth/user-not-found') {
         throw new Error('ユーザーが見つかりません')
@@ -329,7 +332,10 @@ export const firebaseAuth = {
         return userData
       }
     } catch (error: any) {
-      console.error('Google login error:', error)
+      logger.warn('Google login error', {
+        code: error?.code,
+        message: error?.message,
+      })
 
       if (error.code === 'auth/popup-closed-by-user') {
         throw new Error('ログインがキャンセルされました')
@@ -351,7 +357,10 @@ export const firebaseAuth = {
     try {
       await sendPasswordResetEmail(auth, email)
     } catch (error: any) {
-      console.error('Password reset error:', error)
+      logger.warn('Password reset email error', {
+        code: error?.code,
+        message: error?.message,
+      })
 
       if (error.code === 'auth/user-not-found') {
         throw new Error('このメールアドレスは登録されていません')
