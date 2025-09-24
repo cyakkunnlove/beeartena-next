@@ -1,63 +1,74 @@
 import { Reservation } from '@/lib/types'
+import { logger } from '@/lib/utils/logger'
 
-export interface EmailTemplate {
-  subject: string
-  body: string
-  to: string
-  from?: string
+import { ResendEmailService } from './resendService'
+import type { EmailService, EmailTemplate } from './types'
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'info@beeartena.jp'
+const DEFAULT_FROM = process.env.EMAIL_FROM || 'BEE ART ENA <no-reply@beeartena.com>'
+
+function maskRecipients(to: string): string {
+  return to
+    .split(',')
+    .map((address) => {
+      const trimmed = address.trim()
+      if (!trimmed) return trimmed
+      const [local, domain] = trimmed.split('@')
+      if (!domain) return 'redacted'
+      const safeLocal = local.length <= 2 ? `${local[0] ?? '*'}*` : `${local[0]}***${local[local.length - 1]}`
+      return `${safeLocal}@${domain}`
+    })
+    .join(', ')
 }
 
-// メールサービスのインターフェース
-export interface EmailService {
-  sendEmail(template: EmailTemplate): Promise<void>
-  sendReservationConfirmation(reservation: Reservation, userEmail: string): Promise<void>
-  sendReservationNotificationToAdmin(reservation: Reservation): Promise<void>
-  sendCancellationConfirmation(reservation: Reservation, userEmail: string): Promise<void>
-  sendCancellationNotificationToAdmin(reservation: Reservation): Promise<void>
-  sendVerificationEmail(email: string, verificationLink: string): Promise<void>
-}
-
-// 開発環境用のモックサービス
 class MockEmailService implements EmailService {
   async sendEmail(template: EmailTemplate): Promise<void> {
-    console.log('📧 Mock Email Service - Sending email:')
-    console.log('To:', template.to)
-    console.log('Subject:', template.subject)
-    console.log('Body:', template.body)
-    console.log('---')
+    logger.info('Mock email dispatch', {
+      to: maskRecipients(template.to),
+      subject: template.subject,
+      hasBody: Boolean(template.body?.length),
+    })
   }
 
   async sendReservationConfirmation(reservation: Reservation, userEmail: string): Promise<void> {
-    const template = createReservationConfirmationTemplate(reservation, userEmail)
-    await this.sendEmail(template)
+    await this.sendEmail(createReservationConfirmationTemplate(reservation, userEmail))
   }
 
   async sendReservationNotificationToAdmin(reservation: Reservation): Promise<void> {
-    const template = createReservationNotificationTemplate(reservation)
-    await this.sendEmail(template)
+    await this.sendEmail(createReservationNotificationTemplate(reservation))
   }
 
   async sendCancellationConfirmation(reservation: Reservation, userEmail: string): Promise<void> {
-    const template = createCancellationConfirmationTemplate(reservation, userEmail)
-    await this.sendEmail(template)
+    await this.sendEmail(createCancellationConfirmationTemplate(reservation, userEmail))
   }
 
   async sendCancellationNotificationToAdmin(reservation: Reservation): Promise<void> {
-    const template = createCancellationNotificationTemplate(reservation)
-    await this.sendEmail(template)
+    await this.sendEmail(createCancellationNotificationTemplate(reservation))
   }
 
   async sendVerificationEmail(email: string, verificationLink: string): Promise<void> {
-    const template = createVerificationEmailTemplate(email, verificationLink)
-    await this.sendEmail(template)
+    await this.sendEmail(createVerificationEmailTemplate(email, verificationLink))
   }
 }
 
-// メールテンプレート作成関数
-function createReservationConfirmationTemplate(reservation: Reservation, userEmail: string): EmailTemplate {
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr)
+  const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日(${weekday})`
+}
+
+function formatPrice(price: number): string {
+  return price.toLocaleString('ja-JP')
+}
+
+function createReservationConfirmationTemplate(
+  reservation: Reservation,
+  userEmail: string,
+): EmailTemplate {
   return {
     to: userEmail,
-    subject: `【BEE ART ENA】ご予約確認のお知らせ`,
+    from: DEFAULT_FROM,
+    subject: '【BEE ART ENA】ご予約確認のお知らせ',
     body: `
 ${reservation.customerName} 様
 
@@ -101,13 +112,14 @@ BEE ART ENA
 Instagram: @beeartena
 LINE: @174geemy
 ━━━━━━━━━━━━━━━━━━━━━━━━
-`
+`,
   }
 }
 
 function createReservationNotificationTemplate(reservation: Reservation): EmailTemplate {
   return {
-    to: 'info@beeartena.jp', // 管理者メールアドレス
+    to: ADMIN_EMAIL,
+    from: DEFAULT_FROM,
     subject: `【予約通知】${formatDate(reservation.date)} ${reservation.time} - ${reservation.customerName}様`,
     body: `
 新規予約が入りました。
@@ -128,14 +140,18 @@ function createReservationNotificationTemplate(reservation: Reservation): EmailT
 https://beeartena-next.vercel.app/admin/dashboard
 
 以上、ご確認をお願いいたします。
-`
+`,
   }
 }
 
-function createCancellationConfirmationTemplate(reservation: Reservation, userEmail: string): EmailTemplate {
+function createCancellationConfirmationTemplate(
+  reservation: Reservation,
+  userEmail: string,
+): EmailTemplate {
   return {
     to: userEmail,
-    subject: `【BEE ART ENA】ご予約キャンセルのお知らせ`,
+    from: DEFAULT_FROM,
+    subject: '【BEE ART ENA】ご予約キャンセルのお知らせ',
     body: `
 ${reservation.customerName} 様
 
@@ -156,13 +172,14 @@ TEL: 090-5278-5221
 Instagram: @beeartena
 LINE: @174geemy
 ━━━━━━━━━━━━━━━━━━━━━━━━
-`
+`,
   }
 }
 
 function createCancellationNotificationTemplate(reservation: Reservation): EmailTemplate {
   return {
-    to: 'info@beeartena.jp',
+    to: ADMIN_EMAIL,
+    from: DEFAULT_FROM,
     subject: `【キャンセル通知】${formatDate(reservation.date)} ${reservation.time} - ${reservation.customerName}様`,
     body: `
 予約がキャンセルされました。
@@ -178,14 +195,15 @@ function createCancellationNotificationTemplate(reservation: Reservation): Email
 
 【管理画面】
 https://beeartena-next.vercel.app/admin/dashboard
-`
+`,
   }
 }
 
 function createVerificationEmailTemplate(email: string, verificationLink: string): EmailTemplate {
   return {
     to: email,
-    subject: `【BEE ART ENA】メールアドレスの確認`,
+    from: DEFAULT_FROM,
+    subject: '【BEE ART ENA】メールアドレスの確認',
     body: `
 BEE ART ENAへの会員登録ありがとうございます。
 
@@ -203,40 +221,23 @@ ${verificationLink}
 BEE ART ENA
 理容師による安心のタトゥーメイクサロン
 ━━━━━━━━━━━━━━━━━━━━━━━━
-`
+`,
   }
 }
 
-// ヘルパー関数
-function formatDate(dateStr: string): string {
-  const date = new Date(dateStr)
-  const year = date.getFullYear()
-  const month = date.getMonth() + 1
-  const day = date.getDate()
-  const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-  return `${year}年${month}月${day}日(${weekday})`
-}
-
-function formatPrice(price: number): string {
-  return price.toLocaleString()
-}
-
-// 環境に応じてサービスを切り替え
 export function createEmailService(): EmailService {
-  // Resend APIキーが設定されている場合はResendサービスを使用
   if (process.env.RESEND_API_KEY) {
-    const { ResendEmailService } = require('./resendService')
-    return new ResendEmailService(process.env.RESEND_API_KEY)
+    try {
+      return new ResendEmailService(process.env.RESEND_API_KEY)
+    } catch (error) {
+      logger.error('Failed to initialise ResendEmailService, falling back to mock', { error })
+    }
+  } else if (process.env.NODE_ENV === 'production') {
+    logger.warn('RESEND_API_KEY is not configured in production; using mock email service')
   }
-  
-  // 本番環境では実際のメールサービス（SendGrid、AWS SES等）を使用
-  if (process.env.NODE_ENV === 'production' && process.env.SENDGRID_API_KEY) {
-    // TODO: SendGridサービスの実装
-    return new MockEmailService()
-  }
-  
-  // 開発環境ではモックサービスを使用
+
   return new MockEmailService()
 }
 
 export const emailService = createEmailService()
+export type { EmailService, EmailTemplate } from './types'

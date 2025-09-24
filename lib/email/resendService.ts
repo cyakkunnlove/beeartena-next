@@ -1,6 +1,26 @@
 import { Resend } from 'resend'
-import { EmailService, EmailTemplate } from './emailService'
+
 import { Reservation } from '@/lib/types'
+import { logger } from '@/lib/utils/logger'
+
+import type { EmailService, EmailTemplate } from './types'
+
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'info@beeartena.jp'
+const DEFAULT_FROM = process.env.EMAIL_FROM || 'BEE ART ENA <onboarding@resend.dev>'
+
+function maskRecipients(to: string): string {
+  return to
+    .split(',')
+    .map((address) => {
+      const trimmed = address.trim()
+      if (!trimmed) return trimmed
+      const [local, domain] = trimmed.split('@')
+      if (!domain) return 'redacted'
+      const safeLocal = local.length <= 2 ? `${local[0] ?? '*'}*` : `${local[0]}***${local[local.length - 1]}`
+      return `${safeLocal}@${domain}`
+    })
+    .join(', ')
+}
 
 export class ResendEmailService implements EmailService {
   private resend: Resend
@@ -10,14 +30,14 @@ export class ResendEmailService implements EmailService {
   }
 
   async sendEmail(template: EmailTemplate): Promise<void> {
-    try {
-      // toアドレスをカンマ区切りで配列に変換
-      const recipients = template.to.includes(',') 
-        ? template.to.split(',').map(email => email.trim()).filter(email => email.length > 0)
-        : [template.to]
+    const recipients = template.to
+      .split(',')
+      .map((email) => email.trim())
+      .filter((email) => email.length > 0)
 
+    try {
       const { data, error } = await this.resend.emails.send({
-        from: template.from || 'BEE ART ENA <onboarding@resend.dev>',
+        from: template.from || DEFAULT_FROM,
         to: recipients,
         subject: template.subject,
         html: this.convertToHtml(template.body),
@@ -25,44 +45,50 @@ export class ResendEmailService implements EmailService {
       })
 
       if (error) {
-        console.error('Resend error:', error)
+        logger.error('Resend email dispatch failed', {
+          to: maskRecipients(template.to),
+          subject: template.subject,
+          error,
+        })
         throw new Error(`メール送信に失敗しました: ${error.message}`)
       }
 
-      console.log('Email sent successfully:', data)
+      logger.info('Resend email dispatched', {
+        to: maskRecipients(template.to),
+        subject: template.subject,
+        messageId: data?.id,
+      })
     } catch (error) {
-      console.error('Email sending failed:', error)
+      logger.error('Email sending threw unexpected error', {
+        to: maskRecipients(template.to),
+        subject: template.subject,
+        error,
+      })
       throw error
     }
   }
 
   async sendReservationConfirmation(reservation: Reservation, userEmail: string): Promise<void> {
-    const template = this.createReservationConfirmationTemplate(reservation, userEmail)
-    await this.sendEmail(template)
+    await this.sendEmail(this.createReservationConfirmationTemplate(reservation, userEmail))
   }
 
   async sendReservationNotificationToAdmin(reservation: Reservation): Promise<void> {
-    const template = this.createReservationNotificationTemplate(reservation)
-    await this.sendEmail(template)
+    await this.sendEmail(this.createReservationNotificationTemplate(reservation))
   }
 
   async sendCancellationConfirmation(reservation: Reservation, userEmail: string): Promise<void> {
-    const template = this.createCancellationConfirmationTemplate(reservation, userEmail)
-    await this.sendEmail(template)
+    await this.sendEmail(this.createCancellationConfirmationTemplate(reservation, userEmail))
   }
 
   async sendCancellationNotificationToAdmin(reservation: Reservation): Promise<void> {
-    const template = this.createCancellationNotificationTemplate(reservation)
-    await this.sendEmail(template)
+    await this.sendEmail(this.createCancellationNotificationTemplate(reservation))
   }
 
   async sendVerificationEmail(email: string, verificationLink: string): Promise<void> {
-    const template = this.createVerificationEmailTemplate(email, verificationLink)
-    await this.sendEmail(template)
+    await this.sendEmail(this.createVerificationEmailTemplate(email, verificationLink))
   }
 
   private convertToHtml(text: string): string {
-    // テキストをHTMLに変換（改行をbrタグに、URLをリンクに）
     return text
       .replace(/\n/g, '<br>')
       .replace(/(https?:\/\/[^\s]+)/g, '<a href="$1">$1</a>')
@@ -71,13 +97,17 @@ export class ResendEmailService implements EmailService {
       .replace(/■/g, '▪️')
   }
 
-  private createReservationConfirmationTemplate(reservation: Reservation, userEmail: string): EmailTemplate {
+  private createReservationConfirmationTemplate(
+    reservation: Reservation,
+    userEmail: string,
+  ): EmailTemplate {
     const maintenanceOptionsText = this.formatMaintenanceOptions(reservation.maintenanceOptions)
     const priceDetailsText = this.formatPriceDetails(reservation)
-    
+
     return {
       to: userEmail,
-      subject: `【BEE ART ENA】ご予約確認のお知らせ`,
+      from: DEFAULT_FROM,
+      subject: '【BEE ART ENA】ご予約確認のお知らせ',
       body: `
 ${reservation.customerName} 様
 
@@ -121,17 +151,17 @@ BEE ART ENA
 Instagram: @beeartena
 LINE: @174geemy
 ━━━━━━━━━━━━━━━━━━━━━━━━
-`
+`,
     }
   }
 
   private createReservationNotificationTemplate(reservation: Reservation): EmailTemplate {
-    const adminEmail = process.env.ADMIN_EMAIL || 'info@beeartena.jp'
     const maintenanceOptionsText = this.formatMaintenanceOptions(reservation.maintenanceOptions)
     const priceDetailsText = this.formatPriceDetails(reservation)
-    
+
     return {
-      to: adminEmail,
+      to: ADMIN_EMAIL,
+      from: DEFAULT_FROM,
       subject: `【予約通知】${this.formatDate(reservation.date)} ${reservation.time} - ${reservation.customerName}様`,
       body: `
 新規予約が入りました。
@@ -152,14 +182,18 @@ ${priceDetailsText}${maintenanceOptionsText}
 https://beeartena-next.vercel.app/admin/dashboard
 
 以上、ご確認をお願いいたします。
-`
+`,
     }
   }
 
-  private createCancellationConfirmationTemplate(reservation: Reservation, userEmail: string): EmailTemplate {
+  private createCancellationConfirmationTemplate(
+    reservation: Reservation,
+    userEmail: string,
+  ): EmailTemplate {
     return {
       to: userEmail,
-      subject: `【BEE ART ENA】ご予約キャンセルのお知らせ`,
+      from: DEFAULT_FROM,
+      subject: '【BEE ART ENA】ご予約キャンセルのお知らせ',
       body: `
 ${reservation.customerName} 様
 
@@ -180,14 +214,14 @@ TEL: 090-5278-5221
 Instagram: @beeartena
 LINE: @174geemy
 ━━━━━━━━━━━━━━━━━━━━━━━━
-`
+`,
     }
   }
 
   private createCancellationNotificationTemplate(reservation: Reservation): EmailTemplate {
-    const adminEmail = process.env.ADMIN_EMAIL || 'info@beeartena.jp'
     return {
-      to: adminEmail,
+      to: ADMIN_EMAIL,
+      from: DEFAULT_FROM,
       subject: `【キャンセル通知】${this.formatDate(reservation.date)} ${reservation.time} - ${reservation.customerName}様`,
       body: `
 予約がキャンセルされました。
@@ -203,14 +237,15 @@ LINE: @174geemy
 
 【管理画面】
 https://beeartena-next.vercel.app/admin/dashboard
-`
+`,
     }
   }
 
   private createVerificationEmailTemplate(email: string, verificationLink: string): EmailTemplate {
     return {
       to: email,
-      subject: `【BEE ART ENA】メールアドレスの確認`,
+      from: DEFAULT_FROM,
+      subject: '【BEE ART ENA】メールアドレスの確認',
       body: `
 BEE ART ENAへの会員登録ありがとうございます。
 
@@ -228,28 +263,25 @@ ${verificationLink}
 BEE ART ENA
 理容師による安心のアートメイクサロン
 ━━━━━━━━━━━━━━━━━━━━━━━━
-`
+`,
     }
   }
 
   private formatDate(dateStr: string): string {
     const date = new Date(dateStr)
-    const year = date.getFullYear()
-    const month = date.getMonth() + 1
-    const day = date.getDate()
     const weekday = ['日', '月', '火', '水', '木', '金', '土'][date.getDay()]
-    return `${year}年${month}月${day}日(${weekday})`
+    return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日(${weekday})`
   }
 
   private formatPrice(price: number): string {
-    return price.toLocaleString()
+    return price.toLocaleString('ja-JP')
   }
 
   private getMaintenanceOptionName(option: string): string {
-    const optionNames: { [key: string]: string } = {
+    const optionNames: Record<string, string> = {
       'cut-shave': '眉カット＋フェイスシェービング',
       'nose-wax': '鼻毛ワックス脱毛',
-      'bleach': '眉毛ブリーチ（脱色）'
+      bleach: '眉毛ブリーチ（脱色）',
     }
     return optionNames[option] || option
   }
@@ -258,11 +290,11 @@ BEE ART ENA
     if (!maintenanceOptions || maintenanceOptions.length === 0) {
       return ''
     }
-    
+
     const optionsList = maintenanceOptions
-      .map(option => `  ・${this.getMaintenanceOptionName(option)}`)
+      .map((option) => `  ・${this.getMaintenanceOptionName(option)}`)
       .join('\n')
-    
+
     return `■ メンテナンスオプション：\n${optionsList}\n`
   }
 
@@ -273,20 +305,20 @@ BEE ART ENA
     const isMonitor = reservation.isMonitor
     const pointsUsed = reservation.pointsUsed || 0
     const finalPrice = reservation.finalPrice || totalPrice
-    
+
     let priceText = `■ 料金：${this.formatPrice(basePrice)}円${isMonitor ? '（モニター価格）' : ''}\n`
-    
+
     if (maintenancePrice > 0) {
       priceText += `■ メンテナンス料金：${this.formatPrice(maintenancePrice)}円\n`
     }
-    
+
     if (pointsUsed > 0) {
       priceText += `■ ポイント利用：${pointsUsed}ポイント\n`
       priceText += `■ お支払い金額：${this.formatPrice(finalPrice - pointsUsed)}円\n`
     } else {
       priceText += `■ 合計金額：${this.formatPrice(totalPrice)}円\n`
     }
-    
+
     return priceText
   }
 }

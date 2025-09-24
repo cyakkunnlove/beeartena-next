@@ -1,6 +1,7 @@
 import { pointService } from '@/lib/firebase/points'
 import { userService } from '@/lib/firebase/users'
 import { mockPointService, mockUserService } from '@/lib/mock/mockFirebase'
+import { logger } from '@/lib/utils/logger'
 
 const BIRTHDAY_POINTS = 1000
 
@@ -34,7 +35,9 @@ class BirthdayPointsService {
         })
 
         if (!response.ok) {
-          console.error('Failed to check birthday points')
+          logger.warn('Birthday points API responded with non-OK status', {
+            status: response.status,
+          })
           return false
         }
 
@@ -99,7 +102,7 @@ class BirthdayPointsService {
 
       return true
     } catch (error) {
-      console.error('Birthday points grant error:', error)
+      logger.error('Birthday points grant error', { error })
       return false
     }
   }
@@ -140,7 +143,7 @@ class BirthdayPointsService {
 
       return results
     } catch (error) {
-      console.error('Birthday batch process error:', error)
+      logger.error('Birthday batch process error', { error })
       throw error
     }
   }
@@ -164,7 +167,7 @@ class BirthdayPointsService {
 
       return testDate.getMonth() + 1 === birthdayMonth && testDate.getDate() === birthdayDay
     } catch (error) {
-      console.error('Birthday check error:', error)
+      logger.warn('Birthday check error', { error })
       return false
     }
   }
