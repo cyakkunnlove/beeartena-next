@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebase/admin'
+import admin, { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { cookies } from 'next/headers'
 
 const BIRTHDAY_POINTS = 1000
@@ -20,7 +20,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 })
     }
 
-    const db = admin.firestore()
+    if (!isAdminInitialized) {
+      return NextResponse.json({ error: 'Firebase admin is not configured' }, { status: 503 })
+    }
+
+    const db = getAdminDb()
 
     // ユーザー情報を取得
     const userDoc = await db.collection('users').doc(userId).get()

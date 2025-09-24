@@ -46,10 +46,10 @@ if (!isRedisDisabled) {
   }
 }
 
-export interface Job<T = unknown> {
+export interface Job {
   id: string
   type: string
-  data: T
+  data: unknown
   status: 'pending' | 'processing' | 'completed' | 'failed'
   attempts: number
   maxAttempts: number
@@ -71,7 +71,7 @@ export interface JobOptions {
   }
 }
 
-export type JobHandler<T = unknown> = (job: Job<T>) => Promise<unknown>
+export type JobHandler = (job: Job) => Promise<unknown>
 
 class Queue {
   private handlers = new Map<string, JobHandler>()
@@ -80,12 +80,12 @@ class Queue {
   private activeJobs = new Set<string>()
   private memoryQueue: Job[] = []
 
-  register<T = unknown>(type: string, handler: JobHandler<T>): void {
+  register(type: string, handler: JobHandler): void {
     this.handlers.set(type, handler)
   }
 
-  async add<T = unknown>(type: string, data: T, options: JobOptions = {}): Promise<Job<T>> {
-    const job: Job<T> = {
+  async add(type: string, data: unknown, options: JobOptions = {}): Promise<Job> {
+    const job: Job = {
       id: uuidv4(),
       type,
       data,
@@ -122,10 +122,10 @@ class Queue {
     return job
   }
 
-  async getJob<T = unknown>(jobId: string): Promise<Job<T> | null> {
+  async getJob(jobId: string): Promise<Job | null> {
     if (redis) {
       const data = await redis.get(QueueKeys.job(jobId))
-      return data ? JSON.parse(data) : null
+      return data ? (JSON.parse(data) as Job) : null
     }
 
     return this.memoryQueue.find((job) => job.id === jobId) || null

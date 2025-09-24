@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin from '@/lib/firebase/admin'
+import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 
 export async function GET(request: NextRequest) {
   try {
-    const db = admin.firestore()
+    if (!isAdminInitialized) {
+      return NextResponse.json({ error: 'Firebase admin is not configured' }, { status: 503 })
+    }
+
+    const db = getAdminDb()
 
     // 設定を取得
     const settingsDoc = await db.collection('settings').doc('reservation').get()
