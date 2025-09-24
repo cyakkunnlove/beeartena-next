@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
+import { getAdminDb } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 
 export async function GET(request: NextRequest) {
@@ -18,26 +18,26 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ timeSlots: cached, cached: true })
     }
 
-    if (!isAdminInitialized) {
-      return NextResponse.json({ error: 'Firebase admin is not configured', timeSlots: [] }, { status: 503 })
-    }
-
     const db = getAdminDb()
 
-    // 指定日の予約を取得
-    const reservationsSnapshot = await db.collection('reservations')
-      .where('date', '==', date)
-      .where('status', 'in', ['pending', 'confirmed'])
-      .get()
-
-    // 予約済みの時間を収集
     const reservedTimes = new Set<string>()
-    reservationsSnapshot.docs.forEach(doc => {
-      const data = doc.data()
-      if (data.time) {
-        reservedTimes.add(data.time)
-      }
-    })
+
+    if (db) {
+      const reservationsSnapshot = await db
+        .collection('reservations')
+        .where('date', '==', date)
+        .where('status', 'in', ['pending', 'confirmed'])
+        .get()
+
+      reservationsSnapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        if (data.time) {
+          reservedTimes.add(data.time)
+        }
+      })
+    } else {
+      console.warn('Firebase admin not configured; returning default time slots for by-date endpoint.')
+    }
 
     // 曜日に応じて営業時間枠を設定
     const now = new Date()

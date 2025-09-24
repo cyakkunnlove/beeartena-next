@@ -12,6 +12,9 @@ export async function POST(request: NextRequest) {
     }
 
     const db = getAdminDb()
+    if (!db) {
+      return NextResponse.json({ error: 'Firebase admin is not configured' }, { status: 503 })
+    }
 
     // フロントエンドから送信されたcustomerEmailを使用
     const customerEmail = data.customerEmail
