@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import admin, { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
+import admin, { getAdminDb } from '@/lib/firebase/admin'
 import { errorResponse, successResponse, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 
 export async function OPTIONS(_request: NextRequest) {
@@ -14,11 +14,16 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    if (!isAdminInitialized) {
-      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
+    const db = getAdminDb()
+
+    if (!db) {
+      return setCorsHeaders(successResponse({
+        id: authUser.userId,
+        role: authUser.role,
+        warning: 'Firebase admin is not configured; returning token-based profile only.',
+      }))
     }
 
-    const db = getAdminDb()
     const userDoc = await db.collection('users').doc(authUser.userId).get()
 
     if (!userDoc.exists) {
@@ -47,10 +52,6 @@ export async function PUT(request: NextRequest) {
   }
 
   try {
-    if (!isAdminInitialized) {
-      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
-    }
-
     const body = await request.json()
     const {
       name,
@@ -60,12 +61,16 @@ export async function PUT(request: NextRequest) {
       postalCode,
       prefecture,
       city,
-      address
+      address,
     } = body
 
     const db = getAdminDb()
-    const updateData: any = {
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    if (!db) {
+      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
+    }
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }
 
     // 各フィールドが提供されている場合のみ更新

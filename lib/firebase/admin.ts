@@ -84,16 +84,20 @@ export function ensureAdminApp(): admin.app.App {
   return adminApp
 }
 
-export function getAdminAuth() {
-  return ensureAdminApp().auth()
+export function getAdminApp(): admin.app.App | null {
+  return adminApp
 }
 
-export function getAdminDb() {
-  return ensureAdminApp().firestore()
+export function getAdminAuth(): admin.auth.Auth | null {
+  return adminApp ? adminApp.auth() : null
 }
 
-export function getAdminStorage() {
-  return ensureAdminApp().storage()
+export function getAdminDb(): admin.firestore.Firestore | null {
+  return adminApp ? adminApp.firestore() : null
+}
+
+export function getAdminStorage(): admin.storage.Storage | null {
+  return adminApp ? adminApp.storage() : null
 }
 
 export default admin

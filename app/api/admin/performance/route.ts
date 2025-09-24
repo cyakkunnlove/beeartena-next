@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { verifyAuth } from '@/lib/api/middleware'
-import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
+import { getAdminDb } from '@/lib/firebase/admin'
 
 interface PerformanceMetrics {
   endpoint: string
@@ -22,12 +22,24 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  if (!isAdminInitialized) {
-    return NextResponse.json({ error: 'Firebase admin is not configured' }, { status: 503 })
-  }
-
   try {
     const db = getAdminDb()
+
+    if (!db) {
+      return NextResponse.json({
+        performanceMetrics: [],
+        recommendations: [],
+        indexStatus: {
+          existing: [],
+          recommended: [],
+        },
+        summary: {
+          avgResponseTime: 0,
+          totalDataTransfer: '0KB',
+        },
+        warning: 'Firebase admin is not configured; returning empty metrics.',
+      })
+    }
     const now = new Date()
     const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
@@ -131,18 +143,29 @@ export async function GET(request: NextRequest) {
       )
     }
 
+    const responseTimeEntries = results.filter((r) => 'responseTime' in r && r.responseTime) as Array<{
+      responseTime: number
+    }>
+    const totalDataEntries = results.filter((r) => 'totalDataSize' in r && r.totalDataSize) as Array<{
+      totalDataSize: string
+    }>
+
+    const avgResponseTime = responseTimeEntries.length
+      ? responseTimeEntries.reduce((acc, r) => acc + (r.responseTime || 0), 0) / responseTimeEntries.length
+      : 0
+
+    const totalDataTransferValue = totalDataEntries.length
+      ? totalDataEntries.reduce((acc, r) => acc + parseFloat(r.totalDataSize || '0'), 0)
+      : 0
+
     return NextResponse.json({
       performanceMetrics: results,
       recommendations,
       indexStatus,
       summary: {
-        avgResponseTime: results
-          .filter(r => 'responseTime' in r && r.responseTime)
-          .reduce((acc, r) => acc + (r.responseTime || 0), 0) / results.length,
-        totalDataTransfer: results
-          .filter(r => 'totalDataSize' in r && r.totalDataSize)
-          .reduce((acc, r) => acc + parseFloat(r.totalDataSize || '0'), 0).toFixed(2) + 'KB'
-      }
+        avgResponseTime,
+        totalDataTransfer: `${totalDataTransferValue.toFixed(2)}KB`,
+      },
     })
   } catch (error: any) {
     console.error('Performance monitoring error:', error)

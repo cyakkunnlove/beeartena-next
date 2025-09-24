@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
+import { getAdminDb } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
 
@@ -36,10 +36,6 @@ export async function GET(request: NextRequest) {
       console.log('Cache miss or timeout, fetching from DB')
     }
 
-    if (!isAdminInitialized) {
-      return NextResponse.json({ error: 'Firebase admin is not configured', availability: {} }, { status: 503 })
-    }
-
     const db = getAdminDb()
 
     // 月の開始日と終了日を計算
@@ -49,27 +45,33 @@ export async function GET(request: NextRequest) {
     const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`
     const endDateStr = `${year}-${String(month).padStart(2, '0')}-${endDate.getDate()}`
 
-    // 指定月の予約を取得（必要なフィールドのみ）
-    const reservationsSnapshot = await db.collection('reservations')
-      .where('date', '>=', startDateStr)
-      .where('date', '<=', endDateStr)
-      .where('status', 'in', ['pending', 'confirmed'])
-      .select('date', 'time') // パフォーマンス向上: 必要なフィールドのみ取得
-      .get()
-
-    // 予約されている日付と時間帯を集計
     const reservedSlots = new Map<string, Set<string>>()
+    let totalReservations = 0
 
-    reservationsSnapshot.docs.forEach(doc => {
-      const data = doc.data()
-      const date = data.date
-      const time = data.time
+    if (db) {
+      const reservationsSnapshot = await db
+        .collection('reservations')
+        .where('date', '>=', startDateStr)
+        .where('date', '<=', endDateStr)
+        .where('status', 'in', ['pending', 'confirmed'])
+        .select('date', 'time')
+        .get()
 
-      if (!reservedSlots.has(date)) {
-        reservedSlots.set(date, new Set())
-      }
-      reservedSlots.get(date)!.add(time)
-    })
+      reservationsSnapshot.docs.forEach((doc) => {
+        const data = doc.data()
+        const date = data.date
+        const time = data.time
+
+        if (!reservedSlots.has(date)) {
+          reservedSlots.set(date, new Set())
+        }
+        reservedSlots.get(date)!.add(time)
+      })
+
+      totalReservations = reservationsSnapshot.docs.length
+    } else {
+      console.warn('Firebase admin not configured; using empty reserved slots for availability response.')
+    }
 
     // 各日の利用可能状況を判定
     const availability: { [key: string]: boolean } = {}
@@ -77,12 +79,12 @@ export async function GET(request: NextRequest) {
 
     console.log(`Calculating availability for ${year}-${month}:`, {
       daysInMonth,
-      totalReservations: reservationsSnapshot.docs.length,
+      totalReservations,
       reservedSlots: Array.from(reservedSlots.entries()).map(([date, times]) => ({
         date,
         count: times.size,
-        times: Array.from(times)
-      }))
+        times: Array.from(times),
+      })),
     })
 
     for (let day = 1; day <= daysInMonth; day++) {

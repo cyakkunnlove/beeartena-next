@@ -8,7 +8,7 @@ import {
   verifyAuth,
 } from '@/lib/api/middleware'
 import { reservationService } from '@/lib/reservationService'
-import { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
+import { getAdminDb } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
 
@@ -61,15 +61,20 @@ export async function GET(request: NextRequest) {
       console.log('Cache miss or timeout, fetching from DB')
     }
 
-    if (!isAdminInitialized) {
+    const db = getAdminDb()
+    if (!db) {
       return setCorsHeaders(NextResponse.json({
-        success: false,
-        error: 'Firebase admin is not configured',
+        success: true,
         reservations: [],
-      }, { status: 503 }))
+        hasMore: false,
+        limit,
+        offset,
+        cached: false,
+        warning: 'Firebase admin is not configured; returning empty reservation list.',
+        timestamp: new Date().toISOString(),
+      }))
     }
 
-    const db = getAdminDb()
     let reservations = []
     let query
 
