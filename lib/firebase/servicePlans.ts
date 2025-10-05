@@ -11,7 +11,9 @@ import {
   orderBy,
   Timestamp,
 } from 'firebase/firestore'
+
 import { db } from './config'
+
 import type { ServicePlan } from '@/lib/types'
 
 const COLLECTION_NAME = 'service-plans'
@@ -60,11 +62,12 @@ export const defaultServicePlans: Omit<ServicePlan, 'createdAt' | 'updatedAt'>[]
     displayOrder: 3,
   },
   {
-    id: 'plan-wax',
+    id: 'plan-brow-wax',
     type: 'wax',
     name: '眉毛ワックス脱毛',
     description: 'プロの技術で眉周りを整えるワックス脱毛メニュー',
     price: 3000,
+    monitorPrice: 2500,
     duration: 30,
     isPublished: true,
     effectiveFrom: new Date().toISOString(),
