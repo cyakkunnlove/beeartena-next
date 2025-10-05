@@ -111,6 +111,9 @@ jspm_packages/
 .env.vercel.*
 .env.local
 .env.*.local
+.env.prod.*
+.env*.check
+.env*.tmp
 
 # parcel-bundler cache (https://parceljs.org/)
 .cache
