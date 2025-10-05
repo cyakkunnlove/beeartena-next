@@ -8,7 +8,7 @@ export default function PlanSection() {
           {/* 3ヶ月プラン */}
           <div className="bg-white rounded-2xl shadow-xl p-8 text-center relative">
             <div className="absolute top-0 right-0 bg-red-500 text-white px-4 py-1 rounded-bl-lg rounded-tr-lg text-sm font-semibold">
-              人気No.1
+              おすすめ
             </div>
             <h3 className="text-2xl font-bold mb-4">3ヶ月以内リタッチ</h3>
             <div className="text-4xl font-bold text-primary mb-4">¥11,000</div>

@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, Suspense } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
@@ -10,7 +10,7 @@ import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 function LoginContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const { login } = useAuth()
+  const { login, user, loading } = useAuth()
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -18,9 +18,19 @@ function LoginContent() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
+  useEffect(() => {
+    if (!loading && user) {
+      if (user.role === 'admin') {
+        router.replace('/admin')
+      } else {
+        router.replace('/reservation')
+      }
+    }
+  }, [user, loading, router])
+
   // 予約から来た場合のリダイレクト先を決定
   const fromReservation = searchParams.get('reservation') === 'true'
-  const redirectTo = fromReservation ? '/reservation?from=login' : '/mypage'
+  const redirectTo = fromReservation ? '/reservation?from=login' : '/reservation'
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({

@@ -429,12 +429,11 @@ export default function ServicePlansAdminPage() {
       description: values.description.trim(),
       type: values.type,
       price: Number.isFinite(price) ? price : 0,
-      monitorPrice: monitorPrice && Number.isFinite(monitorPrice) ? monitorPrice : undefined,
-      otherShopPrice:
-        otherShopPrice && Number.isFinite(otherShopPrice) ? otherShopPrice : undefined,
+      monitorPrice: Number.isFinite(monitorPrice || NaN) ? monitorPrice : undefined,
+      otherShopPrice: Number.isFinite(otherShopPrice || NaN) ? otherShopPrice : undefined,
       duration: Number.isFinite(duration) ? duration : 0,
-      image: values.image.trim() || undefined,
-      badge: values.badge.trim() || undefined,
+      image: values.image.trim() || null,
+      badge: values.badge.trim() || null,
       isFeatured: values.isFeatured,
       isPublished: values.isPublished,
       effectiveFrom: toIsoString(values.effectiveFrom) || new Date().toISOString(),
@@ -442,14 +441,18 @@ export default function ServicePlansAdminPage() {
       displayOrder: Number.isFinite(displayOrder) ? displayOrder : plans.length + 1,
     }
 
+    const sanitizedPayload = Object.fromEntries(
+      Object.entries(payload).filter(([, value]) => value !== undefined),
+    ) as unknown as Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'>
+
     try {
       setFormSubmitting(true)
       if (editingPlan) {
-        await updateServicePlan(editingPlan.id, payload)
+        await updateServicePlan(editingPlan.id, sanitizedPayload)
         await fetchPlans()
         showFeedback('success', 'プランを更新しました')
       } else {
-        await createServicePlan(payload)
+        await createServicePlan(sanitizedPayload)
         await fetchPlans()
         showFeedback('success', 'プランを追加しました')
       }

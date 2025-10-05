@@ -13,7 +13,7 @@ export default function TermsPage() {
             
             <div className="prose prose-gray max-w-none">
               <p className="mb-6">
-                この利用規約（以下、「本規約」といいます。）は、BEE ART ENA（以下、「当サロン」といいます。）が提供するアートメイクサービス（以下、「本サービス」といいます。）の利用条件を定めるものです。
+                この利用規約（以下、「本規約」といいます。）は、BEE ART ENA（以下、「当サロン」といいます。）が提供するタトゥーメイク施術および関連サービス（以下、「本サービス」といいます。）の利用条件を定めるものです。
                 会員登録をされた方（以下、「会員」といいます。）には、本規約に同意いただいたものとみなします。
               </p>
 
@@ -40,7 +40,7 @@ export default function TermsPage() {
                 当サロンは、会員に対し、以下のサービスを提供します。
               </p>
               <ul className="list-disc pl-6 mb-4">
-                <li className="mb-2">アートメイク施術サービス</li>
+                <li className="mb-2">タトゥーメイク（美容目的の色素施術）サービス</li>
                 <li className="mb-2">オンライン予約サービス</li>
                 <li className="mb-2">ポイントサービス</li>
                 <li className="mb-2">その他当サロンが定めるサービス</li>

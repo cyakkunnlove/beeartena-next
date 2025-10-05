@@ -134,9 +134,9 @@ export default function MaintenancePage() {
           {/* CTA */}
           <div className="mt-12">
             <div className="bg-gray-50 rounded-xl p-8 space-y-6">
-              {/* アートメイクと一緒に予約 */}
+              {/* タトゥーメイクと一緒に予約 */}
               <div className="text-center">
-                <h4 className="font-semibold text-lg mb-3">アートメイクと一緒にご予約の場合</h4>
+                <h4 className="font-semibold text-lg mb-3">タトゥーメイクと一緒にご予約の場合</h4>
                 <Link href="/reservation">
                   <motion.button
                     whileHover={{ scale: 1.05 }}

@@ -36,6 +36,12 @@ const pageTransition = {
 export default function PageTransition({ children }: PageTransitionProps) {
   const pathname = usePathname()
 
+  const isAdminPage = pathname?.startsWith('/admin')
+
+  if (isAdminPage) {
+    return <div style={{ width: '100%' }}>{children}</div>
+  }
+
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
