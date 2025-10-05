@@ -20,8 +20,8 @@ export const isFirebaseConfigured = () => {
   return apiKey && apiKey !== 'test-api-key' && apiKey !== ''
 }
 
-// デバッグ用
-if (typeof window !== 'undefined') {
+// デバッグ用（開発環境のみ）
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const rawApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
 
   console.log('Firebase Configuration Status:', {
