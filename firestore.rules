@@ -6,38 +6,48 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    function isAdmin() {
-      return isAuthenticated() && 
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Admin check - uses resource.data to avoid circular reference
+    function isAdminUser() {
+      return isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Users collection
+    match /users/{userId} {
+      // Users can always read their own document (needed for login)
+      // Admins can read any user document
+      allow read: if isAuthenticated() && isOwner(userId);
+      allow read: if isAuthenticated() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      allow create: if isAuthenticated() && isOwner(userId);
+      allow update: if isAuthenticated() && (isOwner(userId) ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'));
+      allow delete: if isAuthenticated() &&
         exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
     }
     
-    function isOwner(userId) {
-      return isAuthenticated() && request.auth.uid == userId;
-    }
-    
-    // Users collection
-    match /users/{userId} {
-      allow read: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow create: if isAuthenticated() && isOwner(userId);
-      allow update: if isAuthenticated() && (isOwner(userId) || isAdmin());
-      allow delete: if isAdmin();
-    }
-    
     // Reservations collection
     match /reservations/{reservationId} {
-      allow read: if isAuthenticated() && 
-        (resource.data.customerId == request.auth.uid || isAdmin());
+      allow read: if isAuthenticated() &&
+        (resource.data.customerId == request.auth.uid || isAdminUser());
       allow create: if isAuthenticated();
-      allow update: if isAuthenticated() && 
-        (resource.data.customerId == request.auth.uid || isAdmin());
-      allow delete: if isAdmin();
+      allow update: if isAuthenticated() &&
+        (resource.data.customerId == request.auth.uid || isAdminUser());
+      allow delete: if isAdminUser();
     }
     
     // Points collection
     match /points/{pointId} {
       allow read: if isAuthenticated() &&
-        (resource.data.userId == request.auth.uid || isAdmin());
+        (resource.data.userId == request.auth.uid || isAdminUser());
       allow create: if false; // サーバーサイドのみでポイント追加
       allow update: if false; // ポイントは編集不可
       allow delete: if false; // ポイントは削除不可
@@ -45,28 +55,28 @@ service cloud.firestore {
     
     // Inquiries collection
     match /inquiries/{inquiryId} {
-      allow read: if isAdmin();
+      allow read: if isAdminUser();
       allow create: if true; // 誰でも問い合わせ可能
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+      allow update: if isAdminUser();
+      allow delete: if isAdminUser();
     }
-    
+
     // Settings collection
     match /settings/{settingId} {
       allow read: if true; // 誰でも設定を読み取り可能
-      allow write: if isAdmin();
+      allow write: if isAdminUser();
     }
 
     // Service Plans collection
     match /service-plans/{planId} {
       allow read: if true; // 誰でもサービスプランを読み取り可能
-      allow write: if isAdmin();
+      allow write: if isAdminUser();
     }
 
     // Announcements collection
     match /announcements/{announcementId} {
       allow read: if true; // 誰でもお知らせを読み取り可能
-      allow write: if isAdmin();
+      allow write: if isAdminUser();
     }
   }
 }
