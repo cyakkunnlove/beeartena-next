@@ -6,7 +6,7 @@ const STORAGE_KEY = 'pending_reservation'
 
 export interface PendingReservation {
   serviceId: string
-  serviceType?: '2D' | '3D' | '4D'
+  serviceType?: '2D' | '3D' | '4D' | 'wax' | string
   serviceName: string
   date: string
   time: string
@@ -20,6 +20,7 @@ export interface PendingReservation {
   }
   step: number
   pointsToUse?: number
+  isMonitor?: boolean
   isReadyToSubmit?: boolean // 予約確定ボタンを押した状態かどうか
   timestamp: number
 }

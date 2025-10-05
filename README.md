@@ -58,7 +58,24 @@ RESEND_API_KEY=your_resend_api_key
 ADMIN_EMAIL=admin@example.com  # 複数の場合: admin1@example.com,admin2@example.com
 ```
 
-4. **開発サーバーの起動**
+4. **Firestore 初期データの投入**
+
+Firebase Admin SDK の環境変数を設定後、以下のコマンドで初期データを投入：
+
+```bash
+# サービスプランの投入
+npm run firebase:seed:plans
+
+# お知らせの投入
+npm run firebase:seed:announcements
+
+# 全データを一括投入
+npm run firebase:seed:all
+```
+
+詳細は [docs/FIRESTORE_SEEDING.md](docs/FIRESTORE_SEEDING.md) を参照してください。
+
+5. **開発サーバーの起動**
 ```bash
 npm run dev
 ```

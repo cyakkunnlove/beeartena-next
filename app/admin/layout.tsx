@@ -30,6 +30,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: '誕生日管理', href: '/admin/birthday', icon: '🎂' },
     { name: 'お問い合わせ', href: '/admin/inquiries', icon: '💬', badge: pendingInquiries },
     { name: '売上・統計', href: '/admin/analytics', icon: '📈' },
+    { name: 'サービスプラン', href: '/admin/service-plans', icon: '💼' },
+    { name: 'お知らせ管理', href: '/admin/announcements', icon: '📰' },
     { name: '設定', href: '/admin/settings', icon: '⚙️' },
   ]
 

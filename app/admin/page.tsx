@@ -203,6 +203,18 @@ export default function AdminDashboard() {
       icon: '⚙️',
     },
     {
+      title: 'サービスプラン',
+      description: 'メニューと価格を編集',
+      href: '/admin/service-plans',
+      icon: '💼',
+    },
+    {
+      title: 'お知らせ管理',
+      description: 'トップページのお知らせを更新',
+      href: '/admin/announcements',
+      icon: '📰',
+    },
+    {
       title: '売上分析',
       description: '売上・予約データ分析',
       href: '/admin/analytics',
