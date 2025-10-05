@@ -86,7 +86,12 @@ vercel env add FIREBASE_ADMIN_PRIVATE_KEY preview
 # 環境変数が設定されているか確認
 node -e "console.log(process.env.FIREBASE_ADMIN_PROJECT_ID)"
 node -e "console.log(process.env.FIREBASE_ADMIN_CLIENT_EMAIL)"
+
+# API キーに改行が含まれていないか確認（末尾の文字コードが10なら改行あり）
+node -e "const key = process.env.NEXT_PUBLIC_FIREBASE_API_KEY; console.log('Last char code:', key.charCodeAt(key.length-1))"
 ```
+
+**重要**: `NEXT_PUBLIC_FIREBASE_API_KEY` などの環境変数に**末尾の改行が含まれていないこと**を確認してください。改行があると Firebase 初期化エラーの原因になります。
 
 ## トラブルシューティング
 
@@ -117,6 +122,16 @@ node -e "console.log(process.env.FIREBASE_ADMIN_CLIENT_EMAIL)"
 # JSON から秘密鍵を抽出してエスケープ
 cat service-account.json | jq -r '.private_key' | awk '{printf "%s\\n", $0}'
 ```
+
+### エラー: "FIREBASE_API_KEY に改行が含まれている"
+
+原因: `.env.local` や Vercel 環境変数の値に末尾の改行が混入しています。
+
+解決策:
+1. `.env.local` を開き、各環境変数の値の**末尾に改行がないこと**を確認
+2. Vercel ダッシュボードで環境変数を再設定（コピー&ペースト時に改行が入らないよう注意）
+3. 確認コマンド: `node -e "console.log('Last char code:', process.env.NEXT_PUBLIC_FIREBASE_API_KEY.charCodeAt(process.env.NEXT_PUBLIC_FIREBASE_API_KEY.length-1))"`
+   - 結果が `10` なら改行あり → 削除が必要
 
 ## セキュリティのベストプラクティス
 
