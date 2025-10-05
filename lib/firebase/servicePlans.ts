@@ -152,7 +152,14 @@ export async function createServicePlan(
     createdAt: now,
     updatedAt: now,
   }
-  await setDoc(docRef, newPlan)
+  try {
+    await setDoc(docRef, newPlan)
+  } catch (error: any) {
+    console.error('Failed to create service plan:', error)
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+    throw error
+  }
   return {
     ...newPlan,
     id: docRef.id,
@@ -167,10 +174,17 @@ export async function updateServicePlan(
   updates: Partial<Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<void> {
   const docRef = doc(db, COLLECTION_NAME, id)
-  await updateDoc(docRef, {
-    ...updates,
-    updatedAt: Timestamp.now(),
-  })
+  try {
+    await updateDoc(docRef, {
+      ...updates,
+      updatedAt: Timestamp.now(),
+    })
+  } catch (error: any) {
+    console.error('Failed to update service plan:', error)
+    console.error('Error code:', error.code)
+    console.error('Error message:', error.message)
+    throw error
+  }
 }
 
 // サービスプラン削除
