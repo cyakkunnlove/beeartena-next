@@ -1,11 +1,11 @@
-const CACHE_NAME = 'beeartena-v1';
+const CACHE_NAME = 'beeartena-v2';
 const OFFLINE_URL = '/offline.html';
 const urlsToCache = [
   '/',
   OFFLINE_URL,
   '/manifest.json',
   '/images/topimageafter.png',
-  '/images/logo.png',
+  '/icons/icon-192x192.png',
 ];
 
 // Install event
