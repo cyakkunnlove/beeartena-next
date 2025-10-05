@@ -52,18 +52,32 @@ FIREBASE_ADMIN_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE K
 
 #### 本番環境（Vercel）
 
-Vercel ダッシュボードで環境変数を設定:
+**重要**: Vercel ダッシュボードで環境変数を設定する際は、**Production, Preview, Development すべての環境**に設定してください。
 
-```bash
-vercel env add FIREBASE_ADMIN_PROJECT_ID
-vercel env add FIREBASE_ADMIN_CLIENT_EMAIL
-vercel env add FIREBASE_ADMIN_PRIVATE_KEY
+1. [Vercel ダッシュボード](https://vercel.com/dashboard) にアクセス
+2. プロジェクトを選択
+3. **Settings** > **Environment Variables**
+4. 以下の環境変数を追加（各変数で Production, Preview, Development すべてにチェック）:
+
+```
+FIREBASE_ADMIN_PROJECT_ID = your-project-id
+FIREBASE_ADMIN_CLIENT_EMAIL = firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_ADMIN_PRIVATE_KEY = "-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
 ```
 
-または、Vercel CLI で一括設定:
+**注意**: `FIREBASE_ADMIN_PRIVATE_KEY` は必ず**ダブルクォートで囲んで**改行を `\n` でエスケープしてください。
+
+または、Vercel CLI で設定:
 
 ```bash
-npm run setup-vercel-env  # setup-vercel-env.sh スクリプトを使用
+vercel env add FIREBASE_ADMIN_PROJECT_ID production
+vercel env add FIREBASE_ADMIN_CLIENT_EMAIL production
+vercel env add FIREBASE_ADMIN_PRIVATE_KEY production
+
+# Preview と Development にも同様に追加
+vercel env add FIREBASE_ADMIN_PROJECT_ID preview
+vercel env add FIREBASE_ADMIN_CLIENT_EMAIL preview
+vercel env add FIREBASE_ADMIN_PRIVATE_KEY preview
 ```
 
 ### 3. 環境変数の検証

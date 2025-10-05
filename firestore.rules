@@ -56,5 +56,17 @@ service cloud.firestore {
       allow read: if true; // 誰でも設定を読み取り可能
       allow write: if isAdmin();
     }
+
+    // Service Plans collection
+    match /service-plans/{planId} {
+      allow read: if true; // 誰でもサービスプランを読み取り可能
+      allow write: if isAdmin();
+    }
+
+    // Announcements collection
+    match /announcements/{announcementId} {
+      allow read: if true; // 誰でもお知らせを読み取り可能
+      allow write: if isAdmin();
+    }
   }
 }
