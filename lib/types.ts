@@ -137,6 +137,41 @@ export interface Service {
   image: string
 }
 
+// Service Plan types (Firestore-managed)
+export interface ServicePlan {
+  id: string // e.g., 'plan-2d', 'plan-3d', 'plan-4d'
+  type: '2D' | '3D' | '4D' | 'wax' | string
+  name: string
+  description: string
+  price: number
+  monitorPrice?: number
+  otherShopPrice?: number
+  duration: number // in minutes
+  image?: string
+  badge?: string
+  isFeatured?: boolean
+  tags?: string[]
+  isPublished: boolean
+  effectiveFrom: string // ISO date string
+  effectiveUntil?: string // ISO date string
+  displayOrder: number
+  createdAt: Date | string
+  updatedAt: Date | string
+}
+
+// Announcement types
+export interface Announcement {
+  id: string
+  title: string
+  body: string
+  publishAt: string // ISO date string
+  expiresAt?: string // ISO date string
+  isPinned: boolean
+  priority: number // Higher number = higher priority
+  createdAt: Date | string
+  updatedAt: Date | string
+}
+
 // Statistics types
 export interface DashboardStats {
   totalCustomers: number

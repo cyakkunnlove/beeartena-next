@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState, useEffect, Suspense } from 'react'
+import { useEffect, useMemo, useState, Suspense } from 'react'
 
 import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
 import Calendar from '@/components/reservation/Calendar'
@@ -11,13 +11,17 @@ import ReservationForm from '@/components/reservation/ReservationForm'
 import ServiceSelection from '@/components/reservation/ServiceSelection'
 import TimeSlots from '@/components/reservation/TimeSlots'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { getServicePlans } from '@/lib/firebase/servicePlans'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
-import { ReservationFormData } from '@/lib/types'
+import type { ServicePlan } from '@/lib/types'
 
 function ReservationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { user } = useAuth()
+  const [servicePlans, setServicePlans] = useState<ServicePlan[]>([])
+  const [servicePlansLoading, setServicePlansLoading] = useState(true)
+  const [servicePlansError, setServicePlansError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
   const [selectedService, setSelectedService] = useState('')
   const [selectedDate, setSelectedDate] = useState('')
@@ -40,21 +44,22 @@ function ReservationContent() {
   })
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
 
-  const serviceData: {
-    [key: string]: {
-      name: string
-      price: number
-      monitorPrice?: number
-      otherShopPrice?: number
+  useEffect(() => {
+    const fetchServicePlans = async () => {
+      try {
+        const plans = await getServicePlans()
+        setServicePlans(plans)
+        setServicePlansError(null)
+      } catch (error) {
+        console.error('Failed to load service plans', error)
+        setServicePlansError('サービスプランの取得に失敗しました。ページを再読み込みしてください。')
+      } finally {
+        setServicePlansLoading(false)
+      }
     }
-  } = {
-    '2D': { name: '2Dパウダーブロウ', price: 22000, monitorPrice: 20000, otherShopPrice: 35000 },
-    '3D': { name: '3Dフェザーブロウ', price: 23000, monitorPrice: 20000, otherShopPrice: 35000 },
-    '4D': { name: '4Dパウダー&フェザー', price: 25000, monitorPrice: 22000, otherShopPrice: 40000 },
-    'wax': { name: '眉毛ワックス脱毛', price: 3000 },
-    'retouch3': { name: '3ヶ月以内リタッチ', price: 11000 },
-    'retouch6': { name: '半年以内リタッチ', price: 15000 },
-  }
+
+    fetchServicePlans()
+  }, [])
 
   // 会員登録から戻ってきた場合、保存した予約情報を復元
   useEffect(() => {
@@ -62,6 +67,7 @@ function ReservationContent() {
       const savedReservation = reservationStorage.get()
       if (savedReservation) {
         setSelectedService(savedReservation.serviceId)
+        setIsMonitorPrice(savedReservation.isMonitor ?? false)
         setSelectedDate(savedReservation.date)
         setSelectedTime(savedReservation.time)
         setSelectedMaintenanceOptions(savedReservation.maintenanceOptions || [])
@@ -84,6 +90,17 @@ function ReservationContent() {
     }
   }, [searchParams, user])
 
+  useEffect(() => {
+    if (servicePlansLoading) return
+    if (!selectedService) return
+    const exists = servicePlans.some((plan) => plan.id === selectedService)
+    if (!exists) {
+      setSelectedService('')
+      setIsMonitorPrice(false)
+      setStep(1)
+    }
+  }, [servicePlansLoading, servicePlans, selectedService])
+
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
     if (user && step === 5) {
@@ -97,9 +114,27 @@ function ReservationContent() {
     }
   }, [user, step])
 
-  const handleServiceSelect = (service: string, isMonitor?: boolean) => {
-    setSelectedService(service)
-    setIsMonitorPrice(isMonitor || false)
+  const selectedPlan = useMemo(
+    () => servicePlans.find((plan) => plan.id === selectedService),
+    [servicePlans, selectedService],
+  )
+
+  const baseServicePrice = useMemo(() => {
+    if (!selectedPlan) return 0
+    if (isMonitorPrice && selectedPlan.monitorPrice) {
+      return selectedPlan.monitorPrice
+    }
+    return selectedPlan.price
+  }, [selectedPlan, isMonitorPrice])
+
+  const handleServiceSelect = (serviceId: string, isMonitor?: boolean) => {
+    const plan = servicePlans.find((item) => item.id === serviceId)
+    if (!plan) {
+      alert('選択したプランが利用できなくなりました。別のプランをお選びください。')
+      return
+    }
+    setSelectedService(serviceId)
+    setIsMonitorPrice(!!isMonitor)
     setStep(2)
   }
 
@@ -115,10 +150,9 @@ function ReservationContent() {
 
   const handleMaintenanceSelect = (options: string[], totalPrice: number) => {
     setSelectedMaintenanceOptions(options)
-    // メンテナンス料金 = 合計価格 - ベースサービス価格
-    const service = serviceData[selectedService as keyof typeof serviceData]
-    const basePrice = isMonitorPrice && service.monitorPrice ? service.monitorPrice : service.price
-    setMaintenancePrice(totalPrice - basePrice)
+    const basePrice = baseServicePrice
+    const calculated = totalPrice - basePrice
+    setMaintenancePrice(calculated > 0 ? calculated : 0)
     setStep(5)
   }
 
@@ -131,54 +165,60 @@ function ReservationContent() {
     setFormData(data)
     setIsSubmitting(true)
 
+    if (!selectedPlan) {
+      alert('サービスプランが選択されていません。再度プランを選択してください。')
+      setIsSubmitting(false)
+      return
+    }
+
     // 未ログインユーザーの場合
     if (!user) {
-      // 予約情報を保存（現在のステップとポイント情報も含む）
       reservationStorage.save({
-        serviceId: selectedService,
-        serviceType: selectedService as '2D' | '3D' | '4D',
-        serviceName: serviceData[selectedService as keyof typeof serviceData].name,
+        serviceId: selectedPlan.id,
+        serviceType: selectedPlan.type,
+        serviceName: selectedPlan.name,
         date: selectedDate,
         time: selectedTime,
         maintenanceOptions: selectedMaintenanceOptions,
         maintenancePrice: maintenancePrice,
         formData: data,
-        step: 5, // 予約確認画面のステップ
-        pointsToUse: pointsToUse,
-        isReadyToSubmit: true, // 予約確定ボタンを押した状態
+        step: 5,
+        pointsToUse,
+        isMonitor: isMonitorPrice,
+        isReadyToSubmit: true,
       })
 
-      // 会員登録ページへリダイレクト
       router.push('/register?reservation=true')
+      setIsSubmitting(false)
       return
     }
 
     try {
-      const service = serviceData[selectedService as keyof typeof serviceData]
-      const basePrice = isMonitorPrice && service.monitorPrice ? service.monitorPrice : service.price
+      const basePrice = baseServicePrice
       const totalPrice = basePrice + maintenancePrice
       const finalPrice = totalPrice - pointsToUse
 
       const reservationData = {
-        serviceType: selectedService as '2D' | '3D' | '4D',
-        serviceName: service.name,
+        serviceType: selectedPlan.type,
+        serviceName: selectedPlan.name,
         price: basePrice,
         maintenanceOptions: selectedMaintenanceOptions,
-        maintenancePrice: maintenancePrice,
-        totalPrice: totalPrice,
+        maintenancePrice,
+        totalPrice,
         date: selectedDate,
         time: selectedTime,
         customerName: formData.name,
         customerPhone: formData.phone,
         customerEmail: formData.email,
-        notes: isMonitorPrice ? `${formData.notes}\n【モニター価格適用】写真撮影にご協力いただきます` : formData.notes,
+        notes: isMonitorPrice
+          ? `${formData.notes}\n【モニター価格適用】写真撮影にご協力いただきます`
+          : formData.notes,
         status: 'pending' as const,
         isMonitor: isMonitorPrice,
-        finalPrice: finalPrice,
+        finalPrice,
         pointsUsed: pointsToUse,
       }
 
-      // API経由で予約を作成（サーバーサイドでFirebase Admin SDKを使用）
       const response = await fetch('/api/reservations/create', {
         method: 'POST',
         headers: {
@@ -255,11 +295,25 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  <ServiceSelection 
-                    onSelect={handleServiceSelect} 
-                    selected={selectedService}
-                    isMonitorPrice={isMonitorPrice}
-                  />
+                  {servicePlansLoading ? (
+                    <div className="flex min-h-[200px] items-center justify-center text-sm text-gray-600">
+                      料金プランを読み込み中です…
+                    </div>
+                  ) : (
+                    <>
+                      {servicePlansError && (
+                        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                          {servicePlansError}
+                        </div>
+                      )}
+                      <ServiceSelection
+                        services={servicePlans}
+                        onSelect={handleServiceSelect}
+                        selected={selectedService}
+                        isMonitorPrice={isMonitorPrice}
+                      />
+                    </>
+                  )}
                 </motion.div>
               )}
 
@@ -298,13 +352,7 @@ function ReservationContent() {
                 >
                   <MaintenanceOptions
                     onNext={handleMaintenanceSelect}
-                    baseServicePrice={
-                      selectedService && serviceData[selectedService]
-                        ? isMonitorPrice && serviceData[selectedService]?.monitorPrice
-                          ? serviceData[selectedService].monitorPrice!
-                          : serviceData[selectedService].price
-                        : 0
-                    }
+                    baseServicePrice={baseServicePrice}
                     isMonitorPrice={isMonitorPrice}
                   />
                 </motion.div>
@@ -322,8 +370,8 @@ function ReservationContent() {
                     onChange={(field, value) => setFormData({ ...formData, [field]: value })}
                     onSubmit={() => handleFormSubmit(formData)}
                     isLoggedIn={!!user}
-                    servicePrice={selectedService && serviceData[selectedService] ? serviceData[selectedService].price : 0}
-                    monitorPrice={selectedService && serviceData[selectedService] ? serviceData[selectedService].monitorPrice : undefined}
+                    servicePrice={selectedPlan ? selectedPlan.price : 0}
+                    monitorPrice={selectedPlan?.monitorPrice}
                     maintenancePrice={maintenancePrice}
                     onPointsUsed={setPointsToUse}
                     onMonitorPriceSelected={setIsMonitorPrice}
