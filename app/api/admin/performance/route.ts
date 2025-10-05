@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+
 import { verifyAuth } from '@/lib/api/middleware'
 import { getAdminDb } from '@/lib/firebase/admin'
 
@@ -41,7 +42,6 @@ export async function GET(request: NextRequest) {
       })
     }
     const now = new Date()
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000)
 
     // Firestoreから実際のクエリ実行時間を分析
     const testQueries = [
@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { endpoint, responseTime, dataSize, documentCount } = await request.json()
+    const { endpoint, responseTime, dataSize } = await request.json()
 
     // メトリクスを記録（本番環境ではFirestoreやRedisに保存）
     const metrics = metricsCache.get(endpoint) || []

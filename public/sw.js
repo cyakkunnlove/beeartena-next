@@ -1,7 +1,8 @@
 const CACHE_NAME = 'beeartena-v1';
+const OFFLINE_URL = '/offline.html';
 const urlsToCache = [
   '/',
-  '/offline',
+  OFFLINE_URL,
   '/manifest.json',
   '/images/topimageafter.png',
   '/images/logo.png',
@@ -74,7 +75,7 @@ self.addEventListener('fetch', (event) => {
         }).catch(() => {
           // Return offline page for navigation requests
           if (event.request.mode === 'navigate') {
-            return caches.match('/offline');
+            return caches.match(OFFLINE_URL);
           }
         });
       })

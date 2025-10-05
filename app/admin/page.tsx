@@ -3,11 +3,8 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { collection, getDocs, query, where } from 'firebase/firestore'
-import { db } from '@/lib/firebase/config'
 
 import { useAuth } from '@/lib/auth/AuthContext'
-import { User, Reservation, Inquiry } from '@/lib/types'
 
 export default function AdminDashboard() {
   const router = useRouter()
@@ -32,81 +29,24 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
       try {
-        // Firebaseから実際のデータを取得
-        // 顧客数を取得
-        const usersSnapshot = await getDocs(collection(db, 'users'))
-        const customers = usersSnapshot.docs.filter(doc => {
-          const data = doc.data()
-          return data.role === 'customer' || !data.role // roleがない場合も顧客として扱う
+        const response = await fetch('/api/admin/stats', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          cache: 'no-store',
         })
 
-        // 予約を取得
-        const reservationsSnapshot = await getDocs(collection(db, 'reservations'))
-        const reservations = reservationsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Reservation[]
+        if (!response.ok) {
+          throw new Error(`Failed to fetch stats: ${response.status}`)
+        }
 
-        // お問い合わせを取得
-        const inquiriesSnapshot = await getDocs(collection(db, 'inquiries'))
-        const inquiries = inquiriesSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        })) as Inquiry[]
-
-        const today = new Date().toISOString().split('T')[0]
-        const currentMonth = new Date().getMonth()
-        const currentYear = new Date().getFullYear()
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-
-        const todayRes = reservations.filter(r => r.date === today)
-        const pendingRes = reservations.filter(r => r.status === 'pending')
-        const unreadInq = inquiries.filter(i => i.status === 'unread')
-
-        // アクティブ顧客（過去30日以内に予約があった顧客）
-        const activeCustomerIds = new Set(
-          reservations
-            .filter(r => new Date(r.date) >= thirtyDaysAgo)
-            .map(r => r.customerId)
-            .filter(id => id !== null)
-        )
-
-        const monthlyRev = reservations
-          .filter(r => {
-            const resDate = new Date(r.date)
-            return (
-              resDate.getMonth() === currentMonth &&
-              resDate.getFullYear() === currentYear &&
-              r.status !== 'cancelled'
-            )
-          })
-          .reduce((sum, r) => {
-            // totalPriceがある場合はそれを使用、なければpriceを使用
-            const amount = r.totalPrice || r.price || 0
-            // finalPriceがある場合（ポイント利用後）はそれを使用
-            const finalAmount = r.finalPrice || amount
-            return sum + finalAmount
-          }, 0)
-
-        const totalRev = reservations
-          .filter(r => r.status !== 'cancelled')
-          .reduce((sum, r) => {
-            const amount = r.totalPrice || r.price || 0
-            const finalAmount = r.finalPrice || amount
-            return sum + finalAmount
-          }, 0)
-
-        setStats({
-          totalCustomers: customers.length,
-          totalReservations: reservations.length,
-          pendingReservations: pendingRes.length,
-          totalRevenue: totalRev,
-          todayReservations: todayRes.length,
-          monthlyRevenue: monthlyRev,
-          unreadInquiries: unreadInq.length,
-          activeCustomers: activeCustomerIds.size,
-        })
+        const data = await response.json()
+        if (data?.stats) {
+          setStats(data.stats)
+        } else {
+          throw new Error('Invalid stats payload')
+        }
       } catch (error) {
         console.error('Error fetching admin stats:', error)
       } finally {

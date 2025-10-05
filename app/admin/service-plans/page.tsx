@@ -1,7 +1,7 @@
 'use client'
 
-import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import {
@@ -464,6 +464,15 @@ export default function ServicePlansAdminPage() {
   const sortedPlans = useMemo(() => {
     return [...plans].sort((a, b) => a.displayOrder - b.displayOrder)
   }, [plans])
+
+  const createDefaults = useMemo<Partial<FormValues>>(
+    () => ({
+      displayOrder: String(plans.length + 1),
+      effectiveFrom: toInputValue(new Date()),
+    }),
+    [plans.length],
+  )
+
   if (authLoading || loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -478,10 +487,7 @@ export default function ServicePlansAdminPage() {
   if (!user || user.role !== 'admin') {
     return null
   }
-  const createDefaults = useMemo<Partial<FormValues>>(() => ({
-    displayOrder: String(plans.length + 1),
-    effectiveFrom: toInputValue(new Date()),
-  }), [plans.length])
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8 space-y-6">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">

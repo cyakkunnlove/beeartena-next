@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-export async function GET(request: NextRequest) {
+export async function GET(_request: NextRequest) {
   // Only allow in development
   if (process.env.NODE_ENV !== 'development') {
     return NextResponse.json({ error: 'This endpoint is only available in development' }, { status: 403 })

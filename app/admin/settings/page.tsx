@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { useState, useEffect } from 'react'
+
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationService } from '@/lib/reservationService'
 import { ReservationSettings, BusinessHours } from '@/lib/types'
@@ -114,10 +115,11 @@ export default function AdminSettingsPage() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="slotDuration">
               予約枠の長さ（分）
             </label>
             <input
+              id="slotDuration"
               type="number"
               value={settings.slotDuration}
               onChange={(e) => setSettings({ ...settings, slotDuration: parseInt(e.target.value) || 120 })}
@@ -128,10 +130,11 @@ export default function AdminSettingsPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="maxCapacityPerSlot">
               1枠あたりの最大予約数
             </label>
             <input
+              id="maxCapacityPerSlot"
               type="number"
               value={settings.maxCapacityPerSlot}
               onChange={(e) => setSettings({ ...settings, maxCapacityPerSlot: parseInt(e.target.value) || 1 })}
@@ -148,11 +151,15 @@ export default function AdminSettingsPage() {
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              className="block text-sm font-medium text-gray-700 mb-1"
+              htmlFor="cancellationDeadlineHours"
+            >
               キャンセル可能期限（予約日の何時間前まで）
             </label>
             <div className="flex items-center gap-2">
               <input
+                id="cancellationDeadlineHours"
                 type="number"
                 value={settings.cancellationDeadlineHours || 24}
                 onChange={(e) => setSettings({ ...settings, cancellationDeadlineHours: parseInt(e.target.value) || 24 })}
@@ -168,10 +175,11 @@ export default function AdminSettingsPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="cancellationPolicy">
               キャンセルポリシー説明文
             </label>
             <textarea
+              id="cancellationPolicy"
               value={settings.cancellationPolicy || ''}
               onChange={(e) => setSettings({ ...settings, cancellationPolicy: e.target.value })}
               className="w-full border rounded-lg px-3 py-2"

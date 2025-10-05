@@ -22,20 +22,18 @@ export const isFirebaseConfigured = () => {
 
 // デバッグ用
 if (typeof window !== 'undefined') {
+  const rawApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
+
   console.log('Firebase Configuration Status:', {
     isConfigured: isFirebaseConfigured(),
-    hasApiKey: !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-    apiKeyPrefix: process.env.NEXT_PUBLIC_FIREBASE_API_KEY?.substring(0, 10) + '...',
+    hasApiKey: Boolean(rawApiKey),
+    apiKeyPrefix: rawApiKey ? `${rawApiKey.slice(0, 10)}...` : 'not-set',
   })
-  
-  // 環境変数の詳細デバッグ
-  const rawApiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY
-  if (rawApiKey) {
-    console.log('Raw API Key length:', rawApiKey.length)
-    console.log('Raw API Key last char code:', rawApiKey.charCodeAt(rawApiKey.length - 1))
-    console.log('Trimmed API Key:', firebaseConfig.apiKey)
-    console.log('Trimmed length:', firebaseConfig.apiKey.length)
-    console.log('Expected length:', 39) // AIzaSyBXYa8FeHyHQa0jHRfhZjJ4xLYUb4YvFFuA
+
+  if (rawApiKey && /\s$/.test(rawApiKey)) {
+    console.warn(
+      'Firebase API key に末尾の空白文字が含まれています。環境変数から改行・スペースを取り除いてください。',
+    )
   }
 }
 
