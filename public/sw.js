@@ -1,4 +1,4 @@
-const CACHE_NAME = 'beeartena-v2';
+const CACHE_NAME = 'beeartena-v3';
 const OFFLINE_URL = '/offline.html';
 const urlsToCache = [
   '/',
@@ -38,21 +38,29 @@ self.addEventListener('activate', (event) => {
 
 // Fetch event with network-first strategy for API calls
 self.addEventListener('fetch', (event) => {
-  if (event.request.url.includes('/api/')) {
+  const { request } = event;
+  const isHttpRequest = request.url.startsWith('http');
+
+  if (!isHttpRequest) {
+    return;
+  }
+
+  if (request.url.includes('/api/')) {
     // Network first for API calls
     event.respondWith(
-      fetch(event.request)
+      fetch(request)
         .then((response) => {
-          // Clone the response
-          const responseToCache = response.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
+          if (request.method === 'GET' && response && response.status === 200) {
+            const responseToCache = response.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(request, responseToCache).catch((error) => {
+                console.warn('SW cache.put failed for API GET', error);
+              });
+            });
+          }
           return response;
         })
-        .catch(() => {
-          return caches.match(event.request);
-        })
+        .catch(() => caches.match(request))
     );
   } else {
     // Cache first for static assets
@@ -63,13 +71,15 @@ self.addEventListener('fetch', (event) => {
         }
         return fetch(event.request).then((response) => {
           // Check if valid response
-          if (!response || response.status !== 200 || response.type !== 'basic') {
+          if (!response || response.status !== 200 || response.type !== 'basic' || event.request.method !== 'GET') {
             return response;
           }
           // Clone the response
           const responseToCache = response.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseToCache).catch((error) => {
+              console.warn('SW cache.put failed for asset', error);
+            });
           });
           return response;
         }).catch(() => {
