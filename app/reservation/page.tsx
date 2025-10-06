@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useState, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
 
 import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
 import Calendar from '@/components/reservation/Calendar'
@@ -10,9 +10,11 @@ import MaintenanceOptions from '@/components/reservation/MaintenanceOptions'
 import ReservationForm from '@/components/reservation/ReservationForm'
 import ServiceSelection from '@/components/reservation/ServiceSelection'
 import TimeSlots from '@/components/reservation/TimeSlots'
+import LoginModal from '@/components/auth/LoginModal'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { getServicePlans } from '@/lib/firebase/servicePlans'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
+import type { PendingReservation } from '@/lib/utils/reservationStorage'
 import type { ServicePlan } from '@/lib/types'
 
 function ReservationContent() {
@@ -43,6 +45,8 @@ function ReservationContent() {
     notes: '',
   })
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
+  const [showLoginModal, setShowLoginModal] = useState(false)
+  const [pendingAutoSubmit, setPendingAutoSubmit] = useState<PendingReservation | null>(null)
 
   useEffect(() => {
     const fetchServicePlans = async () => {
@@ -66,29 +70,14 @@ function ReservationContent() {
     if (searchParams.get('from') === 'register') {
       const savedReservation = reservationStorage.get()
       if (savedReservation) {
-        setSelectedService(savedReservation.serviceId)
-        setIsMonitorPrice(savedReservation.isMonitor ?? false)
-        setSelectedDate(savedReservation.date)
-        setSelectedTime(savedReservation.time)
-        setSelectedMaintenanceOptions(savedReservation.maintenanceOptions || [])
-        setMaintenancePrice(savedReservation.maintenancePrice || 0)
-        setFormData(savedReservation.formData)
-        setStep(savedReservation.step || 5) // 保存されたステップまたは確認画面へ
-        if (savedReservation.pointsToUse !== undefined) {
-          setPointsToUse(savedReservation.pointsToUse)
+        restoreReservation(savedReservation)
+        if (savedReservation.isReadyToSubmit) {
+          setPendingAutoSubmit(savedReservation)
         }
-
-        // 予約確定ボタンを押していた場合は、自動的に予約処理を実行
-        if (savedReservation.isReadyToSubmit && user) {
-          reservationStorage.clear() // 先にクリア
-          handleFormSubmit(savedReservation.formData)
-        } else {
-          // データ復元後はクリア
-          reservationStorage.clear()
-        }
+        reservationStorage.clear()
       }
     }
-  }, [searchParams, user])
+  }, [restoreReservation, searchParams])
 
   useEffect(() => {
     if (servicePlansLoading) return
@@ -100,6 +89,25 @@ function ReservationContent() {
       setStep(1)
     }
   }, [servicePlansLoading, servicePlans, selectedService])
+
+  useEffect(() => {
+    if (!user) return
+
+    const saved = reservationStorage.get()
+    if (saved) {
+      restoreReservation(saved)
+      if (saved.isReadyToSubmit) {
+        setPendingAutoSubmit(saved)
+      } else {
+        setPendingAutoSubmit(null)
+      }
+      reservationStorage.clear()
+    }
+
+    if (showLoginModal) {
+      setShowLoginModal(false)
+    }
+  }, [restoreReservation, showLoginModal, user])
 
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
@@ -114,6 +122,21 @@ function ReservationContent() {
     }
   }, [user, step])
 
+  const restoreReservation = useCallback(
+    (saved: PendingReservation) => {
+      setSelectedService(saved.serviceId)
+      setIsMonitorPrice(saved.isMonitor ?? false)
+      setSelectedDate(saved.date)
+      setSelectedTime(saved.time)
+      setSelectedMaintenanceOptions(saved.maintenanceOptions || [])
+      setMaintenancePrice(saved.maintenancePrice || 0)
+      setFormData(saved.formData)
+      setPointsToUse(saved.pointsToUse || 0)
+      setStep(saved.step || 5)
+    },
+    [],
+  )
+
   const selectedPlan = useMemo(
     () => servicePlans.find((plan) => plan.id === selectedService),
     [servicePlans, selectedService],
@@ -126,6 +149,15 @@ function ReservationContent() {
     }
     return selectedPlan.price
   }, [selectedPlan, isMonitorPrice])
+
+  useEffect(() => {
+    if (!pendingAutoSubmit) return
+    if (!user) return
+    if (!selectedPlan || selectedPlan.id !== pendingAutoSubmit.serviceId) return
+
+    void submitReservation(pendingAutoSubmit.formData)
+    setPendingAutoSubmit(null)
+  }, [pendingAutoSubmit, selectedPlan, submitReservation, user])
 
   const handleServiceSelect = (serviceId: string, isMonitor?: boolean) => {
     const plan = servicePlans.find((item) => item.id === serviceId)
@@ -156,23 +188,15 @@ function ReservationContent() {
     setStep(5)
   }
 
-  const handleFormSubmit = async (data: {
-    name: string
-    email: string
-    phone: string
-    notes: string
-  }) => {
-    setFormData(data)
-    setIsSubmitting(true)
-
-    if (!selectedPlan) {
-      alert('サービスプランが選択されていません。再度プランを選択してください。')
-      setIsSubmitting(false)
-      return
-    }
-
-    // 未ログインユーザーの場合
-    if (!user) {
+  const handleLoginModalRegister = useCallback(() => {
+    const saved = reservationStorage.get()
+    if (saved) {
+      const { timestamp: _timestamp, ...rest } = saved
+      reservationStorage.save({
+        ...rest,
+        isReadyToSubmit: true,
+      })
+    } else if (selectedPlan) {
       reservationStorage.save({
         serviceId: selectedPlan.id,
         serviceType: selectedPlan.type,
@@ -180,18 +204,39 @@ function ReservationContent() {
         date: selectedDate,
         time: selectedTime,
         maintenanceOptions: selectedMaintenanceOptions,
-        maintenancePrice: maintenancePrice,
-        formData: data,
-        step: 5,
+        maintenancePrice,
+        formData,
+        step,
         pointsToUse,
         isMonitor: isMonitorPrice,
         isReadyToSubmit: true,
       })
+    }
+  }, [
+    formData,
+    isMonitorPrice,
+    maintenancePrice,
+    pointsToUse,
+    selectedDate,
+    selectedMaintenanceOptions,
+    selectedPlan,
+    selectedTime,
+    step,
+  ])
 
-      router.push('/register?reservation=true')
-      setIsSubmitting(false)
+  const submitReservation = useCallback(
+    async (data: {
+      name: string
+      email: string
+      phone: string
+      notes: string
+    }) => {
+    if (!selectedPlan) {
+      alert('サービスプランが選択されていません。再度プランを選択してください。')
       return
     }
+
+    setIsSubmitting(true)
 
     try {
       const basePrice = baseServicePrice
@@ -207,12 +252,12 @@ function ReservationContent() {
         totalPrice,
         date: selectedDate,
         time: selectedTime,
-        customerName: formData.name,
-        customerPhone: formData.phone,
-        customerEmail: formData.email,
+        customerName: data.name,
+        customerPhone: data.phone,
+        customerEmail: data.email,
         notes: isMonitorPrice
-          ? `${formData.notes}\n【モニター価格適用】写真撮影にご協力いただきます`
-          : formData.notes,
+          ? `${data.notes}\n【モニター価格適用】写真撮影にご協力いただきます`
+          : data.notes,
         status: 'pending' as const,
         isMonitor: isMonitorPrice,
         finalPrice,
@@ -234,7 +279,7 @@ function ReservationContent() {
 
       const result = await response.json()
       console.log('Reservation created:', result.reservationId)
-
+      reservationStorage.clear()
       router.push('/reservation/complete')
     } catch (error) {
       console.error('Failed to create reservation:', error)
@@ -242,6 +287,53 @@ function ReservationContent() {
     } finally {
       setIsSubmitting(false)
     }
+  }, [
+    baseServicePrice,
+    isMonitorPrice,
+    maintenancePrice,
+    pointsToUse,
+    router,
+    selectedDate,
+    selectedMaintenanceOptions,
+    selectedPlan,
+    selectedTime,
+  ])
+
+  const handleFormSubmit = async (data: {
+    name: string
+    email: string
+    phone: string
+    notes: string
+  }) => {
+    setFormData(data)
+
+    if (!selectedPlan) {
+      alert('サービスプランが選択されていません。再度プランを選択してください。')
+      return
+    }
+
+    // 未ログインユーザーの場合はログインモーダルを表示
+    if (!user) {
+      reservationStorage.save({
+        serviceId: selectedPlan.id,
+        serviceType: selectedPlan.type,
+        serviceName: selectedPlan.name,
+        date: selectedDate,
+        time: selectedTime,
+        maintenanceOptions: selectedMaintenanceOptions,
+        maintenancePrice,
+        formData: data,
+        step: 5,
+        pointsToUse,
+        isMonitor: isMonitorPrice,
+        isReadyToSubmit: false,
+      })
+
+      setShowLoginModal(true)
+      return
+    }
+
+    await submitReservation(data)
   }
 
   const handleBack = () => {
@@ -259,104 +351,105 @@ function ReservationContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Progress Bar */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-4">
-              <h1 className="text-2xl font-bold">予約フォーム</h1>
-              <span className="text-sm text-gray-600">ステップ {step} / 5</span>
+    <>
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-8">
+          <div className="max-w-4xl mx-auto">
+            {/* Progress Bar */}
+            <div className="mb-8">
+              <div className="mb-4 flex items-center justify-between">
+                <h1 className="text-2xl font-bold">予約フォーム</h1>
+                <span className="text-sm text-gray-600">ステップ {step} / 5</span>
+              </div>
+              <div className="h-2 w-full rounded-full bg-gray-200">
+                <div
+                  className="h-2 rounded-full bg-primary transition-all duration-300"
+                  style={{ width: `${(step / 5) * 100}%` }}
+                />
+              </div>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div
-                className="bg-primary h-2 rounded-full transition-all duration-300"
-                style={{ width: `${(step / 5) * 100}%` }}
-              />
+
+            {/* Business Hours Info */}
+            <div className="mb-6">
+              <BusinessHoursInfo />
             </div>
-          </div>
 
-          {/* Business Hours Info */}
-          <div className="mb-6">
-            <BusinessHoursInfo />
-          </div>
+            {/* Step Content */}
+            <div className="rounded-lg bg-white p-6 shadow-md">
+              <h2 className="mb-6 text-xl font-semibold">
+                {stepTitles[step as keyof typeof stepTitles]}
+              </h2>
 
-          {/* Step Content */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h2 className="text-xl font-semibold mb-6">
-              {stepTitles[step as keyof typeof stepTitles]}
-            </h2>
+              <AnimatePresence mode="wait">
+                {step === 1 && (
+                  <motion.div
+                    key="step1"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    {servicePlansLoading ? (
+                      <div className="flex min-h-[200px] items-center justify-center text-sm text-gray-600">
+                        料金プランを読み込み中です…
+                      </div>
+                    ) : (
+                      <>
+                        {servicePlansError && (
+                          <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+                            {servicePlansError}
+                          </div>
+                        )}
+                        <ServiceSelection
+                          services={servicePlans}
+                          onSelect={handleServiceSelect}
+                          selected={selectedService}
+                          isMonitorPrice={isMonitorPrice}
+                        />
+                      </>
+                    )}
+                  </motion.div>
+                )}
 
-            <AnimatePresence mode="wait">
-              {step === 1 && (
-                <motion.div
-                  key="step1"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  {servicePlansLoading ? (
-                    <div className="flex min-h-[200px] items-center justify-center text-sm text-gray-600">
-                      料金プランを読み込み中です…
-                    </div>
-                  ) : (
-                    <>
-                      {servicePlansError && (
-                        <div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-                          {servicePlansError}
-                        </div>
-                      )}
-                      <ServiceSelection
-                        services={servicePlans}
-                        onSelect={handleServiceSelect}
-                        selected={selectedService}
-                        isMonitorPrice={isMonitorPrice}
-                      />
-                    </>
-                  )}
-                </motion.div>
-              )}
+                {step === 2 && (
+                  <motion.div
+                    key="step2"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <Calendar onSelect={handleDateSelect} selected={selectedDate} />
+                  </motion.div>
+                )}
 
-              {step === 2 && (
-                <motion.div
-                  key="step2"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <Calendar onSelect={handleDateSelect} selected={selectedDate} />
-                </motion.div>
-              )}
+                {step === 3 && (
+                  <motion.div
+                    key="step3"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <TimeSlots
+                      date={selectedDate}
+                      onSelect={handleTimeSelect}
+                      selected={selectedTime}
+                    />
+                  </motion.div>
+                )}
 
-              {step === 3 && (
-                <motion.div
-                  key="step3"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <TimeSlots
-                    date={selectedDate}
-                    onSelect={handleTimeSelect}
-                    selected={selectedTime}
-                  />
-                </motion.div>
-              )}
-
-              {step === 4 && (
-                <motion.div
-                  key="step4"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                >
-                  <MaintenanceOptions
-                    onNext={handleMaintenanceSelect}
-                    baseServicePrice={baseServicePrice}
-                    isMonitorPrice={isMonitorPrice}
-                  />
-                </motion.div>
-              )}
+                {step === 4 && (
+                  <motion.div
+                    key="step4"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                  >
+                    <MaintenanceOptions
+                      onNext={handleMaintenanceSelect}
+                      baseServicePrice={baseServicePrice}
+                      isMonitorPrice={isMonitorPrice}
+                    />
+                  </motion.div>
+                )}
 
               {step === 5 && (
                 <motion.div
@@ -395,6 +488,15 @@ function ReservationContent() {
         </div>
       </div>
     </div>
+
+      <LoginModal
+        open={showLoginModal}
+        onClose={() => setShowLoginModal(false)}
+        onSuccess={() => undefined}
+        onRegister={handleLoginModalRegister}
+        defaultEmail={formData.email}
+      />
+    </>
   )
 }
 

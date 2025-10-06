@@ -5,6 +5,52 @@ import { settingsService } from '@/lib/firebase/settings'
 import { Reservation, TimeSlot, BusinessHours, ReservationSettings } from '@/lib/types'
 import { emailService } from '@/lib/email/emailService'
 
+const DEFAULT_BUSINESS_HOURS: BusinessHours[] = [
+  { dayOfWeek: 0, open: '', close: '', isOpen: false, maxCapacityPerDay: 1 }, // 日曜休み
+  { dayOfWeek: 1, open: '18:00', close: '20:00', isOpen: true, maxCapacityPerDay: 1 }, // 月曜
+  { dayOfWeek: 2, open: '18:00', close: '20:00', isOpen: true, maxCapacityPerDay: 1 }, // 火曜
+  { dayOfWeek: 3, open: '10:00', close: '18:00', isOpen: true, maxCapacityPerDay: 1 }, // 水曜
+  { dayOfWeek: 4, open: '18:00', close: '20:00', isOpen: true, maxCapacityPerDay: 1 }, // 木曜
+  { dayOfWeek: 5, open: '18:00', close: '20:00', isOpen: true, maxCapacityPerDay: 1 }, // 金曜
+  { dayOfWeek: 6, open: '18:00', close: '20:00', isOpen: true, maxCapacityPerDay: 1 }, // 土曜
+]
+
+const LEGACY_BUSINESS_HOURS: BusinessHours[] = [
+  { dayOfWeek: 0, open: '', close: '', isOpen: false, maxCapacityPerDay: 1 },
+  { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+  { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+  {
+    dayOfWeek: 3,
+    open: '09:00',
+    close: '17:00',
+    isOpen: true,
+    allowMultipleSlots: true,
+    slotInterval: 30,
+    maxCapacityPerDay: 10,
+  },
+  { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+  { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+  { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+]
+
+const isLegacyBusinessHours = (hoursList?: BusinessHours[]) => {
+  if (!hoursList || hoursList.length !== LEGACY_BUSINESS_HOURS.length) {
+    return false
+  }
+
+  return hoursList.every((hours, index) => {
+    const legacy = LEGACY_BUSINESS_HOURS[index]
+    if (!legacy) return false
+
+    return (
+      hours.dayOfWeek === legacy.dayOfWeek &&
+      (hours.open || '') === (legacy.open || '') &&
+      (hours.close || '') === (legacy.close || '') &&
+      Boolean(hours.isOpen) === Boolean(legacy.isOpen)
+    )
+  })
+}
+
 // キャッシュ関連の型定義
 interface CacheInterface {
   get<T = any>(key: string): Promise<T | null>
@@ -126,17 +172,9 @@ export function validateReservationData(data: any): {
 
 class ReservationService {
   private settings: ReservationSettings = {
-    slotDuration: 150, // 2時間30分
-    maxCapacityPerSlot: 10, // デフォルトを10に設定（Firestoreから読み込むまでの暫定値）
-    businessHours: [
-      { dayOfWeek: 0, open: '', close: '', isOpen: false, maxCapacityPerDay: 1 }, // 日曜休み
-      { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 月曜
-      { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 火曜
-      { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true, allowMultipleSlots: true, slotInterval: 30, maxCapacityPerDay: 10 }, // 水曜（30分間隔で複数予約可）
-      { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 木曜
-      { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 金曜
-      { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 }, // 土曜
-    ],
+    slotDuration: 120,
+    maxCapacityPerSlot: 1,
+    businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
     blockedDates: [],
     cancellationDeadlineHours: 24, // デフォルト24時間前
     cancellationPolicy: '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
@@ -189,29 +227,46 @@ class ReservationService {
     try {
       const firestoreSettings = await settingsService.getSettings()
       if (firestoreSettings) {
-        // 営業時間の設定を修正（古い形式のデータを新しい形式に変換）
-        const businessHours = firestoreSettings.businessHours.map(hours => {
-          // デフォルト設定から該当する曜日の設定を取得
-          const defaultHours = this.settings.businessHours.find(h => h.dayOfWeek === hours.dayOfWeek)
-          
+        let normalizedSettings = firestoreSettings
+
+        if (isLegacyBusinessHours(firestoreSettings.businessHours)) {
+          normalizedSettings = {
+            ...firestoreSettings,
+            businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
+            slotDuration: 120,
+            maxCapacityPerSlot: 1,
+          }
+
+          try {
+            await settingsService.saveSettings(normalizedSettings)
+          } catch (error) {
+            console.warn('Failed to migrate legacy business hours:', error)
+          }
+        }
+
+        const businessHours = normalizedSettings.businessHours.map((hours) => {
+          const defaultHours = DEFAULT_BUSINESS_HOURS.find((h) => h.dayOfWeek === hours.dayOfWeek)
+
           return {
             ...hours,
-            // 複数枠設定が欠けている場合はデフォルト値を使用
-            allowMultipleSlots: hours.allowMultipleSlots ?? defaultHours?.allowMultipleSlots,
+            allowMultipleSlots: hours.allowMultipleSlots ?? defaultHours?.allowMultipleSlots ?? false,
             slotInterval: hours.slotInterval ?? defaultHours?.slotInterval,
             maxCapacityPerDay: hours.maxCapacityPerDay ?? defaultHours?.maxCapacityPerDay ?? 1,
           }
         })
-        
+
         this.settings = {
-          ...firestoreSettings,
+          ...normalizedSettings,
           businessHours,
-          // デフォルト値を設定
-          cancellationDeadlineHours: firestoreSettings.cancellationDeadlineHours || 24,
-          cancellationPolicy: firestoreSettings.cancellationPolicy || '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+          slotDuration: normalizedSettings.slotDuration || 120,
+          maxCapacityPerSlot: normalizedSettings.maxCapacityPerSlot || 1,
+          cancellationDeadlineHours: normalizedSettings.cancellationDeadlineHours || 24,
+          cancellationPolicy:
+            normalizedSettings.cancellationPolicy ||
+            '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
         }
         this.isSettingsLoaded = true
-        // localStorageも更新
+
         if (typeof window !== 'undefined') {
           localStorage.setItem('reservationSettings', JSON.stringify(this.settings))
         }
