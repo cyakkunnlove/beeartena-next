@@ -106,76 +106,83 @@ export default function ServiceSelection({
         initial="hidden"
         animate="visible"
       >
-        {sortedServices.map((service, index) => (
-          <motion.button
-            key={service.id}
-            type="button"
-            onClick={() => handleServiceClick(service)}
-            variants={itemVariants}
-            whileHover={{ scale: 1.03 }}
-            whileTap={{ scale: 0.98 }}
-            className={`relative p-6 rounded-xl border-2 transition-all touch-manipulation ${
-              selectedServiceId === service.id
-                ? 'border-primary bg-primary/5'
-                : 'border-gray-200 hover:border-primary/50'
-            }`}
-          >
-            {service.isFeatured && (
-              <motion.div
-                initial={{ scale: 0, rotate: -10 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
-                className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg"
-              >
-                人気No.1
-              </motion.div>
-            )}
-            {service.badge && (
-              <motion.div
-                initial={{ scale: 0, rotate: -10 }}
-                animate={{ scale: 1, rotate: 0 }}
-                transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
-                className="absolute top-0 right-0 mt-6 bg-amber-600 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg"
-              >
-                {service.badge}
-              </motion.div>
-            )}
+        {sortedServices.map((service, index) => {
+          const isFeatured = Boolean(service.isFeatured)
+          const showCustomBadge = Boolean(
+            service.badge && (!isFeatured || service.badge !== '人気No.1'),
+          )
 
-            <motion.div
-              className="text-3xl font-bold text-primary mb-2 uppercase"
-              animate={selectedServiceId === service.id ? { scale: [1, 1.1, 1] } : {}}
-              transition={{ duration: 0.3 }}
+          return (
+            <motion.button
+              key={service.id}
+              type="button"
+              onClick={() => handleServiceClick(service)}
+              variants={itemVariants}
+              whileHover={{ scale: 1.03 }}
+              whileTap={{ scale: 0.98 }}
+              className={`relative p-6 rounded-xl border-2 transition-all touch-manipulation ${
+                selectedServiceId === service.id
+                  ? 'border-primary bg-primary/5'
+                  : 'border-gray-200 hover:border-primary/50'
+              }`}
             >
-              {service.type}
-            </motion.div>
-            <h3 className="font-semibold text-lg mb-1">{service.name}</h3>
-            <p className="text-sm text-gray-600 mb-3 whitespace-pre-line">
-              {service.description}
-            </p>
-            <div className="mb-1 space-y-1">
-              {service.otherShopPrice && (
-                <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
-                  他店価格: {formatYen(service.otherShopPrice)}
-                </p>
+              {isFeatured && (
+                <motion.div
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
+                  className="absolute top-0 right-0 bg-primary text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg"
+                >
+                  人気No.1
+                </motion.div>
               )}
-              <p className="text-xl font-bold">当店価格: {formatYen(service.price)}</p>
-              {service.monitorPrice && (
-                <p className="text-lg font-bold text-primary">
-                  モニター価格: {formatYen(service.monitorPrice)}
-                </p>
+              {showCustomBadge && (
+                <motion.div
+                  initial={{ scale: 0, rotate: -10 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={{ delay: index * 0.1 + 0.3, type: 'spring', stiffness: 200 }}
+                  className={`absolute top-0 right-0 ${isFeatured ? 'mt-6' : ''} bg-amber-600 text-white text-xs px-2 py-1 rounded-bl-lg rounded-tr-lg`}
+                >
+                  {service.badge}
+                </motion.div>
               )}
-            </div>
-            <p className="text-xs text-gray-500">{formatDuration(service.duration)}</p>
 
-            {selectedServiceId === service.id && (
               <motion.div
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                className="absolute inset-0 rounded-xl border-2 border-primary pointer-events-none"
-              />
-            )}
-          </motion.button>
-        ))}
+                className="text-3xl font-bold text-primary mb-2 uppercase"
+                animate={selectedServiceId === service.id ? { scale: [1, 1.1, 1] } : {}}
+                transition={{ duration: 0.3 }}
+              >
+                {service.type}
+              </motion.div>
+              <h3 className="font-semibold text-lg mb-1">{service.name}</h3>
+              <p className="text-sm text-gray-600 mb-3 whitespace-pre-line">
+                {service.description}
+              </p>
+              <div className="mb-1 space-y-1">
+                {service.otherShopPrice && (
+                  <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
+                    他店価格: {formatYen(service.otherShopPrice)}
+                  </p>
+                )}
+                <p className="text-xl font-bold">当店価格: {formatYen(service.price)}</p>
+                {service.monitorPrice && (
+                  <p className="text-lg font-bold text-primary">
+                    モニター価格: {formatYen(service.monitorPrice)}
+                  </p>
+                )}
+              </div>
+              <p className="text-xs text-gray-500">{formatDuration(service.duration)}</p>
+
+              {selectedServiceId === service.id && (
+                <motion.div
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute inset-0 rounded-xl border-2 border-primary pointer-events-none"
+                />
+              )}
+            </motion.button>
+          )
+        })}
       </motion.div>
 
       {selectedPlan?.monitorPrice && (

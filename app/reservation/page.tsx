@@ -15,7 +15,7 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { getServicePlans } from '@/lib/firebase/servicePlans'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 import type { PendingReservation } from '@/lib/utils/reservationStorage'
-import type { ServicePlan } from '@/lib/types'
+import type { ServicePlan, User } from '@/lib/types'
 
 function ReservationContent() {
   const router = useRouter()
@@ -108,6 +108,12 @@ function ReservationContent() {
   useEffect(() => {
     if (!user) return
 
+    if (user.role === 'admin') {
+      reservationStorage.clear()
+      router.replace('/admin')
+      return
+    }
+
     const saved = reservationStorage.get()
     if (saved) {
       restoreReservation(saved)
@@ -117,12 +123,14 @@ function ReservationContent() {
         setPendingAutoSubmit(null)
       }
       reservationStorage.clear()
+    } else {
+      setPendingAutoSubmit(null)
     }
 
     if (showLoginModal) {
       setShowLoginModal(false)
     }
-  }, [restoreReservation, showLoginModal, user])
+  }, [restoreReservation, router, showLoginModal, user])
 
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
@@ -149,6 +157,83 @@ function ReservationContent() {
     }
     return selectedPlan.price
   }, [selectedPlan, isMonitorPrice])
+
+  const executeReservation = useCallback(
+    async (data: {
+      name: string
+      email: string
+      phone: string
+      notes: string
+    }) => {
+      if (!selectedPlan) {
+        alert('サービスプランが選択されていません。再度プランを選択してください。')
+        return
+      }
+
+      setIsSubmitting(true)
+
+      try {
+        const basePrice = baseServicePrice
+        const totalPrice = basePrice + maintenancePrice
+        const finalPrice = totalPrice - pointsToUse
+
+        const reservationData = {
+          serviceType: selectedPlan.type,
+          serviceName: selectedPlan.name,
+          price: basePrice,
+          maintenanceOptions: selectedMaintenanceOptions,
+          maintenancePrice,
+          totalPrice,
+          date: selectedDate,
+          time: selectedTime,
+          customerName: data.name,
+          customerPhone: data.phone,
+          customerEmail: data.email,
+          notes: isMonitorPrice
+            ? `${data.notes}\n【モニター価格適用】写真撮影にご協力いただきます`
+            : data.notes,
+          status: 'pending' as const,
+          isMonitor: isMonitorPrice,
+          finalPrice,
+          pointsUsed: pointsToUse,
+        }
+
+        const response = await fetch('/api/reservations/create', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(reservationData),
+        })
+
+        if (!response.ok) {
+          const error = await response.json()
+          throw new Error(error.error || '予約の作成に失敗しました')
+        }
+
+        const result = await response.json()
+        console.log('Reservation created:', result.reservationId)
+        reservationStorage.clear()
+        router.push('/reservation/complete')
+      } catch (error) {
+        console.error('Failed to create reservation:', error)
+        alert('予約の作成に失敗しました。もう一度お試しください。')
+      } finally {
+        setIsSubmitting(false)
+      }
+    },
+    [
+      baseServicePrice,
+      isMonitorPrice,
+      maintenancePrice,
+      pointsToUse,
+      router,
+      selectedDate,
+      selectedMaintenanceOptions,
+      selectedPlan,
+      selectedTime,
+    ],
+  )
 
   useEffect(() => {
     if (!pendingAutoSubmit) return
@@ -224,80 +309,17 @@ function ReservationContent() {
     step,
   ])
 
-  const submitReservation = useCallback(
-    async (data: {
-      name: string
-      email: string
-      phone: string
-      notes: string
-    }) => {
-    if (!selectedPlan) {
-      alert('サービスプランが選択されていません。再度プランを選択してください。')
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const basePrice = baseServicePrice
-      const totalPrice = basePrice + maintenancePrice
-      const finalPrice = totalPrice - pointsToUse
-
-      const reservationData = {
-        serviceType: selectedPlan.type,
-        serviceName: selectedPlan.name,
-        price: basePrice,
-        maintenanceOptions: selectedMaintenanceOptions,
-        maintenancePrice,
-        totalPrice,
-        date: selectedDate,
-        time: selectedTime,
-        customerName: data.name,
-        customerPhone: data.phone,
-        customerEmail: data.email,
-        notes: isMonitorPrice
-          ? `${data.notes}\n【モニター価格適用】写真撮影にご協力いただきます`
-          : data.notes,
-        status: 'pending' as const,
-        isMonitor: isMonitorPrice,
-        finalPrice,
-        pointsUsed: pointsToUse,
+  const handleLoginSuccess = useCallback(
+    (loggedInUser: User) => {
+      if (loggedInUser.role === 'admin') {
+        reservationStorage.clear()
+        router.replace('/admin')
+        return
       }
-
-      const response = await fetch('/api/reservations/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(reservationData),
-      })
-
-      if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || '予約の作成に失敗しました')
-      }
-
-      const result = await response.json()
-      console.log('Reservation created:', result.reservationId)
-      reservationStorage.clear()
-      router.push('/reservation/complete')
-    } catch (error) {
-      console.error('Failed to create reservation:', error)
-      alert('予約の作成に失敗しました。もう一度お試しください。')
-    } finally {
-      setIsSubmitting(false)
-    }
-  }, [
-    baseServicePrice,
-    isMonitorPrice,
-    maintenancePrice,
-    pointsToUse,
-    router,
-    selectedDate,
-    selectedMaintenanceOptions,
-    selectedPlan,
-    selectedTime,
-  ])
+      setShowLoginModal(false)
+    },
+    [router],
+  )
 
   const handleFormSubmit = async (data: {
     name: string
@@ -492,7 +514,7 @@ function ReservationContent() {
       <LoginModal
         open={showLoginModal}
         onClose={() => setShowLoginModal(false)}
-        onSuccess={() => undefined}
+        onSuccess={handleLoginSuccess}
         onRegister={handleLoginModalRegister}
         defaultEmail={formData.email}
       />

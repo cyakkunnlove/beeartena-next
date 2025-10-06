@@ -86,7 +86,7 @@ export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitor
       <div className="text-center mb-6">
         <h3 className="text-lg font-semibold mb-2">メンテナンスメニューを追加しますか？</h3>
         <p className="text-sm text-gray-600">
-          アートメイクと一緒に、眉毛のお手入れもいかがですか？
+          タトゥーメイクと一緒に、眉毛のお手入れもいかがですか？
         </p>
       </div>
 

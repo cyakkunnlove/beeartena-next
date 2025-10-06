@@ -5,11 +5,12 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import type { User } from '@/lib/types'
 
 interface LoginModalProps {
   open: boolean
   onClose: () => void
-  onSuccess?: () => void
+  onSuccess?: (user: User) => void
   onRegister?: () => void
   defaultEmail?: string
   loadingMessage?: string
@@ -55,8 +56,8 @@ export default function LoginModal({
     setIsLoading(true)
 
     try {
-      await login(email, password)
-      onSuccess?.()
+      const loggedInUser = await login(email, password)
+      onSuccess?.(loggedInUser)
       onClose()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'ログインに失敗しました')
