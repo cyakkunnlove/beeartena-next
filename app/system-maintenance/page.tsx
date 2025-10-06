@@ -22,12 +22,20 @@ export default function SystemMaintenancePage() {
           システムメンテナンス中
         </h1>
 
-        <div className="mb-6 space-y-3">
+        <div className="mb-6 space-y-4">
           <p className="text-gray-700 leading-relaxed">
             現在、当WEBページは改修中のため、
             <br />
             <span className="font-semibold text-gray-900">予約の受付を停止しております。</span>
           </p>
+
+          <div className="bg-rose-50 border border-rose-200 rounded-lg p-4">
+            <p className="text-sm text-gray-700 leading-relaxed">
+              <span className="font-semibold text-gray-900">システム改修に伴い、既存のご予約データもリセットされております。</span>
+              <br />
+              大変お手数ですが、ご予約済みのお客様も改めてLINE公式アカウントよりご予約をお取り直しいただけますと幸いです。
+            </p>
+          </div>
 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
             <p className="text-sm text-gray-700 mb-3">
