@@ -328,9 +328,17 @@ const formatCurrency = (value?: number) => {
 
 const formatDateRange = (from?: string | Date, until?: string | Date) => {
   if (!from) return '未設定'
-  const start = dateFormatter.format(from instanceof Date ? from : new Date(from))
+
+  const fromDate = from instanceof Date ? from : new Date(from)
+  if (Number.isNaN(fromDate.getTime())) return '日付エラー'
+
+  const start = dateFormatter.format(fromDate)
   if (!until) return `${start} 〜 継続`
-  return `${start} 〜 ${dateFormatter.format(until instanceof Date ? until : new Date(until))}`
+
+  const untilDate = until instanceof Date ? until : new Date(until)
+  if (Number.isNaN(untilDate.getTime())) return `${start} 〜 継続`
+
+  return `${start} 〜 ${dateFormatter.format(untilDate)}`
 }
 export default function ServicePlansAdminPage() {
   const router = useRouter()
