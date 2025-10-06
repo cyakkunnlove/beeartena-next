@@ -467,7 +467,7 @@ export default function ServicePlansAdminPage() {
     const updatePayload = sanitizedEntries as Partial<
       Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'>
     >
-    const createPayload = sanitizedEntries as Omit<
+    const createPayload = sanitizedEntries as unknown as Omit<
       ServicePlan,
       'id' | 'createdAt' | 'updatedAt'
     >
