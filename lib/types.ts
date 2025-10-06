@@ -38,7 +38,6 @@ export interface User {
 }
 
 export interface Customer extends User {
-  birthDate?: Date
   gender?: 'male' | 'female' | 'other'
   address?: {
     street?: string

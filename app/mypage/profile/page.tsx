@@ -147,7 +147,7 @@ export default function ProfilePage() {
     if (!user) return
 
     const fallbackCustomer = storageService.getCustomer(user.id)
-    const fallbackData = normalizeProfileData(user as Record<string, unknown>, fallbackCustomer)
+    const fallbackData = normalizeProfileData(user as unknown as Record<string, unknown>, fallbackCustomer)
 
     setFormData(fallbackData)
 
@@ -202,7 +202,7 @@ export default function ProfilePage() {
 
     try {
       const updatedUser = await updateProfile(payload)
-      setFormData(normalizeProfileData(updatedUser as Record<string, unknown>))
+      setFormData(normalizeProfileData(updatedUser as unknown as Record<string, unknown>))
       setMessage('プロフィールを更新しました')
       setIsEditing(false)
     } catch (error) {

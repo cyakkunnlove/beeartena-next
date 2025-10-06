@@ -67,7 +67,7 @@ class StorageService {
       demoCustomers.forEach((customer) => {
         this.createCustomer({
           ...customer,
-          birthDate: new Date('1990-01-01'),
+          birthDate: '1990-01-01',
           gender: 'female',
           address: {
             prefecture: '岐阜県',
