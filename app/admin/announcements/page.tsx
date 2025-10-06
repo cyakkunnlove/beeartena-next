@@ -23,10 +23,25 @@ type FormValues = {
 
 type FeedbackState = { type: 'success' | 'error'; message: string } | null
 
-const toInputValue = (value?: string | Date) => {
-  if (!value) return ''
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
+type FirestoreDateLike = Date | string | { toDate?: () => Date }
+
+const resolveDateValue = (value?: FirestoreDateLike | null) => {
+  if (!value) return null
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  if (typeof value === 'object' && typeof value.toDate === 'function') {
+    const parsed = value.toDate()
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  return null
+}
+
+const toInputValue = (value?: FirestoreDateLike | null) => {
+  const date = resolveDateValue(value)
+  if (!date) return ''
   const offset = date.getTimezoneOffset()
   const localDate = new Date(date.getTime() - offset * 60_000)
   return localDate.toISOString().slice(0, 16)
@@ -59,10 +74,9 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   timeStyle: 'short',
 })
 
-const formatDate = (value?: string | Date) => {
-  if (!value) return '未設定'
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return '未設定'
+const formatDate = (value?: FirestoreDateLike | null) => {
+  const date = resolveDateValue(value)
+  if (!date) return '未設定'
   return dateFormatter.format(date)
 }
 interface AnnouncementFormProps {
@@ -329,12 +343,17 @@ export default function AnnouncementsAdminPage() {
   )
 
   const isActive = (announcement: Announcement) => {
+    const publishDate = resolveDateValue(
+      announcement.publishAt as unknown as FirestoreDateLike,
+    )
+    if (!publishDate) return false
+
     const now = Date.now()
-    const publish = new Date(announcement.publishAt).getTime()
-    if (Number.isNaN(publish) || publish > now) return false
+    if (publishDate.getTime() > now) return false
+
     if (!announcement.expiresAt) return true
-    const expires = new Date(announcement.expiresAt).getTime()
-    return Number.isNaN(expires) ? true : expires > now
+    const expiresDate = resolveDateValue(announcement.expiresAt as unknown as FirestoreDateLike)
+    return !expiresDate ? true : expiresDate.getTime() > now
   }
   if (authLoading || loading) {
     return (

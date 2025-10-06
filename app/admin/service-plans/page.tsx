@@ -43,10 +43,25 @@ const dateFormatter = new Intl.DateTimeFormat('ja-JP', {
   dateStyle: 'medium',
   timeStyle: 'short',
 })
-const toInputValue = (value?: string | Date) => {
-  if (!value) return ''
-  const date = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(date.getTime())) return ''
+type FirestoreDateLike = Date | string | { toDate?: () => Date }
+
+const resolveDateValue = (value?: FirestoreDateLike | null) => {
+  if (!value) return null
+  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  if (typeof value === 'object' && typeof value.toDate === 'function') {
+    const parsed = value.toDate()
+    return Number.isNaN(parsed.getTime()) ? null : parsed
+  }
+  return null
+}
+
+const toInputValue = (value?: FirestoreDateLike | null) => {
+  const date = resolveDateValue(value)
+  if (!date) return ''
   const offset = date.getTimezoneOffset()
   const localDate = new Date(date.getTime() - offset * 60_000)
   return localDate.toISOString().slice(0, 16)
@@ -326,17 +341,13 @@ const formatCurrency = (value?: number) => {
   return numberFormatter.format(value)
 }
 
-const formatDateRange = (from?: string | Date, until?: string | Date) => {
-  if (!from) return '未設定'
-
-  const fromDate = from instanceof Date ? from : new Date(from)
-  if (Number.isNaN(fromDate.getTime())) return '日付エラー'
+const formatDateRange = (from?: FirestoreDateLike | null, until?: FirestoreDateLike | null) => {
+  const fromDate = resolveDateValue(from)
+  if (!fromDate) return '未設定'
 
   const start = dateFormatter.format(fromDate)
-  if (!until) return `${start} 〜 継続`
-
-  const untilDate = until instanceof Date ? until : new Date(until)
-  if (Number.isNaN(untilDate.getTime())) return `${start} 〜 継続`
+  const untilDate = resolveDateValue(until)
+  if (!untilDate) return `${start} 〜 継続`
 
   return `${start} 〜 ${dateFormatter.format(untilDate)}`
 }
@@ -437,8 +448,8 @@ export default function ServicePlansAdminPage() {
       description: values.description.trim(),
       type: values.type,
       price: Number.isFinite(price) ? price : 0,
-      monitorPrice: Number.isFinite(monitorPrice || NaN) ? monitorPrice : undefined,
-      otherShopPrice: Number.isFinite(otherShopPrice || NaN) ? otherShopPrice : undefined,
+      monitorPrice: Number.isFinite(monitorPrice ?? NaN) ? monitorPrice : undefined,
+      otherShopPrice: Number.isFinite(otherShopPrice ?? NaN) ? otherShopPrice : undefined,
       duration: Number.isFinite(duration) ? duration : 0,
       image: values.image.trim() || null,
       badge: values.badge.trim() || null,
@@ -449,18 +460,26 @@ export default function ServicePlansAdminPage() {
       displayOrder: Number.isFinite(displayOrder) ? displayOrder : plans.length + 1,
     }
 
-    const sanitizedPayload = Object.fromEntries(
+    const sanitizedEntries = Object.fromEntries(
       Object.entries(payload).filter(([, value]) => value !== undefined),
-    ) as unknown as Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'>
+    )
+
+    const updatePayload = sanitizedEntries as Partial<
+      Omit<ServicePlan, 'id' | 'createdAt' | 'updatedAt'>
+    >
+    const createPayload = sanitizedEntries as Omit<
+      ServicePlan,
+      'id' | 'createdAt' | 'updatedAt'
+    >
 
     try {
       setFormSubmitting(true)
       if (editingPlan) {
-        await updateServicePlan(editingPlan.id, sanitizedPayload)
+        await updateServicePlan(editingPlan.id, updatePayload)
         await fetchPlans()
         showFeedback('success', 'プランを更新しました')
       } else {
-        await createServicePlan(sanitizedPayload)
+        await createServicePlan(createPayload)
         await fetchPlans()
         showFeedback('success', 'プランを追加しました')
       }
