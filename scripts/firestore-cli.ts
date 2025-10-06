@@ -152,7 +152,7 @@ export async function queryDocuments(
     }
 
     const snapshot = await query.limit(limit).get()
-    const docs = snapshot.docs.map((doc) => ({
+    const docs = snapshot.docs.map((doc: admin.firestore.QueryDocumentSnapshot) => ({
       id: doc.id,
       ...doc.data(),
     }))

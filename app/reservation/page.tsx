@@ -240,9 +240,9 @@ function ReservationContent() {
     if (!user) return
     if (!selectedPlan || selectedPlan.id !== pendingAutoSubmit.serviceId) return
 
-    void submitReservation(pendingAutoSubmit.formData)
+    void executeReservation(pendingAutoSubmit.formData)
     setPendingAutoSubmit(null)
-  }, [pendingAutoSubmit, selectedPlan, submitReservation, user])
+  }, [pendingAutoSubmit, selectedPlan, executeReservation, user])
 
   const handleServiceSelect = (serviceId: string, isMonitor?: boolean) => {
     const plan = servicePlans.find((item) => item.id === serviceId)
@@ -355,7 +355,7 @@ function ReservationContent() {
       return
     }
 
-    await submitReservation(data)
+    await executeReservation(data)
   }
 
   const handleBack = () => {

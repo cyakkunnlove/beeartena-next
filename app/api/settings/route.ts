@@ -30,7 +30,7 @@ const cloneDefaultSettings = (): ReservationSettings => ({
   slotDuration: DEFAULT_TEMPLATE.slotDuration,
   maxCapacityPerSlot: DEFAULT_TEMPLATE.maxCapacityPerSlot,
   businessHours: DEFAULT_TEMPLATE.businessHours.map((hours) => ({ ...hours })),
-  blockedDates: [...DEFAULT_TEMPLATE.blockedDates],
+  blockedDates: [...(DEFAULT_TEMPLATE.blockedDates ?? [])],
   cancellationDeadlineHours: DEFAULT_TEMPLATE.cancellationDeadlineHours,
   cancellationPolicy: DEFAULT_TEMPLATE.cancellationPolicy,
 })
@@ -100,7 +100,7 @@ function normalizeSettings(data?: Partial<ReservationSettings> | null): Reservat
       ? data.blockedDates.filter(
           (date): date is string => typeof date === 'string' && date.trim().length > 0,
         )
-      : [...DEFAULT_TEMPLATE.blockedDates],
+      : [...(DEFAULT_TEMPLATE.blockedDates ?? [])],
     cancellationDeadlineHours:
       Number.isFinite(cancellationDeadlineRaw) && cancellationDeadlineRaw > 0
         ? cancellationDeadlineRaw
