@@ -65,6 +65,21 @@ function ReservationContent() {
     fetchServicePlans()
   }, [])
 
+  const restoreReservation = useCallback(
+    (saved: PendingReservation) => {
+      setSelectedService(saved.serviceId)
+      setIsMonitorPrice(saved.isMonitor ?? false)
+      setSelectedDate(saved.date)
+      setSelectedTime(saved.time)
+      setSelectedMaintenanceOptions(saved.maintenanceOptions || [])
+      setMaintenancePrice(saved.maintenancePrice || 0)
+      setFormData(saved.formData)
+      setPointsToUse(saved.pointsToUse || 0)
+      setStep(saved.step || 5)
+    },
+    [],
+  )
+
   // 会員登録から戻ってきた場合、保存した予約情報を復元
   useEffect(() => {
     if (searchParams.get('from') === 'register') {
@@ -121,21 +136,6 @@ function ReservationContent() {
       }))
     }
   }, [user, step])
-
-  const restoreReservation = useCallback(
-    (saved: PendingReservation) => {
-      setSelectedService(saved.serviceId)
-      setIsMonitorPrice(saved.isMonitor ?? false)
-      setSelectedDate(saved.date)
-      setSelectedTime(saved.time)
-      setSelectedMaintenanceOptions(saved.maintenanceOptions || [])
-      setMaintenancePrice(saved.maintenancePrice || 0)
-      setFormData(saved.formData)
-      setPointsToUse(saved.pointsToUse || 0)
-      setStep(saved.step || 5)
-    },
-    [],
-  )
 
   const selectedPlan = useMemo(
     () => servicePlans.find((plan) => plan.id === selectedService),
