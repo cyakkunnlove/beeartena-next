@@ -1,13 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
-  // メンテナンスモードチェック
-  const maintenanceModeValue = process.env.NEXT_PUBLIC_MAINTENANCE_MODE
-  const isMaintenanceMode = maintenanceModeValue === 'true'
+// ビルド時に環境変数の値が埋め込まれる
+const IS_MAINTENANCE_MODE = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true'
 
-  // デバッグ用: 環境変数の値をコンソールに出力
-  console.log('[Middleware Debug] NEXT_PUBLIC_MAINTENANCE_MODE:', maintenanceModeValue, 'isMaintenanceMode:', isMaintenanceMode)
+export function middleware(request: NextRequest) {
+  // デバッグ用: ビルド時の値を出力
+  console.log('[Middleware Debug] IS_MAINTENANCE_MODE (build-time):', IS_MAINTENANCE_MODE)
 
   // システムメンテナンスページ自体へのアクセスは許可
   if (request.nextUrl.pathname === '/system-maintenance') {
@@ -15,7 +14,7 @@ export function middleware(request: NextRequest) {
   }
 
   // メンテナンスモードの場合、すべてのアクセスをシステムメンテナンスページにリダイレクト
-  if (isMaintenanceMode) {
+  if (IS_MAINTENANCE_MODE) {
     console.log('[Middleware] Redirecting to maintenance page')
     return NextResponse.rewrite(new URL('/system-maintenance', request.url))
   }
