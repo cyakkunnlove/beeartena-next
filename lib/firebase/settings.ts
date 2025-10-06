@@ -2,7 +2,7 @@ import { doc, getDoc, setDoc } from 'firebase/firestore'
 
 import { db } from '@/lib/firebase/config'
 
-import { ReservationSettings } from '@/lib/types'
+import { ReservationSettings, BusinessHours } from '@/lib/types'
 
 const SETTINGS_DOC_ID = 'reservation-settings'
 
@@ -45,17 +45,26 @@ export const settingsService = {
       const docRef = doc(db, 'settings', SETTINGS_DOC_ID)
       
       // 営業時間設定に必要なフィールドが含まれていることを確認
-      const businessHours = settings.businessHours.map((hours) => ({
-        dayOfWeek: hours.dayOfWeek,
-        open: hours.open || '',
-        close: hours.close || '',
-        isOpen: Boolean(hours.isOpen),
-        allowMultipleSlots: Boolean(hours.allowMultipleSlots),
-        slotInterval: hours.allowMultipleSlots ? Number(hours.slotInterval ?? 30) : undefined,
-        maxCapacityPerDay: Number.isFinite(hours.maxCapacityPerDay)
-          ? Number(hours.maxCapacityPerDay)
-          : 1,
-      }))
+      const businessHours = settings.businessHours.map((hours) => {
+        const allowMultipleSlots = Boolean(hours.allowMultipleSlots)
+        const normalized = {
+          dayOfWeek: hours.dayOfWeek,
+          open: hours.open || '',
+          close: hours.close || '',
+          isOpen: Boolean(hours.isOpen),
+          allowMultipleSlots,
+          maxCapacityPerDay: Number.isFinite(hours.maxCapacityPerDay)
+            ? Number(hours.maxCapacityPerDay)
+            : 1,
+        } as BusinessHours
+
+        if (allowMultipleSlots) {
+          const interval = Number(hours.slotInterval ?? 30)
+          normalized.slotInterval = Number.isFinite(interval) && interval > 0 ? interval : 30
+        }
+
+        return normalized
+      })
 
       const blockedDates = Array.isArray(settings.blockedDates)
         ? settings.blockedDates.filter((date): date is string => typeof date === 'string' && Boolean(date))
