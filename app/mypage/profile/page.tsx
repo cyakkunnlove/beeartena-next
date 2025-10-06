@@ -6,16 +6,129 @@ import { useRouter } from 'next/navigation'
 import PasswordChangeModal from '@/components/account/PasswordChangeModal'
 import AccountDeleteModal from '@/components/account/AccountDeleteModal'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { apiClient } from '@/lib/api/client'
 import { firebaseAuth } from '@/lib/firebase/auth'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer } from '@/lib/types'
+
+type ProfileFormState = {
+  name: string
+  email: string
+  phone: string
+  birthDate: string
+  gender: string
+  prefecture: string
+  city: string
+  street: string
+  postalCode: string
+}
+
+const toStringValue = (value: unknown): string => {
+  if (typeof value === 'string') return value
+  if (value === null || value === undefined) return ''
+  return String(value)
+}
+
+const toDateInputValue = (value: unknown): string => {
+  if (!value) return ''
+  if (value instanceof Date) {
+    return Number.isNaN(value.getTime()) ? '' : value.toISOString().split('T')[0]
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().split('T')[0]
+  }
+  if (value && typeof value === 'object' && typeof (value as { toDate?: () => Date }).toDate === 'function') {
+    try {
+      const parsed = (value as { toDate: () => Date }).toDate()
+      return Number.isNaN(parsed.getTime()) ? '' : parsed.toISOString().split('T')[0]
+    } catch {
+      return ''
+    }
+  }
+  return ''
+}
+
+const parseAddress = (value: unknown): Record<string, unknown> => {
+  if (!value) return {}
+  if (typeof value === 'string') {
+    return { street: value }
+  }
+  if (typeof value === 'object') {
+    return value as Record<string, unknown>
+  }
+  return {}
+}
+
+const getRecordValue = (record: Record<string, unknown>, key: string): unknown => {
+  return record && Object.prototype.hasOwnProperty.call(record, key) ? record[key] : undefined
+}
+
+const normalizeProfileData = (
+  source: Record<string, unknown> | null | undefined,
+  fallbackCustomer?: Customer | null,
+): ProfileFormState => {
+  const getSourceValue = (key: string): unknown => (source ? source[key] : undefined)
+  const address = parseAddress(getSourceValue('address'))
+  const fallbackAddress = parseAddress(fallbackCustomer?.address)
+
+  const name = toStringValue(getSourceValue('name') ?? fallbackCustomer?.name ?? '')
+  const email = toStringValue(getSourceValue('email') ?? fallbackCustomer?.email ?? '')
+  const phone = toStringValue(getSourceValue('phone') ?? fallbackCustomer?.phone ?? '')
+
+  const rawBirthValue =
+    getSourceValue('birthDate') ??
+    getSourceValue('birthday') ??
+    fallbackCustomer?.birthDate ??
+    (fallbackCustomer as Record<string, unknown> | undefined)?.birthday
+  const birthDate = toDateInputValue(rawBirthValue)
+
+  const gender = toStringValue(getSourceValue('gender') ?? fallbackCustomer?.gender ?? '')
+  const fallbackPostalCode =
+    getRecordValue(address, 'postalCode') ??
+    getRecordValue(fallbackAddress, 'postalCode') ??
+    fallbackCustomer?.address?.postalCode
+  const postalCode = toStringValue(getSourceValue('postalCode') ?? fallbackPostalCode ?? '')
+  const fallbackPrefecture = getRecordValue(fallbackAddress, 'prefecture') ?? fallbackCustomer?.address?.prefecture
+  const fallbackCity = getRecordValue(fallbackAddress, 'city') ?? fallbackCustomer?.address?.city
+  const fallbackStreet =
+    getRecordValue(fallbackAddress, 'street') ??
+    getRecordValue(fallbackAddress, 'addressLine1') ??
+    fallbackCustomer?.address?.street
+
+  const prefecture = toStringValue(
+    getSourceValue('prefecture') ?? getRecordValue(address, 'prefecture') ?? fallbackPrefecture ?? '',
+  )
+  const city = toStringValue(
+    getSourceValue('city') ?? getRecordValue(address, 'city') ?? fallbackCity ?? '',
+  )
+  const street = toStringValue(
+    getRecordValue(address, 'street') ??
+      getRecordValue(address, 'addressLine1') ??
+      getSourceValue('street') ??
+      fallbackStreet ??
+      '',
+  )
+
+  return {
+    name,
+    email,
+    phone,
+    birthDate,
+    gender,
+    prefecture,
+    city,
+    street,
+    postalCode,
+  }
+}
 
 export default function ProfilePage() {
   const { user, updateProfile } = useAuth()
   const router = useRouter()
   const [showPasswordModal, setShowPasswordModal] = useState(false)
   const [showDeleteModal, setShowDeleteModal] = useState(false)
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<ProfileFormState>({
     name: '',
     email: '',
     phone: '',
@@ -30,26 +143,26 @@ export default function ProfilePage() {
   const [isSaving, setIsSaving] = useState(false)
   const [message, setMessage] = useState('')
 
-  const loadProfile = useCallback(() => {
-    const customer = storageService.getCustomer(user!.id)
-    setFormData({
-      name: user!.name,
-      email: user!.email,
-      phone: user!.phone,
-      birthDate: customer?.birthDate
-        ? new Date(customer.birthDate).toISOString().split('T')[0]
-        : '',
-      gender: customer?.gender || '',
-      prefecture: customer?.address?.prefecture || '',
-      city: customer?.address?.city || '',
-      street: customer?.address?.street || '',
-      postalCode: customer?.address?.postalCode || '',
-    })
+  const loadProfile = useCallback(async () => {
+    if (!user) return
+
+    const fallbackCustomer = storageService.getCustomer(user.id)
+    const fallbackData = normalizeProfileData(user as Record<string, unknown>, fallbackCustomer)
+
+    setFormData(fallbackData)
+
+    try {
+      const profile = await apiClient.getCurrentUser()
+      setFormData(normalizeProfileData(profile as Record<string, unknown>, fallbackCustomer))
+    } catch (error) {
+      console.error('Failed to fetch profile:', error)
+      setFormData(fallbackData)
+    }
   }, [user])
 
   useEffect(() => {
     if (user) {
-      loadProfile()
+      void loadProfile()
     }
   }, [user, loadProfile])
 
@@ -65,25 +178,46 @@ export default function ProfilePage() {
     setIsSaving(true)
     setMessage('')
 
-    try {
-      // Update profile via API
-      await updateProfile({
-        name: formData.name,
-        phone: formData.phone,
-        birthday: formData.birthDate,
-      })
+    const payload: Record<string, unknown> = {
+      name: formData.name.trim(),
+      phone: formData.phone.trim(),
+      gender: formData.gender,
+      postalCode: formData.postalCode.trim(),
+      prefecture: formData.prefecture.trim(),
+      city: formData.city.trim(),
+    }
 
+    if (formData.birthDate) {
+      payload.birthDate = formData.birthDate
+      payload.birthday = formData.birthDate
+    }
+
+    const addressPayload: Record<string, string> = {
+      prefecture: formData.prefecture.trim(),
+      city: formData.city.trim(),
+      street: formData.street.trim(),
+    }
+
+    payload.address = addressPayload
+
+    try {
+      const updatedUser = await updateProfile(payload)
+      setFormData(normalizeProfileData(updatedUser as Record<string, unknown>))
       setMessage('プロフィールを更新しました')
       setIsEditing(false)
     } catch (error) {
-      setMessage('更新に失敗しました')
+      setMessage(
+        error instanceof Error
+          ? `エラー: ${error.message}`
+          : 'エラー: プロフィールの更新に失敗しました',
+      )
     } finally {
       setIsSaving(false)
     }
   }
 
   const handleCancel = () => {
-    loadProfile()
+    void loadProfile()
     setIsEditing(false)
     setMessage('')
   }
@@ -114,7 +248,7 @@ export default function ProfilePage() {
         {message && (
           <div
             className={`mb-4 p-4 rounded-lg ${
-              message.includes('失敗') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
+              message.startsWith('エラー') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'
             }`}
           >
             {message}

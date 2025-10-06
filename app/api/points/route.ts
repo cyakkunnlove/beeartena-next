@@ -7,6 +7,7 @@ import {
   verifyAuth,
   requireAdmin,
 } from '@/lib/api/middleware'
+import { getAdminDb } from '@/lib/firebase/admin'
 import { pointService } from '@/lib/firebase/points'
 
 export async function OPTIONS(_request: NextRequest) {
@@ -27,10 +28,86 @@ export async function GET(request: NextRequest) {
     // 管理者は任意のユーザーのポイント履歴を取得可能
     const targetUserId = authUser.role === 'admin' && userId ? userId : authUser.userId
 
-    const [history, balance] = await Promise.all([
-      pointService.getUserPointHistory(targetUserId),
-      pointService.getUserPoints(targetUserId),
-    ])
+    let history: any[] | null = null
+    let balance: number | null = null
+
+    const adminDb = getAdminDb()
+
+    if (adminDb) {
+      try {
+        const [historySnapshot, userDoc] = await Promise.all([
+          adminDb
+            .collection('points')
+            .where('userId', '==', targetUserId)
+            .orderBy('createdAt', 'desc')
+            .get(),
+          adminDb.collection('users').doc(targetUserId).get(),
+        ])
+
+        if (!userDoc.exists) {
+          throw new Error('ユーザーが見つかりません')
+        }
+
+        const userData = userDoc.data() ?? {}
+        balance = typeof userData.points === 'number' ? userData.points : 0
+
+        history = historySnapshot.docs.map((doc) => {
+          const data = doc.data() ?? {}
+          const createdAtValue = data.createdAt
+          let createdAtISO: string
+          if (createdAtValue?.toDate) {
+            createdAtISO = createdAtValue.toDate().toISOString()
+          } else if (createdAtValue instanceof Date) {
+            createdAtISO = createdAtValue.toISOString()
+          } else if (typeof createdAtValue === 'string') {
+            const parsed = new Date(createdAtValue)
+            createdAtISO = Number.isNaN(parsed.getTime()) ? new Date().toISOString() : parsed.toISOString()
+          } else {
+            createdAtISO = new Date().toISOString()
+          }
+
+          const amount = typeof data.amount === 'number' ? data.amount : Number(data.amount ?? 0)
+          const entryBalance =
+            typeof data.balance === 'number'
+              ? data.balance
+              : Number.isFinite(Number(data.balance))
+                ? Number(data.balance)
+                : undefined
+
+          const entryType = typeof data.type === 'string' ? data.type : amount >= 0 ? 'earned' : 'used'
+
+          return {
+            id: doc.id,
+            userId: data.userId ?? targetUserId,
+            amount,
+            balance: entryBalance,
+            type: entryType,
+            description: data.description ?? '',
+            referenceId: data.referenceId ?? undefined,
+            createdAt: createdAtISO,
+          }
+        })
+      } catch (adminError) {
+        console.warn('[points] Admin fetch failed, falling back to client SDK', adminError)
+        history = null
+        balance = null
+      }
+    }
+
+    if (!history || balance === null) {
+      try {
+        const [clientHistory, clientBalance] = await Promise.all([
+          pointService.getUserPointHistory(targetUserId),
+          pointService.getUserPoints(targetUserId),
+        ])
+        history = clientHistory
+        balance = clientBalance
+      } catch (clientError) {
+        console.warn('[points] Client SDK fallback failed, returning empty result', clientError)
+        history = []
+        balance = 0
+      }
+    }
 
     return setCorsHeaders(
       successResponse({
@@ -39,6 +116,7 @@ export async function GET(request: NextRequest) {
       }),
     )
   } catch (error: any) {
+    console.error('Failed to load points history:', error)
     return setCorsHeaders(errorResponse(error.message || 'ポイント履歴の取得に失敗しました', 500))
   }
 }

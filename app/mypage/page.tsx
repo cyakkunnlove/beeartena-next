@@ -4,7 +4,9 @@ import Link from 'next/link'
 import { useEffect, useState, useCallback } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { apiClient } from '@/lib/api/client'
 import { storageService } from '@/lib/storage/storageService'
+import { buildPointsSnapshot } from '@/lib/utils/points'
 import { Points, Reservation } from '@/lib/types'
 
 export default function MypageDashboard() {
@@ -14,14 +16,37 @@ export default function MypageDashboard() {
   const [loading, setLoading] = useState(true)
 
   const loadData = useCallback(async () => {
-    try {
-      const userPoints = storageService.getPoints(user!.id)
-      setPoints(userPoints)
+    if (!user) return
 
-      const userReservations = storageService.getReservations(user!.id)
-      setReservations(userReservations)
+    setLoading(true)
+
+    try {
+      const pointsResponse = await apiClient.getPoints()
+      const snapshot = buildPointsSnapshot(user.id, pointsResponse?.balance, pointsResponse?.history)
+      setPoints(snapshot)
     } catch (error) {
-      console.error('Failed to load data:', error)
+      console.error('Failed to fetch points from API:', error)
+      const fallbackPoints = storageService.getPoints(user.id)
+      setPoints(fallbackPoints ?? null)
+    }
+
+    try {
+      const reservationsResponse = await apiClient.getReservations()
+      const fetchedReservations = Array.isArray((reservationsResponse as any)?.reservations)
+        ? (reservationsResponse as any).reservations
+        : Array.isArray(reservationsResponse)
+          ? (reservationsResponse as any)
+          : []
+      const normalizedReservations = fetchedReservations
+        .map((reservation: unknown) => normalizeReservation(reservation))
+        .sort((a: Reservation, b: Reservation) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      setReservations(normalizedReservations)
+    } catch (error) {
+      console.error('Failed to fetch reservations from API:', error)
+      const fallbackReservations = storageService
+        .getReservations(user.id)
+        .map((reservation) => normalizeReservation(reservation))
+      setReservations(fallbackReservations)
     } finally {
       setLoading(false)
     }
@@ -29,7 +54,7 @@ export default function MypageDashboard() {
 
   useEffect(() => {
     if (user) {
-      loadData()
+      void loadData()
     }
   }, [user, loadData])
 
@@ -173,6 +198,85 @@ export default function MypageDashboard() {
       </div>
     </div>
   )
+}
+
+const ensureNumber = (value: unknown, fallback = 0): number => {
+  if (typeof value === 'number' && Number.isFinite(value)) {
+    return value
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : fallback
+  }
+  return fallback
+}
+
+const ensureDate = (value: unknown): Date => {
+  if (value instanceof Date) {
+    return value
+  }
+  if (typeof value === 'string') {
+    const parsed = new Date(value)
+    return Number.isNaN(parsed.getTime()) ? new Date() : parsed
+  }
+  if (value && typeof value === 'object') {
+    if (typeof (value as { toDate?: () => Date }).toDate === 'function') {
+      try {
+        return (value as { toDate: () => Date }).toDate()
+      } catch {
+        return new Date()
+      }
+    }
+    if ('seconds' in value && typeof (value as { seconds: number }).seconds === 'number') {
+      const seconds = (value as { seconds: number; nanoseconds?: number }).seconds
+      const nanos = 'nanoseconds' in (value as any) ? (value as { nanoseconds?: number }).nanoseconds ?? 0 : 0
+      return new Date(seconds * 1000 + nanos / 1_000_000)
+    }
+  }
+  return new Date()
+}
+
+function normalizeReservation(input: unknown): Reservation {
+  const record = (input ?? {}) as Record<string, unknown>
+  const allowedStatuses: Reservation['status'][] = ['pending', 'confirmed', 'completed', 'cancelled']
+  const rawStatus = typeof record.status === 'string' ? record.status.toLowerCase() : ''
+  const status = allowedStatuses.includes(rawStatus as Reservation['status'])
+    ? (rawStatus as Reservation['status'])
+    : 'pending'
+
+  return {
+    id: String(
+      record.id ??
+        record.reservationId ??
+        `${record.customerId ?? 'reservation'}-${record.date ?? Date.now()}`,
+    ),
+    customerId: typeof record.customerId === 'string' ? record.customerId : null,
+    customerName: String(record.customerName ?? ''),
+    customerEmail: String(record.customerEmail ?? ''),
+    customerPhone: String(record.customerPhone ?? ''),
+    serviceType: (record.serviceType as Reservation['serviceType']) ?? '2D',
+    serviceName: String(record.serviceName ?? ''),
+    price: ensureNumber(record.price, 0),
+    maintenanceOptions: Array.isArray(record.maintenanceOptions)
+      ? (record.maintenanceOptions as string[])
+      : undefined,
+    maintenancePrice:
+      record.maintenancePrice !== undefined ? ensureNumber(record.maintenancePrice) : undefined,
+    totalPrice: record.totalPrice !== undefined ? ensureNumber(record.totalPrice) : undefined,
+    date: String(record.date ?? ''),
+    time: String(record.time ?? ''),
+    status,
+    notes: record.notes ? String(record.notes) : undefined,
+    createdAt: ensureDate(record.createdAt),
+    updatedAt: ensureDate(record.updatedAt ?? record.createdAt),
+    createdBy: typeof record.createdBy === 'string' ? record.createdBy : undefined,
+    completedAt: record.completedAt ? ensureDate(record.completedAt) : undefined,
+    cancelReason: record.cancelReason ? String(record.cancelReason) : undefined,
+    cancelledAt: record.cancelledAt ? ensureDate(record.cancelledAt) : undefined,
+    isMonitor: typeof record.isMonitor === 'boolean' ? record.isMonitor : undefined,
+    finalPrice: record.finalPrice !== undefined ? ensureNumber(record.finalPrice) : undefined,
+    pointsUsed: record.pointsUsed !== undefined ? ensureNumber(record.pointsUsed) : undefined,
+  }
 }
 
 function getNextTierPoints(lifetimePoints: number): number {

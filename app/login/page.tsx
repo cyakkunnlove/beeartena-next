@@ -17,6 +17,11 @@ function LoginContent() {
   })
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isDevelopment, setIsDevelopment] = useState(false)
+
+  useEffect(() => {
+    setIsDevelopment(process.env.NODE_ENV === 'development')
+  }, [])
 
   useEffect(() => {
     if (!loading && user) {
@@ -128,7 +133,7 @@ function LoginContent() {
           <SocialLoginButtons redirectTo={redirectTo} />
         </form>
 
-        {process.env.NODE_ENV === 'development' && (
+        {isDevelopment && (
           <div className="bg-gray-50 rounded-lg p-4 text-center">
             <p className="text-sm text-gray-600 mb-2">管理者アカウント：</p>
             <p className="text-xs text-gray-500">

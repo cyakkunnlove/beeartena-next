@@ -38,7 +38,7 @@ function CompleteProfileContent() {
     setFormData({
       name: user.name || '',
       phone: user.phone || '',
-      birthday: user.birthday || '',
+      birthday: user.birthDate || user.birthday || '',
     })
   }, [user, router, redirectTo])
 
@@ -85,6 +85,7 @@ function CompleteProfileContent() {
       await updateProfile({
         name: formData.name,
         phone: formData.phone,
+        birthDate: formData.birthday || undefined,
         birthday: formData.birthday || undefined,
       })
 

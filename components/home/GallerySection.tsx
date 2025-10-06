@@ -81,7 +81,13 @@ export default function GallerySection() {
               className="relative aspect-square overflow-hidden rounded-lg shadow-lg cursor-pointer"
               onClick={() => setSelectedImage(image)}
             >
-              <Image src={image.src} alt={image.caption} fill className="object-cover" />
+              <Image
+                src={image.src}
+                alt={image.caption}
+                fill
+                sizes="(min-width: 1024px) 33vw, (min-width: 768px) 33vw, 50vw"
+                className="object-cover"
+              />
               <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 opacity-0 hover:opacity-100 transition-opacity duration-300">
                 <p className="absolute bottom-2 left-2 right-2 text-white text-xs md:text-sm">
                   {image.caption}
@@ -138,7 +144,9 @@ export default function GallerySection() {
                 src={selectedImage.src}
                 alt={selectedImage.caption}
                 fill
+                sizes="100vw"
                 className="object-contain"
+                priority
               />
               <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
                 <p className="text-white text-lg text-center">{selectedImage.caption}</p>

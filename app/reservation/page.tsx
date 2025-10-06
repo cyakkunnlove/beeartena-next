@@ -17,6 +17,13 @@ import { reservationStorage } from '@/lib/utils/reservationStorage'
 import type { PendingReservation } from '@/lib/utils/reservationStorage'
 import type { ServicePlan, User } from '@/lib/types'
 
+type ReservationFormData = {
+  name: string
+  email: string
+  phone: string
+  notes: string
+}
+
 function ReservationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -33,12 +40,7 @@ function ReservationContent() {
   const [_isSubmitting, setIsSubmitting] = useState(false)
   const [pointsToUse, setPointsToUse] = useState(0)
   const [_shouldAutoSubmit, _setShouldAutoSubmit] = useState(false)
-  const [formData, setFormData] = useState<{
-    name: string
-    email: string
-    phone: string
-    notes: string
-  }>({
+  const [formData, setFormData] = useState<ReservationFormData>({
     name: '',
     email: '',
     phone: '',
@@ -273,15 +275,10 @@ function ReservationContent() {
     setStep(5)
   }
 
-  const handleLoginModalRegister = useCallback(() => {
-    const saved = reservationStorage.get()
-    if (saved) {
-      const { timestamp: _timestamp, ...rest } = saved
-      reservationStorage.save({
-        ...rest,
-        isReadyToSubmit: true,
-      })
-    } else if (selectedPlan) {
+  const savePendingReservation = useCallback(
+    (form: ReservationFormData, options?: { isReadyToSubmit?: boolean }) => {
+      if (!selectedPlan) return
+
       reservationStorage.save({
         serviceId: selectedPlan.id,
         serviceType: selectedPlan.type,
@@ -290,24 +287,45 @@ function ReservationContent() {
         time: selectedTime,
         maintenanceOptions: selectedMaintenanceOptions,
         maintenancePrice,
-        formData,
+        formData: form,
         step,
         pointsToUse,
         isMonitor: isMonitorPrice,
+        isReadyToSubmit: options?.isReadyToSubmit ?? false,
+      })
+    },
+    [
+      isMonitorPrice,
+      maintenancePrice,
+      pointsToUse,
+      selectedDate,
+      selectedMaintenanceOptions,
+      selectedPlan,
+      selectedTime,
+      step,
+    ],
+  )
+
+  const handleLoginModalRegister = useCallback(() => {
+    const saved = reservationStorage.get()
+    if (saved) {
+      const { timestamp: _timestamp, ...rest } = saved
+      reservationStorage.save({
+        ...rest,
         isReadyToSubmit: true,
       })
+    } else {
+      savePendingReservation(formData, { isReadyToSubmit: true })
     }
-  }, [
-    formData,
-    isMonitorPrice,
-    maintenancePrice,
-    pointsToUse,
-    selectedDate,
-    selectedMaintenanceOptions,
-    selectedPlan,
-    selectedTime,
-    step,
-  ])
+  }, [formData, savePendingReservation])
+
+  const handlePromptLogin = useCallback(
+    (currentForm: ReservationFormData) => {
+      savePendingReservation(currentForm, { isReadyToSubmit: false })
+      setShowLoginModal(true)
+    },
+    [savePendingReservation],
+  )
 
   const handleLoginSuccess = useCallback(
     (loggedInUser: User) => {
@@ -336,21 +354,7 @@ function ReservationContent() {
 
     // 未ログインユーザーの場合はログインモーダルを表示
     if (!user) {
-      reservationStorage.save({
-        serviceId: selectedPlan.id,
-        serviceType: selectedPlan.type,
-        serviceName: selectedPlan.name,
-        date: selectedDate,
-        time: selectedTime,
-        maintenanceOptions: selectedMaintenanceOptions,
-        maintenancePrice,
-        formData: data,
-        step: 5,
-        pointsToUse,
-        isMonitor: isMonitorPrice,
-        isReadyToSubmit: false,
-      })
-
+      savePendingReservation(data, { isReadyToSubmit: false })
       setShowLoginModal(true)
       return
     }
@@ -490,6 +494,7 @@ function ReservationContent() {
                     maintenancePrice={maintenancePrice}
                     onPointsUsed={setPointsToUse}
                     onMonitorPriceSelected={setIsMonitorPrice}
+                    onRequestLogin={handlePromptLogin}
                   />
                 </motion.div>
               )}

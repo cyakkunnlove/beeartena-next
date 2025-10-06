@@ -76,7 +76,10 @@ export async function PUT(request: NextRequest) {
     // 各フィールドが提供されている場合のみ更新
     if (name !== undefined) updateData.name = name
     if (phone !== undefined) updateData.phone = phone
-    if (birthDate !== undefined) updateData.birthDate = birthDate
+    if (birthDate !== undefined) {
+      updateData.birthDate = birthDate
+      updateData.birthday = birthDate
+    }
     if (gender !== undefined) updateData.gender = gender
     if (postalCode !== undefined) updateData.postalCode = postalCode
     if (prefecture !== undefined) updateData.prefecture = prefecture

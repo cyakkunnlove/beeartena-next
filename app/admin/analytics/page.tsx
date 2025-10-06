@@ -19,6 +19,7 @@ import {
 } from 'recharts'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
 import {
   ChartData,
   ServiceChartData,
@@ -44,8 +45,8 @@ export default function AnalyticsPage() {
     }
 
     // データの集計
-    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
-    const users = JSON.parse(localStorage.getItem('users') || '[]')
+    const reservations = storageService.getAllReservations()
+    const users = storageService.getUsers()
 
     // 月別売上データ
     const now = new Date()

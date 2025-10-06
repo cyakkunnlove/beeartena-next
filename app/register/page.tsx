@@ -18,7 +18,7 @@ interface SavedReservation {
     name: string
     email: string
     phone: string
-    notes?: string
+    notes: string
   }
   step?: number
   pointsToUse?: number
@@ -103,6 +103,21 @@ function RegisterContent() {
         formData.birthday,
       )
 
+      // 最新の予約情報を保存（登録フォームで更新した値を反映）
+      if (hasReservation && savedReservation) {
+        reservationStorage.save({
+          ...savedReservation,
+          formData: {
+            ...savedReservation.formData,
+            name: formData.name,
+            email: formData.email,
+            phone: formData.phone,
+          },
+          step: savedReservation.step ?? 5,
+          isReadyToSubmit: savedReservation.isReadyToSubmit ?? false,
+        })
+      }
+
       // 予約から来た場合は予約ページへ、そうでなければマイページへ
       if (hasReservation) {
         router.push('/reservation?from=register')
@@ -110,7 +125,7 @@ function RegisterContent() {
         router.push('/mypage')
       }
     } catch (error) {
-      setError('登録に失敗しました。もう一度お試しください。')
+      setError(error instanceof Error ? error.message : '登録に失敗しました。もう一度お試しください。')
     } finally {
       setIsLoading(false)
     }

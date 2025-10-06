@@ -25,6 +25,13 @@ export interface User {
   role: 'customer' | 'admin'
   points?: number
   birthday?: string // YYYY-MM-DD format
+  birthDate?: string // alternative key in newer API
+  gender?: string
+  postalCode?: string
+  prefecture?: string
+  city?: string
+  street?: string
+  address?: string | Record<string, unknown>
   lastBirthdayPointsYear?: number
   createdAt: Date
   updatedAt: Date
@@ -122,7 +129,7 @@ export interface AuthContextType {
     birthday?: string,
   ) => Promise<User>
   logout: () => Promise<void>
-  updateProfile: (updates: Partial<User>) => Promise<User>
+  updateProfile: (updates: Record<string, unknown>) => Promise<User>
 }
 
 // Service types

@@ -1,6 +1,7 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
 import { getAdminDb } from '@/lib/firebase/admin'
+import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
 
 import type { Inquiry, Reservation } from '@/lib/types'
 
@@ -10,16 +11,23 @@ interface CustomerDoc {
 
 const formatTodayIso = () => new Date().toISOString().split('T')[0]
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const adminError = await requireAdmin(request)
+  if (adminError) {
+    return setCorsHeaders(adminError)
+  }
+
   try {
     const db = getAdminDb()
 
     if (!db) {
-      return NextResponse.json(
-        {
-          error: 'Firebase admin is not configured. Please set FIREBASE_ADMIN_* env vars.',
-        },
-        { status: 503 },
+      return setCorsHeaders(
+        NextResponse.json(
+          {
+            error: 'Firebase admin is not configured. Please set FIREBASE_ADMIN_* env vars.',
+          },
+          { status: 503 },
+        ),
       )
     }
 
@@ -90,20 +98,24 @@ export async function GET() {
 
     const unreadInquiries = inquiries.filter((inquiry) => inquiry.status === 'unread')
 
-    return NextResponse.json({
-      stats: {
-        totalCustomers: customers.length,
-        totalReservations: reservations.length,
-        pendingReservations: pendingReservations.length,
-        totalRevenue,
-        todayReservations: todayReservations.length,
-        monthlyRevenue,
-        unreadInquiries: unreadInquiries.length,
-        activeCustomers: activeCustomerIds.size,
-      },
-    })
+    return setCorsHeaders(
+      NextResponse.json({
+        stats: {
+          totalCustomers: customers.length,
+          totalReservations: reservations.length,
+          pendingReservations: pendingReservations.length,
+          totalRevenue,
+          todayReservations: todayReservations.length,
+          monthlyRevenue,
+          unreadInquiries: unreadInquiries.length,
+          activeCustomers: activeCustomerIds.size,
+        },
+      }),
+    )
   } catch (error) {
     console.error('Admin stats error:', error)
-    return NextResponse.json({ error: 'Failed to load admin statistics.' }, { status: 500 })
+    return setCorsHeaders(
+      NextResponse.json({ error: 'Failed to load admin statistics.' }, { status: 500 }),
+    )
   }
 }

@@ -56,7 +56,14 @@ export default function MenuSection() {
               <p className="text-gray-600 mb-4 whitespace-pre-line">{item.description}</p>
 
               <div className="mb-4 h-48 relative overflow-hidden rounded-lg">
-                <Image src={item.image} alt={`${item.name}の症例`} fill className="object-cover" />
+                <Image
+                  src={item.image}
+                  alt={`${item.name}の症例`}
+                  fill
+                  sizes="(min-width: 1024px) 25vw, (min-width: 768px) 45vw, 90vw"
+                  className="object-cover"
+                  priority={item.featured}
+                />
               </div>
 
               <div className="space-y-2">

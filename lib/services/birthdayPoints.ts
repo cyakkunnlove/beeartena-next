@@ -35,9 +35,13 @@ class BirthdayPointsService {
         })
 
         if (!response.ok) {
-          logger.warn('Birthday points API responded with non-OK status', {
-            status: response.status,
-          })
+          if (response.status === 401 || response.status === 403) {
+            logger.debug('Birthday points API skipped due to auth status', { status: response.status })
+          } else {
+            logger.warn('Birthday points API responded with non-OK status', {
+              status: response.status,
+            })
+          }
           return false
         }
 

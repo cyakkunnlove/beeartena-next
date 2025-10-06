@@ -19,6 +19,7 @@ interface ReservationFormProps {
   monitorPrice?: number
   maintenancePrice?: number
   onMonitorPriceSelected?: (selected: boolean) => void
+  onRequestLogin?: (currentForm: ReservationFormProps['formData']) => void
 }
 
 export default function ReservationForm({
@@ -31,6 +32,7 @@ export default function ReservationForm({
   monitorPrice,
   maintenancePrice = 0,
   onMonitorPriceSelected,
+  onRequestLogin,
 }: ReservationFormProps) {
   const { user } = useAuth()
   const [usePoints, setUsePoints] = useState(false)
@@ -90,12 +92,28 @@ export default function ReservationForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {isLoggedIn && (
+      {isLoggedIn ? (
         <div className="bg-blue-50 p-4 rounded-lg">
           <p className="text-sm text-blue-700">
             会員情報から自動入力されています。
             変更が必要な場合は、以下のフォームで修正してください。
           </p>
+        </div>
+      ) : (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-blue-800">ログインすると入力が自動保存されます</h3>
+          <p className="text-xs text-blue-700 mt-1">
+            会員登録済みの方はログインするとお名前や連絡先が自動入力され、ポイントもご利用いただけます。
+          </p>
+          {onRequestLogin && (
+            <button
+              type="button"
+              className="mt-3 inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-dark-gold"
+              onClick={() => onRequestLogin(formData)}
+            >
+              会員ログインして続ける
+            </button>
+          )}
         </div>
       )}
 

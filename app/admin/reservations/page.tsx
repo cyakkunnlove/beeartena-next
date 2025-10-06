@@ -116,17 +116,10 @@ export default function AdminReservations() {
   }
 
   const handleReservationUpdate = (updatedReservation: Reservation) => {
-    // Update the reservation in storage
-    const allReservations = storageService.getAllReservations()
-    const index = allReservations.findIndex((r) => r.id === updatedReservation.id)
-    if (index !== -1) {
-      allReservations[index] = {
-        ...updatedReservation,
-        updatedAt: new Date(),
-      }
-      localStorage.setItem('reservations', JSON.stringify(allReservations))
-      loadReservations()
-    }
+    storageService.updateReservation(updatedReservation.id, {
+      ...updatedReservation,
+    })
+    loadReservations()
   }
 
   const handleExportICal = () => {

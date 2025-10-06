@@ -95,6 +95,21 @@ class ApiClient {
     return this.request<any>('/auth/me')
   }
 
+  async getAdminStats() {
+    return this.request<{
+      stats: {
+        totalCustomers: number
+        totalReservations: number
+        pendingReservations: number
+        totalRevenue: number
+        todayReservations: number
+        monthlyRevenue: number
+        unreadInquiries: number
+        activeCustomers: number
+      }
+    }>('/admin/stats', { cache: 'no-store' })
+  }
+
   async updateProfile(data: any) {
     return this.request<any>('/auth/me', {
       method: 'PUT',

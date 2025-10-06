@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 
 export default function AdminDashboard() {
@@ -29,19 +30,7 @@ export default function AdminDashboard() {
 
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/admin/stats', {
-          method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-        })
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch stats: ${response.status}`)
-        }
-
-        const data = await response.json()
+        const data = await apiClient.getAdminStats()
         if (data?.stats) {
           setStats(data.stats)
         } else {

@@ -3,7 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { apiClient } from '@/lib/api/client'
 import { storageService } from '@/lib/storage/storageService'
+import { buildPointsSnapshot, normalizePointTransactions } from '@/lib/utils/points'
 import { Points, PointTransaction } from '@/lib/types'
 
 export default function PointsPage() {
@@ -13,18 +15,25 @@ export default function PointsPage() {
   const [loading, setLoading] = useState(true)
 
   const loadPointsData = useCallback(async () => {
-    try {
-      const userPoints = storageService.getPoints(user!.id)
-      setPoints(userPoints)
+    if (!user) return
 
-      const pointTransactions = storageService.getPointTransactions(user!.id)
-      setTransactions(
-        pointTransactions.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
-      )
+    setLoading(true)
+
+    try {
+      const response = await apiClient.getPoints()
+      const normalizedHistory = normalizePointTransactions(response?.history, user.id)
+      setTransactions(normalizedHistory)
+      setPoints(buildPointsSnapshot(user.id, response?.balance, response?.history ?? normalizedHistory))
     } catch (error) {
-      console.error('Failed to load points data:', error)
+      console.error('Failed to fetch points via API:', error)
+      const fallbackHistory = normalizePointTransactions(storageService.getPointTransactions(user.id), user.id)
+      setTransactions(fallbackHistory)
+      const fallbackPoints = storageService.getPoints(user.id)
+      if (fallbackPoints) {
+        setPoints(fallbackPoints)
+      } else {
+        setPoints(buildPointsSnapshot(user.id, fallbackHistory[0]?.balance ?? 0, fallbackHistory))
+      }
     } finally {
       setLoading(false)
     }
@@ -88,6 +97,12 @@ export default function PointsPage() {
   }
 
   const tierInfo = getTierInfo(points?.tier || 'bronze')
+  const remainingToNextTier = tierInfo.requirement
+    ? Math.max(0, tierInfo.requirement - (points?.lifetimePoints || 0))
+    : 0
+  const nextTierProgress = tierInfo.requirement
+    ? Math.min(100, ((points?.lifetimePoints || 0) / tierInfo.requirement) * 100)
+    : 100
 
   return (
     <div className="space-y-6">
@@ -151,21 +166,15 @@ export default function PointsPage() {
           })}
         </div>
 
-        {tierInfo.next && (
+        {tierInfo.next && tierInfo.requirement && (
           <div>
             <p className="text-sm text-gray-600 mb-2">
-              次のランクまで:{' '}
-              {(tierInfo.requirement! - (points?.lifetimePoints || 0)).toLocaleString()} pt
+              次のランクまで: {remainingToNextTier.toLocaleString()} pt
             </p>
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
                 className="bg-primary h-2 rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min(
-                    ((points?.lifetimePoints || 0) / tierInfo.requirement!) * 100,
-                    100,
-                  )}%`,
-                }}
+                style={{ width: `${nextTierProgress}%` }}
               />
             </div>
           </div>
