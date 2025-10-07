@@ -3,41 +3,17 @@
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 
-interface MaintenanceOption {
-  id: string
-  name: string
-  price: number
-  description?: string
-}
+import {
+  MAINTENANCE_OPTIONS,
+  FULL_SET_PRICE,
+  type MaintenanceOption,
+} from '@/lib/constants/maintenanceOptions'
 
 interface MaintenanceOptionsProps {
   onNext: (selectedOptions: string[], totalPrice: number) => void
   baseServicePrice: number
   isMonitorPrice?: boolean
 }
-
-const maintenanceOptions: MaintenanceOption[] = [
-  {
-    id: 'cut-shave',
-    name: '眉カット＋フェイスシェービング',
-    price: 2000,
-    description: '眉毛を整えて、お顔の産毛もきれいに',
-  },
-  {
-    id: 'nose-wax',
-    name: '鼻毛ワックス脱毛',
-    price: 500,
-    description: '気になる鼻毛をすっきりと',
-  },
-  {
-    id: 'bleach',
-    name: '眉毛ブリーチ（脱色）',
-    price: 1000,
-    description: '眉毛を明るくして優しい印象に',
-  },
-]
-
-const FULL_SET_PRICE = 3000 // セット価格（通常3,500円→3,000円）
 
 export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitorPrice }: MaintenanceOptionsProps) {
   const [selectedOptions, setSelectedOptions] = useState<string[]>([])
@@ -56,25 +32,39 @@ export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitor
   }
 
   const toggleFullSet = () => {
-    setUseFullSet(!useFullSet)
+    const nextValue = !useFullSet
+    setUseFullSet(nextValue)
     // フルセット選択時は個別選択をクリア
     setSelectedOptions([])
+
+    if (nextValue) {
+      const optionIds = MAINTENANCE_OPTIONS.map((option) => option.id)
+      onNext(optionIds, baseServicePrice + FULL_SET_PRICE)
+    }
   }
 
+  const allSelectedIndividually = !useFullSet && selectedOptions.length === MAINTENANCE_OPTIONS.length
+
   const calculateMaintenancePrice = () => {
-    if (useFullSet) return FULL_SET_PRICE
-    
+    if (useFullSet || allSelectedIndividually) return FULL_SET_PRICE
+
     return selectedOptions.reduce((total, optionId) => {
-      const option = maintenanceOptions.find(opt => opt.id === optionId)
+      const option = MAINTENANCE_OPTIONS.find(opt => opt.id === optionId)
       return total + (option?.price || 0)
     }, 0)
   }
 
   const maintenancePrice = calculateMaintenancePrice()
   const totalPrice = baseServicePrice + maintenancePrice
+  const canProceed = useFullSet || allSelectedIndividually || selectedOptions.length > 0
 
   const handleNext = () => {
-    onNext(selectedOptions, totalPrice)
+    if (!canProceed) return
+
+    const optionIds = useFullSet || allSelectedIndividually
+      ? MAINTENANCE_OPTIONS.map((option) => option.id)
+      : selectedOptions
+    onNext(optionIds, totalPrice)
   }
 
   const handleSkip = () => {
@@ -133,7 +123,7 @@ export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitor
 
       {/* 個別オプション */}
       <div className="space-y-3">
-        {maintenanceOptions.map((option, index) => (
+        {MAINTENANCE_OPTIONS.map((option, index) => (
           <motion.button
             key={option.id}
             type="button"
@@ -176,6 +166,11 @@ export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitor
               <span>¥{maintenancePrice.toLocaleString()}</span>
             </div>
           )}
+          {(useFullSet || allSelectedIndividually) && (
+            <p className="text-xs text-green-600 text-right">
+              フルセット価格（¥500 OFF）が適用されています。
+            </p>
+          )}
           <div className="flex justify-between font-bold text-lg pt-2 border-t">
             <span>合計</span>
             <span className="text-primary">¥{totalPrice.toLocaleString()}</span>
@@ -195,7 +190,12 @@ export default function MaintenanceOptions({ onNext, baseServicePrice, isMonitor
         <button
           type="button"
           onClick={handleNext}
-          className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          disabled={!canProceed || useFullSet}
+          className={`flex-1 px-6 py-3 rounded-lg transition-colors ${
+            !canProceed || useFullSet
+              ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+              : 'bg-primary text-white hover:bg-primary/90'
+          }`}
         >
           次へ
         </button>

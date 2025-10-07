@@ -1,7 +1,8 @@
 import React from 'react'
-import { render, fireEvent, screen, act, waitFor } from '@testing-library/react'
+import { render, fireEvent, screen, act } from '@testing-library/react'
 import ReservationForm from '@/components/reservation/ReservationForm'
 import { AuthProvider } from '@/lib/auth/AuthContext'
+import { createDefaultIntakeForm } from '@/lib/utils/intakeFormDefaults'
 import '@testing-library/jest-dom'
 
 // Mock useAuth
@@ -16,30 +17,57 @@ describe('ReservationForm Component', () => {
   const mockOnChange = jest.fn()
   const mockOnSubmit = jest.fn()
   const mockOnPointsUsed = jest.fn()
+  const mockOnIntakeChange = jest.fn()
+  const mockOnRequestLogin = jest.fn()
 
-  const defaultProps = {
+  const createProps = (overrides: Partial<React.ComponentProps<typeof ReservationForm>> = {}) => ({
     formData: {
       name: '',
       email: '',
       phone: '',
       notes: '',
+      intakeForm: createDefaultIntakeForm(),
+      isMonitorSelected: false,
     },
     onChange: mockOnChange,
     onSubmit: mockOnSubmit,
     isLoggedIn: false,
     servicePrice: 30000,
     onPointsUsed: mockOnPointsUsed,
-  }
+    onIntakeChange: mockOnIntakeChange,
+    onRequestLogin: mockOnRequestLogin,
+    ...overrides,
+  })
 
   beforeEach(() => {
     jest.clearAllMocks()
     mockUseAuth.mockReturnValue({ user: null })
   })
 
+  it('should call onRequestLogin when guest clicks login CTA', () => {
+    render(
+      <AuthProvider>
+        <ReservationForm {...createProps()} />
+      </AuthProvider>,
+    )
+
+    const loginButton = screen.getByRole('button', { name: '会員ログインして続ける' })
+    act(() => {
+      fireEvent.click(loginButton)
+    })
+
+    expect(mockOnRequestLogin).toHaveBeenCalledTimes(1)
+    expect(mockOnRequestLogin).toHaveBeenCalledWith(expect.objectContaining({
+      email: '',
+      name: '',
+      phone: '',
+    }))
+  })
+
   it('should render all form fields', () => {
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} />
+        <ReservationForm {...createProps()} />
       </AuthProvider>,
     )
 
@@ -47,13 +75,14 @@ describe('ReservationForm Component', () => {
     expect(screen.getByLabelText(/メールアドレス/)).toBeInTheDocument()
     expect(screen.getByLabelText(/電話番号/)).toBeInTheDocument()
     expect(screen.getByLabelText(/ご要望・ご質問/)).toBeInTheDocument()
-    expect(screen.getByText('予約を確定する')).toBeInTheDocument()
+    expect(screen.getByText(/事前問診票/)).toBeInTheDocument()
+    expect(screen.getByText('内容確認へ進む')).toBeInTheDocument()
   })
 
   it('should call onChange when input values change', () => {
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} />
+        <ReservationForm {...createProps()} />
       </AuthProvider>,
     )
 
@@ -85,7 +114,7 @@ describe('ReservationForm Component', () => {
   it('should display auto-fill message for logged-in users', () => {
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} />
+        <ReservationForm {...createProps({ isLoggedIn: true })} />
       </AuthProvider>,
     )
 
@@ -95,7 +124,7 @@ describe('ReservationForm Component', () => {
   it('should not display auto-fill message for non-logged-in users', () => {
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={false} />
+        <ReservationForm {...createProps()} />
       </AuthProvider>,
     )
 
@@ -109,7 +138,7 @@ describe('ReservationForm Component', () => {
 
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} />
+        <ReservationForm {...createProps({ isLoggedIn: true })} />
       </AuthProvider>,
     )
 
@@ -124,7 +153,7 @@ describe('ReservationForm Component', () => {
 
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} />
+        <ReservationForm {...createProps({ isLoggedIn: true })} />
       </AuthProvider>,
     )
 
@@ -149,7 +178,7 @@ describe('ReservationForm Component', () => {
 
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={5000} />
+        <ReservationForm {...createProps({ isLoggedIn: true, servicePrice: 5000 })} />
       </AuthProvider>,
     )
 
@@ -175,7 +204,7 @@ describe('ReservationForm Component', () => {
 
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={30000} />
+        <ReservationForm {...createProps({ isLoggedIn: true, servicePrice: 30000 })} />
       </AuthProvider>,
     )
 
@@ -195,7 +224,7 @@ describe('ReservationForm Component', () => {
 
     const { rerender } = render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={30000} />
+        <ReservationForm {...createProps({ isLoggedIn: true, servicePrice: 30000 })} />
       </AuthProvider>,
     )
 
@@ -212,12 +241,53 @@ describe('ReservationForm Component', () => {
     // Simulate parent component updating after onPointsUsed is called
     rerender(
       <AuthProvider>
-        <ReservationForm {...defaultProps} isLoggedIn={true} servicePrice={30000} />
+        <ReservationForm {...createProps({ isLoggedIn: true, servicePrice: 30000 })} />
       </AuthProvider>,
     )
 
     // Check that callback was called
     expect(mockOnPointsUsed).toHaveBeenCalledWith(1000)
+  })
+
+  it('should allow toggling monitor price selection', () => {
+    const { rerender } = render(
+      <AuthProvider>
+        <ReservationForm
+          {...createProps({ monitorPrice: 25000, servicePrice: 30000 })}
+        />
+      </AuthProvider>,
+    )
+
+    const applyMonitorButton = screen.getByRole('button', { name: 'モニター価格を適用' })
+    act(() => {
+      fireEvent.click(applyMonitorButton)
+    })
+    expect(mockOnChange).toHaveBeenCalledWith('isMonitorSelected', 'true')
+
+    rerender(
+      <AuthProvider>
+        <ReservationForm
+          {...createProps({
+            monitorPrice: 25000,
+            servicePrice: 30000,
+            formData: {
+              name: '',
+              email: '',
+              phone: '',
+              notes: '',
+              intakeForm: createDefaultIntakeForm(),
+              isMonitorSelected: true,
+            },
+          })}
+        />
+      </AuthProvider>,
+    )
+
+    const applyRegularButton = screen.getByRole('button', { name: '通常価格を適用' })
+    act(() => {
+      fireEvent.click(applyRegularButton)
+    })
+    expect(mockOnChange).toHaveBeenCalledWith('isMonitorSelected', 'false')
   })
 
   it('should call onSubmit when form is submitted', () => {
@@ -226,11 +296,12 @@ describe('ReservationForm Component', () => {
       email: 'test@example.com',
       phone: '090-1234-5678',
       notes: '',
+      intakeForm: createDefaultIntakeForm(),
     }
 
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} formData={filledFormData} />
+        <ReservationForm {...createProps({ formData: filledFormData })} />
       </AuthProvider>,
     )
 
@@ -240,18 +311,18 @@ describe('ReservationForm Component', () => {
       fireEvent.click(agreementCheckbox)
     })
 
-    const submitButton = screen.getByText('予約を確定する')
+    const submitButton = screen.getByText('内容確認へ進む')
     act(() => {
       fireEvent.click(submitButton)
     })
 
-    expect(mockOnSubmit).toHaveBeenCalled()
+    expect(mockOnSubmit).toHaveBeenCalledWith(expect.objectContaining(filledFormData))
   })
 
   it('should prevent default form submission', () => {
     const { container } = render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} />
+        <ReservationForm {...createProps()} />
       </AuthProvider>,
     )
 
@@ -275,11 +346,12 @@ describe('ReservationForm Component', () => {
       email: 'test@example.com',
       phone: '090-1234-5678',
       notes: 'テストメモ',
+      intakeForm: createDefaultIntakeForm(),
     }
 
     render(
       <AuthProvider>
-        <ReservationForm {...defaultProps} formData={filledFormData} />
+        <ReservationForm {...createProps({ formData: filledFormData })} />
       </AuthProvider>,
     )
 
@@ -287,5 +359,20 @@ describe('ReservationForm Component', () => {
     expect(screen.getByDisplayValue('test@example.com')).toBeInTheDocument()
     expect(screen.getByDisplayValue('090-1234-5678')).toBeInTheDocument()
     expect(screen.getByDisplayValue('テストメモ')).toBeInTheDocument()
+  })
+
+  it('should call onIntakeChange when questionnaire responses change', () => {
+    render(
+      <AuthProvider>
+        <ReservationForm {...createProps()} />
+      </AuthProvider>,
+    )
+
+    const allergyCheckbox = screen.getByLabelText('金属アレルギー')
+    act(() => {
+      fireEvent.click(allergyCheckbox)
+    })
+
+    expect(mockOnIntakeChange).toHaveBeenCalled()
   })
 })

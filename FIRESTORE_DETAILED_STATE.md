@@ -958,7 +958,7 @@ async function checkAvailability(date: string, time: string) {
 ### キャンセルポリシー
 
 **デフォルト設定**:
-- 予約日の24時間前までキャンセル可能
+- 予約日の3日前（72時間前）までキャンセル可能
 - それ以降は電話連絡が必要
 
 **実装**:

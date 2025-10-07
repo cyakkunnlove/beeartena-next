@@ -79,10 +79,10 @@ export const settingsService = {
         blockedDates,
         cancellationDeadlineHours: Number.isFinite(settings.cancellationDeadlineHours)
           ? settings.cancellationDeadlineHours
-          : 24,
+          : 72,
         cancellationPolicy:
           settings.cancellationPolicy?.trim() ||
-          '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+          '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
       }
 
       await setDoc(docRef, {

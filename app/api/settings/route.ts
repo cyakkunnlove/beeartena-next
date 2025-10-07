@@ -21,9 +21,9 @@ const DEFAULT_TEMPLATE: ReservationSettings = {
   maxCapacityPerSlot: 1,
   businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
   blockedDates: [],
-  cancellationDeadlineHours: 24,
+  cancellationDeadlineHours: 72,
   cancellationPolicy:
-    '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+    '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
 }
 
 const cloneDefaultSettings = (): ReservationSettings => ({

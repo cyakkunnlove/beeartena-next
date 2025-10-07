@@ -176,8 +176,8 @@ class ReservationService {
     maxCapacityPerSlot: 1,
     businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
     blockedDates: [],
-    cancellationDeadlineHours: 24, // デフォルト24時間前
-    cancellationPolicy: '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+    cancellationDeadlineHours: 72, // デフォルト72時間前（3日前）
+    cancellationPolicy: '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
   }
   private isSettingsLoaded = false
   private settingsLoadPromise: Promise<void> | null = null
@@ -208,8 +208,10 @@ class ReservationService {
             ...savedSettings,
             businessHours,
             // デフォルト値を設定
-            cancellationDeadlineHours: savedSettings.cancellationDeadlineHours || 24,
-            cancellationPolicy: savedSettings.cancellationPolicy || '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+            cancellationDeadlineHours: savedSettings.cancellationDeadlineHours || 72,
+            cancellationPolicy:
+              savedSettings.cancellationPolicy ||
+              '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
           }
           this.isSettingsLoaded = true
         } catch (error) {
@@ -260,10 +262,10 @@ class ReservationService {
           businessHours,
           slotDuration: normalizedSettings.slotDuration || 120,
           maxCapacityPerSlot: normalizedSettings.maxCapacityPerSlot || 1,
-          cancellationDeadlineHours: normalizedSettings.cancellationDeadlineHours || 24,
+          cancellationDeadlineHours: normalizedSettings.cancellationDeadlineHours || 72,
           cancellationPolicy:
             normalizedSettings.cancellationPolicy ||
-            '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+            '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
         }
         this.isSettingsLoaded = true
 
@@ -804,8 +806,8 @@ END:VCALENDAR`
       return false
     }
 
-    // キャンセル期限の設定を取得（デフォルト24時間）
-    const deadlineHours = this.settings.cancellationDeadlineHours || 24
+    // キャンセル期限の設定を取得（デフォルト72時間）
+    const deadlineHours = this.settings.cancellationDeadlineHours || 72
 
     // 予約日時を作成
     const reservationDateTime = new Date(`${reservation.date}T${reservation.time}`)
@@ -825,7 +827,7 @@ END:VCALENDAR`
       return null
     }
 
-    const deadlineHours = this.settings.cancellationDeadlineHours || 24
+    const deadlineHours = this.settings.cancellationDeadlineHours || 72
     const reservationDateTime = new Date(`${reservation.date}T${reservation.time}`)
     const now = new Date()
 

@@ -8,6 +8,7 @@ import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
 import Calendar from '@/components/reservation/Calendar'
 import MaintenanceOptions from '@/components/reservation/MaintenanceOptions'
 import ReservationForm from '@/components/reservation/ReservationForm'
+import ReservationSummary from '@/components/reservation/ReservationSummary'
 import ServiceSelection from '@/components/reservation/ServiceSelection'
 import TimeSlots from '@/components/reservation/TimeSlots'
 import LoginModal from '@/components/auth/LoginModal'
@@ -15,14 +16,26 @@ import { useAuth } from '@/lib/auth/AuthContext'
 import { getServicePlans } from '@/lib/firebase/servicePlans'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 import type { PendingReservation } from '@/lib/utils/reservationStorage'
-import type { ServicePlan, User } from '@/lib/types'
+import type { ReservationIntakeForm, ServicePlan, User } from '@/lib/types'
+import { createDefaultIntakeForm } from '@/lib/utils/intakeFormDefaults'
 
 type ReservationFormData = {
   name: string
   email: string
   phone: string
   notes: string
+  intakeForm: ReservationIntakeForm
+  isMonitorSelected?: boolean
 }
+
+const createInitialFormData = (): ReservationFormData => ({
+  name: '',
+  email: '',
+  phone: '',
+  notes: '',
+  intakeForm: createDefaultIntakeForm(),
+  isMonitorSelected: false,
+})
 
 function ReservationContent() {
   const router = useRouter()
@@ -37,18 +50,19 @@ function ReservationContent() {
   const [selectedTime, setSelectedTime] = useState('')
   const [selectedMaintenanceOptions, setSelectedMaintenanceOptions] = useState<string[]>([])
   const [maintenancePrice, setMaintenancePrice] = useState(0)
-  const [_isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [pointsToUse, setPointsToUse] = useState(0)
-  const [_shouldAutoSubmit, _setShouldAutoSubmit] = useState(false)
-  const [formData, setFormData] = useState<ReservationFormData>({
-    name: '',
-    email: '',
-    phone: '',
-    notes: '',
-  })
+  const [formData, setFormData] = useState<ReservationFormData>(createInitialFormData)
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState<PendingReservation | null>(null)
+  const totalSteps = 6
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }, [step])
 
   useEffect(() => {
     const fetchServicePlans = async () => {
@@ -70,12 +84,17 @@ function ReservationContent() {
   const restoreReservation = useCallback(
     (saved: PendingReservation) => {
       setSelectedService(saved.serviceId)
-      setIsMonitorPrice(saved.isMonitor ?? false)
+      setIsMonitorPrice(saved.formData?.isMonitorSelected ?? saved.isMonitor ?? false)
       setSelectedDate(saved.date)
       setSelectedTime(saved.time)
       setSelectedMaintenanceOptions(saved.maintenanceOptions || [])
       setMaintenancePrice(saved.maintenancePrice || 0)
-      setFormData(saved.formData)
+      setFormData({
+        ...createInitialFormData(),
+        ...saved.formData,
+        intakeForm: saved.formData?.intakeForm ?? createDefaultIntakeForm(),
+        isMonitorSelected: saved.formData?.isMonitorSelected ?? saved.isMonitor ?? false,
+      })
       setPointsToUse(saved.pointsToUse || 0)
       setStep(saved.step || 5)
     },
@@ -139,10 +158,12 @@ function ReservationContent() {
     if (user && step === 5) {
       // 各フィールドが空の場合、ユーザー情報で自動補完
       setFormData((prevData) => ({
+        ...prevData,
         name: prevData.name || user.name || '',
         email: prevData.email || user.email || '',
         phone: prevData.phone || user.phone || '',
         notes: prevData.notes || '',
+        isMonitorSelected: prevData.isMonitorSelected ?? isMonitorPrice,
       }))
     }
   }, [user, step])
@@ -161,12 +182,7 @@ function ReservationContent() {
   }, [selectedPlan, isMonitorPrice])
 
   const executeReservation = useCallback(
-    async (data: {
-      name: string
-      email: string
-      phone: string
-      notes: string
-    }) => {
+    async (data: ReservationFormData) => {
       if (!selectedPlan) {
         alert('サービスプランが選択されていません。再度プランを選択してください。')
         return
@@ -198,6 +214,7 @@ function ReservationContent() {
           isMonitor: isMonitorPrice,
           finalPrice,
           pointsUsed: pointsToUse,
+          intakeForm: data.intakeForm,
         }
 
         const response = await fetch('/api/reservations/create', {
@@ -246,19 +263,24 @@ function ReservationContent() {
     setPendingAutoSubmit(null)
   }, [pendingAutoSubmit, selectedPlan, executeReservation, user])
 
-  const handleServiceSelect = (serviceId: string, isMonitor?: boolean) => {
+  const handleServiceSelect = (serviceId: string) => {
     const plan = servicePlans.find((item) => item.id === serviceId)
     if (!plan) {
       alert('選択したプランが利用できなくなりました。別のプランをお選びください。')
       return
     }
     setSelectedService(serviceId)
-    setIsMonitorPrice(!!isMonitor)
+    setIsMonitorPrice(false)
+    setFormData((prev) => ({
+      ...prev,
+      isMonitorSelected: false,
+    }))
     setStep(2)
   }
 
   const handleDateSelect = (date: string) => {
     setSelectedDate(date)
+    setSelectedTime('')
     setStep(3)
   }
 
@@ -275,6 +297,32 @@ function ReservationContent() {
     setStep(5)
   }
 
+  const handleFormFieldChange = useCallback(
+    (field: 'name' | 'email' | 'phone' | 'notes' | 'isMonitorSelected', value: string) => {
+      if (field === 'isMonitorSelected') {
+        const boolValue = value === 'true'
+        setFormData((prev) => ({
+          ...prev,
+          isMonitorSelected: boolValue,
+        }))
+        setIsMonitorPrice(boolValue)
+      } else {
+        setFormData((prev) => ({
+          ...prev,
+          [field]: value,
+        }))
+      }
+    },
+    [],
+  )
+
+  const handleIntakeChange = useCallback((next: ReservationIntakeForm) => {
+    setFormData((prev) => ({
+      ...prev,
+      intakeForm: next,
+    }))
+  }, [])
+
   const savePendingReservation = useCallback(
     (form: ReservationFormData, options?: { isReadyToSubmit?: boolean }) => {
       if (!selectedPlan) return
@@ -287,7 +335,10 @@ function ReservationContent() {
         time: selectedTime,
         maintenanceOptions: selectedMaintenanceOptions,
         maintenancePrice,
-        formData: form,
+        formData: {
+          ...form,
+          isMonitorSelected: form.isMonitorSelected ?? isMonitorPrice,
+        },
         step,
         pointsToUse,
         isMonitor: isMonitorPrice,
@@ -339,13 +390,15 @@ function ReservationContent() {
     [router],
   )
 
-  const handleFormSubmit = async (data: {
-    name: string
-    email: string
-    phone: string
-    notes: string
-  }) => {
-    setFormData(data)
+  const handleFormSubmit = async (data: ReservationFormData) => {
+    const monitorFlag = data.isMonitorSelected ?? isMonitorPrice
+    const nextData: ReservationFormData = {
+      ...data,
+      isMonitorSelected: monitorFlag,
+    }
+
+    setFormData(nextData)
+    setIsMonitorPrice(monitorFlag)
 
     if (!selectedPlan) {
       alert('サービスプランが選択されていません。再度プランを選択してください。')
@@ -354,12 +407,12 @@ function ReservationContent() {
 
     // 未ログインユーザーの場合はログインモーダルを表示
     if (!user) {
-      savePendingReservation(data, { isReadyToSubmit: false })
+      savePendingReservation(nextData, { isReadyToSubmit: false })
       setShowLoginModal(true)
       return
     }
 
-    await executeReservation(data)
+    setStep(6)
   }
 
   const handleBack = () => {
@@ -374,6 +427,7 @@ function ReservationContent() {
     3: '時間選択',
     4: 'メンテナンスオプション',
     5: '予約情報入力',
+    6: '内容確認',
   }
 
   return (
@@ -385,12 +439,12 @@ function ReservationContent() {
             <div className="mb-8">
               <div className="mb-4 flex items-center justify-between">
                 <h1 className="text-2xl font-bold">予約フォーム</h1>
-                <span className="text-sm text-gray-600">ステップ {step} / 5</span>
+                <span className="text-sm text-gray-600">ステップ {step} / {totalSteps}</span>
               </div>
               <div className="h-2 w-full rounded-full bg-gray-200">
                 <div
                   className="h-2 rounded-full bg-primary transition-all duration-300"
-                  style={{ width: `${(step / 5) * 100}%` }}
+                  style={{ width: `${(step / totalSteps) * 100}%` }}
                 />
               </div>
             </div>
@@ -429,7 +483,6 @@ function ReservationContent() {
                           services={servicePlans}
                           onSelect={handleServiceSelect}
                           selected={selectedService}
-                          isMonitorPrice={isMonitorPrice}
                         />
                       </>
                     )}
@@ -455,6 +508,7 @@ function ReservationContent() {
                     exit={{ opacity: 0, x: -20 }}
                   >
                     <TimeSlots
+                      key={selectedDate}
                       date={selectedDate}
                       onSelect={handleTimeSelect}
                       selected={selectedTime}
@@ -486,31 +540,65 @@ function ReservationContent() {
                 >
                   <ReservationForm
                     formData={formData}
-                    onChange={(field, value) => setFormData({ ...formData, [field]: value })}
-                    onSubmit={() => handleFormSubmit(formData)}
+                    onChange={handleFormFieldChange}
+                    onSubmit={handleFormSubmit}
                     isLoggedIn={!!user}
                     servicePrice={selectedPlan ? selectedPlan.price : 0}
                     monitorPrice={selectedPlan?.monitorPrice}
                     maintenancePrice={maintenancePrice}
                     onPointsUsed={setPointsToUse}
-                    onMonitorPriceSelected={setIsMonitorPrice}
                     onRequestLogin={handlePromptLogin}
+                    onIntakeChange={handleIntakeChange}
+                  />
+                </motion.div>
+              )}
+
+              {step === 6 && (
+                <motion.div
+                  key="step6"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <ReservationSummary
+                    selectedPlan={selectedPlan}
+                    selectedDate={selectedDate}
+                    selectedTime={selectedTime}
+                    isMonitorSelected={isMonitorPrice}
+                    formData={{
+                      name: formData.name,
+                      email: formData.email,
+                      phone: formData.phone,
+                      notes: formData.notes,
+                      intakeForm: formData.intakeForm,
+                    }}
+                    maintenanceOptions={selectedMaintenanceOptions}
+                    maintenancePrice={maintenancePrice}
+                    baseServicePrice={baseServicePrice}
+                    pointsToUse={pointsToUse}
+                    onBack={() => setStep(5)}
+                    onConfirm={() => {
+                      void executeReservation(formData)
+                    }}
+                    isSubmitting={isSubmitting}
                   />
                 </motion.div>
               )}
             </AnimatePresence>
 
             {/* Navigation Buttons */}
-            <div className="mt-8 flex justify-between">
-              {step > 1 && (
-                <button
-                  onClick={handleBack}
-                  className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                >
-                  戻る
-                </button>
-              )}
-            </div>
+            {step <= 5 && (
+              <div className="mt-8 flex justify-between">
+                {step > 1 && (
+                  <button
+                    onClick={handleBack}
+                    className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    戻る
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

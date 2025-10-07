@@ -7,9 +7,8 @@ import type { ServicePlan } from '@/lib/types'
 
 interface ServiceSelectionProps {
   services: ServicePlan[]
-  onSelect: (serviceId: string, isMonitor?: boolean) => void
+  onSelect: (serviceId: string) => void
   selected: string
-  isMonitorPrice?: boolean
 }
 
 const containerVariants = {
@@ -46,22 +45,12 @@ const formatDuration = (minutes?: number) => {
 
 const formatYen = (value: number) => `¥${value.toLocaleString()}`
 
-export default function ServiceSelection({
-  services,
-  onSelect,
-  selected,
-  isMonitorPrice,
-}: ServiceSelectionProps) {
+export default function ServiceSelection({ services, onSelect, selected }: ServiceSelectionProps) {
   const [selectedServiceId, setSelectedServiceId] = useState(selected)
-  const [isMonitor, setIsMonitor] = useState<boolean>(isMonitorPrice ?? false)
 
   useEffect(() => {
     setSelectedServiceId(selected)
   }, [selected])
-
-  useEffect(() => {
-    setIsMonitor(isMonitorPrice ?? false)
-  }, [isMonitorPrice])
 
   const sortedServices = useMemo(() => {
     return services
@@ -76,18 +65,7 @@ export default function ServiceSelection({
 
   const handleServiceClick = (plan: ServicePlan) => {
     setSelectedServiceId(plan.id)
-    if (plan.monitorPrice) {
-      setIsMonitor(false)
-    } else {
-      setIsMonitor(false)
-      onSelect(plan.id, false)
-    }
-  }
-
-  const handlePriceConfirm = () => {
-    if (!selectedPlan) return
-    const useMonitor = !!selectedPlan.monitorPrice && isMonitor
-    onSelect(selectedPlan.id, useMonitor)
+    onSelect(plan.id)
   }
 
   if (sortedServices.length === 0) {
@@ -186,40 +164,12 @@ export default function ServiceSelection({
       </motion.div>
 
       {selectedPlan?.monitorPrice && (
-        <div className="rounded-xl bg-gray-50 p-6">
-          <h3 className="text-lg font-semibold mb-4">価格プランを選択してください</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <button
-              type="button"
-              onClick={() => setIsMonitor(false)}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                !isMonitor ? 'border-primary bg-primary/5' : 'border-gray-200'
-              }`}
-            >
-              <p className="font-semibold mb-2">通常価格</p>
-              <p className="text-2xl font-bold">{formatYen(selectedPlan.price)}</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsMonitor(true)}
-              className={`p-4 rounded-lg border-2 transition-all ${
-                isMonitor ? 'border-primary bg-primary/5' : 'border-gray-200'
-              }`}
-            >
-              <p className="font-semibold mb-2">モニター価格</p>
-              <p className="text-2xl font-bold text-primary">{formatYen(selectedPlan.monitorPrice!)}</p>
-              <p className="text-xs text-gray-600 mt-2">※写真撮影にご協力いただきます</p>
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={handlePriceConfirm}
-            className="mt-4 w-full px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90"
-          >
-            次へ進む
-          </button>
+        <div className="rounded-xl bg-gray-50 p-6 text-sm text-gray-700">
+          <p className="font-semibold text-gray-900">モニター価格のご案内</p>
+          <p className="mt-2">
+            モニター価格 ({formatYen(selectedPlan.monitorPrice)}) の適用可否は予約情報入力ステップで選択できます。
+            条件をご確認のうえご選択ください。
+          </p>
         </div>
       )}
     </div>

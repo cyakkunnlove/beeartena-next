@@ -84,17 +84,17 @@ export default function ReservationsPage() {
       return false
     }
 
-    // 予約日時の24時間前までキャンセル可能
+    // 予約日時の72時間（3日）前までキャンセル可能
     const reservationDate = new Date(`${reservation.date}T${reservation.time}`)
     const now = new Date()
     const hoursUntilReservation = (reservationDate.getTime() - now.getTime()) / (1000 * 60 * 60)
 
-    return hoursUntilReservation >= 24
+    return hoursUntilReservation >= 72
   }
 
   const handleCancel = async (reservation: Reservation) => {
     if (!canCancelReservation(reservation)) {
-      setCancelError('キャンセル期限を過ぎているため、キャンセルできません。')
+      setCancelError('予約の72時間前を過ぎているため、オンラインでのキャンセルはできません。お電話にてご相談ください。')
       setTimeout(() => setCancelError(''), 5000)
       return
     }

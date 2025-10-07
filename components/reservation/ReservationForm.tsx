@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react'
 
+import IntakeQuestionnaire from '@/components/reservation/IntakeQuestionnaire'
 import { useAuth } from '@/lib/auth/AuthContext'
+import type { ReservationIntakeForm } from '@/lib/types'
 
 interface ReservationFormProps {
   formData: {
@@ -10,16 +12,18 @@ interface ReservationFormProps {
     email: string
     phone: string
     notes: string
+    intakeForm: ReservationIntakeForm
+    isMonitorSelected?: boolean
   }
-  onChange: (field: string, value: string) => void
-  onSubmit: () => void
+  onChange: (field: 'name' | 'email' | 'phone' | 'notes' | 'isMonitorSelected', value: string) => void
+  onSubmit: (form: ReservationFormProps['formData']) => void
   isLoggedIn: boolean
   servicePrice: number
   onPointsUsed: (points: number) => void
   monitorPrice?: number
   maintenancePrice?: number
-  onMonitorPriceSelected?: (selected: boolean) => void
   onRequestLogin?: (currentForm: ReservationFormProps['formData']) => void
+  onIntakeChange: (value: ReservationIntakeForm) => void
 }
 
 export default function ReservationForm({
@@ -31,16 +35,16 @@ export default function ReservationForm({
   onPointsUsed,
   monitorPrice,
   maintenancePrice = 0,
-  onMonitorPriceSelected,
   onRequestLogin,
+  onIntakeChange,
 }: ReservationFormProps) {
   const { user } = useAuth()
   const [usePoints, setUsePoints] = useState(false)
   const [pointsToUse, setPointsToUse] = useState('')
-  const [useMonitorPrice, setUseMonitorPrice] = useState(false)
   const [cancellationPolicy, setCancellationPolicy] = useState<string>('')
+  const monitorSelected = formData.isMonitorSelected ?? false
   const availablePoints = user?.points || 0
-  const basePrice = useMonitorPrice && monitorPrice ? monitorPrice : servicePrice
+  const basePrice = monitorSelected && monitorPrice ? monitorPrice : servicePrice
   const totalPrice = basePrice + maintenancePrice
   const maxPoints = Math.min(availablePoints, totalPrice)
 
@@ -51,13 +55,6 @@ export default function ReservationForm({
       onPointsUsed(0)
     }
   }, [usePoints, onPointsUsed])
-
-  useEffect(() => {
-    // モニター価格選択を親コンポーネントに通知
-    if (onMonitorPriceSelected) {
-      onMonitorPriceSelected(useMonitorPrice)
-    }
-  }, [useMonitorPrice, onMonitorPriceSelected])
 
   useEffect(() => {
     // キャンセルポリシーを取得
@@ -87,7 +84,7 @@ export default function ReservationForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    onSubmit()
+    onSubmit(formData)
   }
 
   return (
@@ -178,26 +175,67 @@ export default function ReservationForm({
         />
       </div>
 
-      {/* モニター価格オプション */}
-      {monitorPrice && (
-        <div className="border rounded-lg p-4 bg-amber-50">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={useMonitorPrice}
-              onChange={(e) => setUseMonitorPrice(e.target.checked)}
-              className="rounded"
-            />
-            <span className="font-medium">モニター価格で予約する</span>
-          </label>
-          <p className="text-sm text-gray-600 mt-2">
-            施術前後の写真撮影にご協力いただくことで、特別価格でご利用いただけます。
+      <div className="border rounded-lg p-6 bg-gray-50">
+        <div className="mb-6">
+          <h2 className="text-lg font-semibold text-gray-900">🩺 事前問診票</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            施術の安全性を確認するため、以下の設問にご回答ください。内容は施術に関わるスタッフのみに共有されます。
           </p>
-          <div className="mt-3 text-sm">
-            <p className="text-gray-700">通常価格: ¥{servicePrice.toLocaleString()}</p>
-            <p className="text-lg font-bold text-primary">モニター価格: ¥{monitorPrice.toLocaleString()}</p>
-            <p className="text-xs text-gray-500 mt-1">※写真は施術例として使用させていただく場合があります</p>
+        </div>
+        <IntakeQuestionnaire value={formData.intakeForm} onChange={onIntakeChange} />
+      </div>
+
+      {monitorPrice && (
+        <div className="border rounded-lg p-4 bg-amber-50 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-amber-900">料金プラン</p>
+              <p className="text-lg font-bold text-amber-900">
+                {monitorSelected
+                  ? `モニター価格: ¥${monitorPrice.toLocaleString()}`
+                  : `通常価格: ¥${servicePrice.toLocaleString()}`}
+              </p>
+            </div>
+            <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
+              monitorSelected ? 'bg-white text-amber-700' : 'bg-amber-200 text-amber-900'
+            }`}>
+              {monitorSelected ? 'モニター適用中' : '通常価格'}
+            </span>
           </div>
+          <p className="text-sm text-amber-900">
+            {monitorSelected
+              ? '写真撮影にご協力いただくことでモニター価格が適用されています。条件が変わる場合は下のボタンから切り替えてください。'
+              : 'モニター価格をご希望の場合は、条件をご確認のうえ下のボタンから切り替えてください。'}
+          </p>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={() => onChange('isMonitorSelected', 'false')}
+              className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                !monitorSelected
+                  ? 'border-primary bg-primary/10 text-primary cursor-default'
+                  : 'border-gray-300 hover:border-primary/60 hover:text-primary'
+              }`}
+              disabled={!monitorSelected}
+            >
+              通常価格を適用
+            </button>
+            <button
+              type="button"
+              onClick={() => onChange('isMonitorSelected', 'true')}
+              className={`flex-1 px-4 py-2 rounded-lg border transition-colors ${
+                monitorSelected
+                  ? 'border-primary bg-primary text-white cursor-default'
+                  : 'border-primary text-primary hover:bg-primary/10'
+              }`}
+              disabled={monitorSelected}
+            >
+              モニター価格を適用
+            </button>
+          </div>
+          <p className="text-xs text-amber-800">
+            ※ モニター価格を適用する場合は、施術前後の写真撮影にご協力いただきます。
+          </p>
         </div>
       )}
 
@@ -274,7 +312,9 @@ export default function ReservationForm({
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">•</span>
-            <span>{cancellationPolicy || 'キャンセルは前日までにご連絡ください'}</span>
+            <span>
+              {cancellationPolicy || 'キャンセルはご予約の3日前（72時間前）までにご連絡ください'}
+            </span>
           </li>
         </ul>
       </div>
@@ -290,7 +330,7 @@ export default function ReservationForm({
       </div>
 
       <button type="submit" className="w-full btn btn-primary">
-        予約を確定する
+        内容確認へ進む
       </button>
 
       {!isLoggedIn && (

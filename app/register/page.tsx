@@ -8,6 +8,7 @@ import DatePicker from '@/components/ui/DatePicker'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
+import type { ReservationIntakeForm } from '@/lib/types'
 
 interface SavedReservation {
   serviceId: string
@@ -19,6 +20,8 @@ interface SavedReservation {
     email: string
     phone: string
     notes: string
+    intakeForm: ReservationIntakeForm
+    isMonitorSelected?: boolean
   }
   step?: number
   pointsToUse?: number

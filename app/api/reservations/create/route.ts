@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin, { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { emailService } from '@/lib/email/emailService'
+import { normalizeIntakeForm } from '@/lib/utils/intakeFormDefaults'
 
 export async function POST(request: NextRequest) {
   try {
@@ -74,6 +75,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: '過去の日時には予約できません' }, { status: 400 })
     }
 
+    const intakeForm = normalizeIntakeForm(payload.intakeForm)
+
     const data = {
       ...payload,
       customerEmail,
@@ -86,6 +89,7 @@ export async function POST(request: NextRequest) {
       totalPrice,
       pointsUsed,
       finalPrice,
+      intakeForm,
     }
 
     if (!data.customerName || !data.customerPhone) {

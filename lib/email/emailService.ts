@@ -1,3 +1,4 @@
+import { getIntakeOptionLabel, MENTAL_STATE_LABEL_MAP, PREGNANCY_LABEL_MAP } from '@/lib/constants/intakeQuestionnaire'
 import { Reservation } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
 
@@ -61,6 +62,57 @@ function formatPrice(price: number): string {
   return price.toLocaleString('ja-JP')
 }
 
+function formatSelectionList(values?: string[], otherText?: string): string {
+  if (!values || values.length === 0) {
+    return '未回答'
+  }
+
+  const formatted = values.map((value) => {
+    if (value === 'none') {
+      return '特にありません'
+    }
+    if (value === 'other') {
+      return otherText && otherText.trim().length > 0
+        ? `その他（${otherText.trim()}）`
+        : 'その他（詳細未記入）'
+    }
+    return getIntakeOptionLabel(value)
+  })
+
+  return formatted.filter((item) => item.length > 0).join('、') || '未回答'
+}
+
+function formatIntakeSummary(reservation: Reservation): string {
+  const form = reservation.intakeForm
+  if (!form) {
+    return '（回答なし）'
+  }
+
+  const sections: string[] = []
+
+  const allergyBase = `・アレルギー：${formatSelectionList(form.allergies?.selections, form.allergies?.details)}`
+  sections.push(allergyBase)
+  if (form.allergies?.details && form.allergies.details.trim().length > 0) {
+    sections.push(`   補足：${form.allergies.details.trim()}`)
+  }
+
+  const skinBase = `・皮膚トラブル：${formatSelectionList(form.skinConcerns?.selections, form.skinConcerns?.details)}`
+  sections.push(skinBase)
+  if (form.skinConcerns?.details && form.skinConcerns.details.trim().length > 0) {
+    sections.push(`   補足：${form.skinConcerns.details.trim()}`)
+  }
+
+  sections.push(
+    `・妊娠・授乳：${PREGNANCY_LABEL_MAP[form.pregnancyStatus] ?? '未回答'}`,
+    `・感染症リスク：${formatSelectionList(form.infectionHistory?.selections, form.infectionHistory?.other)}`,
+    `・心理状態：${MENTAL_STATE_LABEL_MAP[form.mentalState] ?? '未回答'}`,
+    `・ご希望のイメージ：${formatSelectionList(form.goals?.selections, form.goals?.other)}`,
+    `・服薬中のお薬：${formatSelectionList(form.medications?.selections, form.medications?.other)}`,
+  )
+
+  return sections.join('\n')
+}
+
 function createReservationConfirmationTemplate(
   reservation: Reservation,
   userEmail: string,
@@ -91,13 +143,17 @@ TEL: 090-5278-5221
 【アクセス】
 駐車場完備
 
+【事前問診のご確認】
+以下の内容でお伺いしております。追加・変更がある場合は、お早めにご連絡ください。
+${formatIntakeSummary(reservation)}
+
 【注意事項】
 ・施術当日は眉メイクはせずにお越しください
 ・コンタクトレンズを着用の方は、念のため眼鏡をお持ちください
 ・妊娠中、授乳中の方は事前にお申し出ください
 
 【変更・キャンセルについて】
-ご予約の変更・キャンセルは、前日までにお電話にてご連絡ください。
+ご予約の変更・キャンセルは、予約日の3日前（72時間前）までにお電話にてご連絡ください。
 
 【マイページ】
 ご予約内容の確認・変更は以下のマイページからも可能です。
@@ -134,6 +190,8 @@ function createReservationNotificationTemplate(reservation: Reservation): EmailT
 ■ メニュー：${reservation.serviceName}
 ■ 料金：${formatPrice(reservation.price)}円
 ■ 備考：${reservation.notes || 'なし'}
+■ 問診回答：
+${formatIntakeSummary(reservation)}
 ━━━━━━━━━━━━━━━━━━━━━━━━
 
 【管理画面】

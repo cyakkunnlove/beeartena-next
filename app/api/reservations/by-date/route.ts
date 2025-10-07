@@ -83,10 +83,11 @@ export async function GET(request: NextRequest) {
 
     // 今日の場合、現在時刻より前の時間枠は利用不可
     if (selectedDate.toDateString() === now.toDateString()) {
-      const currentHour = now.getHours()
-      timeSlots.forEach(slot => {
-        const slotHour = parseInt(slot.time.split(':')[0])
-        if (slotHour <= currentHour) {
+      timeSlots.forEach((slot) => {
+        const [slotHour, slotMinute] = slot.time.split(':').map(Number)
+        const slotDateTime = new Date(selectedDate)
+        slotDateTime.setHours(slotHour, slotMinute || 0, 0, 0)
+        if (slotDateTime.getTime() <= now.getTime()) {
           slot.available = false
         }
       })

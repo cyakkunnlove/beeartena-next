@@ -2,6 +2,9 @@
  * 予約情報のセッションストレージ管理
  */
 
+import type { ReservationIntakeForm } from '@/lib/types'
+import { createDefaultIntakeForm, normalizeIntakeForm } from '@/lib/utils/intakeFormDefaults'
+
 const STORAGE_KEY = 'pending_reservation'
 
 export interface PendingReservation {
@@ -17,6 +20,8 @@ export interface PendingReservation {
     email: string
     phone: string
     notes: string
+    intakeForm: ReservationIntakeForm
+    isMonitorSelected?: boolean
   }
   step: number
   pointsToUse?: number
@@ -34,6 +39,10 @@ export const reservationStorage = {
 
     const pendingReservation: PendingReservation = {
       ...data,
+      formData: {
+        ...data.formData,
+        intakeForm: normalizeIntakeForm(data.formData.intakeForm),
+      },
       timestamp: Date.now(),
     }
 
@@ -59,7 +68,22 @@ export const reservationStorage = {
         return null
       }
 
-      return data
+      const baseFormData = data.formData ?? {
+        name: '',
+        email: '',
+        phone: '',
+        notes: '',
+        intakeForm: createDefaultIntakeForm(),
+        isMonitorSelected: false,
+      }
+
+      return {
+        ...data,
+        formData: {
+          ...baseFormData,
+          intakeForm: normalizeIntakeForm(baseFormData.intakeForm),
+        },
+      }
     } catch {
       return null
     }

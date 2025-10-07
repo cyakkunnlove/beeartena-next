@@ -20,6 +20,7 @@ export default function PrivacyPage() {
               <h2 className="text-2xl font-semibold mt-8 mb-4">1. 個人情報の定義</h2>
               <p className="mb-4">
                 個人情報とは、個人に関する情報であり、氏名、生年月日、住所、電話番号、メールアドレス、その他の記述等により特定の個人を識別できる情報を指します。
+                また、施術の安全管理を目的として取得する健康状態、アレルギー、既往歴、服薬状況などの情報（以下「健康・施術関連情報」）も個人情報として適切に取り扱います。
               </p>
 
               <h2 className="text-2xl font-semibold mt-8 mb-4">2. 個人情報の収集</h2>
@@ -29,6 +30,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 mb-4">
                 <li className="mb-2">会員登録をいただく場合</li>
                 <li className="mb-2">予約をいただく場合</li>
+                <li className="mb-2">施術前問診フォームへご回答いただく場合</li>
                 <li className="mb-2">お問い合わせをいただく場合</li>
                 <li className="mb-2">施術記録を作成する場合</li>
                 <li className="mb-2">その他、サービス提供に必要な場合</li>
@@ -41,6 +43,7 @@ export default function PrivacyPage() {
               <ul className="list-disc pl-6 mb-4">
                 <li className="mb-2">予約の管理・確認のため</li>
                 <li className="mb-2">施術サービスの提供のため</li>
+                <li className="mb-2">施術の安全管理および衛生管理のため</li>
                 <li className="mb-2">お客様への連絡・通知のため</li>
                 <li className="mb-2">ポイントサービスの管理のため</li>
                 <li className="mb-2">施術記録の管理・保管のため</li>
@@ -91,7 +94,14 @@ export default function PrivacyPage() {
                 変更した場合には、ウェブサイト上に掲載することにより通知します。
               </p>
 
-              <h2 className="text-2xl font-semibold mt-8 mb-4">10. お問い合わせ</h2>
+              <h2 className="text-2xl font-semibold mt-8 mb-4">10. 健康・施術関連情報の取扱い</h2>
+              <p className="mb-4">
+                施術前問診等を通じて取得した健康・施術関連情報は、施術の可否判断および安全管理の目的に限定して利用し、適切なアクセス制御のもとで保管します。
+                お客様から訂正・削除の申し出があった場合には、施術履歴との整合性を確認のうえ速やかに対応します。
+                また、第三者提供が必要となる際には、法令に基づく場合を除き、お客様の明示的な同意を得ます。
+              </p>
+
+              <h2 className="text-2xl font-semibold mt-8 mb-4">11. お問い合わせ</h2>
               <p className="mb-4">
                 当サロンの個人情報の取り扱いに関するお問い合わせは、以下までご連絡ください。
               </p>
@@ -105,7 +115,7 @@ export default function PrivacyPage() {
               <div className="mt-12 pt-8 border-t border-gray-300">
                 <p className="text-right text-gray-600">
                   制定日：2024年1月1日<br />
-                  最終改定日：2024年1月1日
+                  最終改定日：2025年10月6日
                 </p>
               </div>
             </div>

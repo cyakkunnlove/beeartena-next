@@ -75,6 +75,31 @@ export interface PointTransaction {
 }
 
 // Reservation types
+export interface ReservationIntakeForm {
+  allergies: {
+    selections: string[]
+    details: string
+  }
+  skinConcerns: {
+    selections: string[]
+    details: string
+  }
+  pregnancyStatus: 'none' | 'pregnant' | 'breastfeeding' | 'possible'
+  infectionHistory: {
+    selections: string[]
+    other: string
+  }
+  mentalState: 'stable' | 'slightly_tired' | 'stressed' | 'mood_changes'
+  goals: {
+    selections: string[]
+    other: string
+  }
+  medications: {
+    selections: string[]
+    other: string
+  }
+}
+
 export interface Reservation {
   id: string
   customerId: string | null // null許可：未登録ユーザーの予約対応
@@ -100,6 +125,7 @@ export interface Reservation {
   isMonitor?: boolean // モニター価格の予約
   finalPrice?: number // 実際の支払い金額（ポイント利用後）
   pointsUsed?: number // 利用したポイント数
+  intakeForm?: ReservationIntakeForm
 }
 
 // Inquiry types
@@ -275,6 +301,8 @@ export interface ReservationFormData {
   time: string
   notes?: string
   isMonitorPrice?: boolean // モニター価格を選択した場合true
+  isMonitorSelected?: boolean
+  intakeForm?: ReservationIntakeForm
 }
 
 export interface ContactFormData {

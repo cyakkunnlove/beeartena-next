@@ -29,7 +29,12 @@ export default function ReservationCompletePage() {
         >
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             {/* Success Icon */}
-            <div className="mx-auto w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: [0.9, 1.1, 1], opacity: 1 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              className="mx-auto w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-inner"
+            >
               <svg
                 className="w-12 h-12 text-green-600"
                 fill="none"
@@ -43,14 +48,22 @@ export default function ReservationCompletePage() {
                   d="M5 13l4 4L19 7"
                 />
               </svg>
-            </div>
+            </motion.div>
 
             <h1 className="text-3xl font-bold mb-4">ご予約ありがとうございました</h1>
             
             <div className="text-gray-600 mb-8 space-y-2">
               <p>予約が正常に完了しました。</p>
               <p>確認メールをお送りしましたのでご確認ください。</p>
-              <p className="text-sm mt-4">
+              <motion.p
+                className="text-lg text-primary font-semibold mt-4"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.6, ease: 'easeOut' }}
+              >
+                あなたが理想の美しさに出会う瞬間を、スタッフ一同心から楽しみにしています。
+              </motion.p>
+              <p className="text-sm mt-2">
                 ※メールが届かない場合は、迷惑メールフォルダをご確認いただくか、
                 お電話にてお問い合わせください。
               </p>
@@ -70,7 +83,7 @@ export default function ReservationCompletePage() {
               <ul className="text-sm text-yellow-700 space-y-1 text-left">
                 <li>• 施術当日は、眉毛周りのメイクはお控えください</li>
                 <li>• 予約時間の5分前にはお越しください</li>
-                <li>• キャンセルの場合は前日までにご連絡ください</li>
+                <li>• キャンセルの場合はご予約の3日前（72時間前）までにご連絡ください</li>
               </ul>
             </div>
 

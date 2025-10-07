@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react'
 
 import ReservationCalendar from '@/components/admin/ReservationCalendar'
 import ReservationEditModal from '@/components/admin/ReservationEditModal'
+import IntakeSummary from '@/components/reservation/IntakeSummary'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStatusManager } from '@/lib/firebase/reservationStatusManager'
 import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
@@ -416,6 +417,16 @@ export default function AdminReservations() {
                   <p>{selectedReservation.customerEmail}</p>
                   <p>{selectedReservation.customerPhone}</p>
                 </div>
+
+                {selectedReservation.intakeForm && (
+                  <div>
+                    <p className="text-sm text-gray-600">施術前問診</p>
+                    <IntakeSummary
+                      intakeForm={selectedReservation.intakeForm}
+                      className="bg-gray-50 border-gray-200 mt-2"
+                    />
+                  </div>
+                )}
 
                 {selectedReservation.notes && (
                   <div>

@@ -17,8 +17,8 @@ export default function AdminSettingsPage() {
     maxCapacityPerSlot: 1,
     businessHours: [],
     blockedDates: [],
-    cancellationDeadlineHours: 24, // デフォルト24時間前
-    cancellationPolicy: '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
+    cancellationDeadlineHours: 72, // デフォルト72時間前（3日前）
+    cancellationPolicy: '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
   })
   const [newBlockedDate, setNewBlockedDate] = useState('')
   const [message, setMessage] = useState('')
@@ -161,8 +161,13 @@ export default function AdminSettingsPage() {
               <input
                 id="cancellationDeadlineHours"
                 type="number"
-                value={settings.cancellationDeadlineHours || 24}
-                onChange={(e) => setSettings({ ...settings, cancellationDeadlineHours: parseInt(e.target.value) || 24 })}
+                value={settings.cancellationDeadlineHours || 72}
+                onChange={(e) =>
+                  setSettings({
+                    ...settings,
+                    cancellationDeadlineHours: parseInt(e.target.value) || 72,
+                  })
+                }
                 className="w-32 border rounded-lg px-3 py-2"
                 min="1"
                 max="168"

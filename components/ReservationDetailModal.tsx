@@ -1,5 +1,7 @@
 'use client'
 
+import IntakeSummary from '@/components/reservation/IntakeSummary'
+import { getMaintenanceOptionById, MAINTENANCE_OPTIONS } from '@/lib/constants/maintenanceOptions'
 import { Reservation } from '@/lib/types'
 import { X } from 'lucide-react'
 
@@ -21,6 +23,16 @@ export default function ReservationDetailModal({
   isCancelling,
 }: ReservationDetailModalProps) {
   if (!isOpen || !reservation) return null
+
+  const maintenanceOptionDetails = (reservation.maintenanceOptions ?? []).map((optionId) => {
+    const detail = getMaintenanceOptionById(optionId)
+    if (detail) return { id: optionId, name: detail.name }
+    return { id: optionId, name: optionId }
+  })
+
+  const isFullMaintenanceSelection =
+    maintenanceOptionDetails.length === MAINTENANCE_OPTIONS.length &&
+    (reservation.maintenancePrice ?? 0) > 0
 
   const getStatusLabel = (status: string) => {
     switch (status) {
@@ -128,12 +140,12 @@ export default function ReservationDetailModal({
               </div>
 
               {/* メンテナンスオプション料金の詳細表示 */}
-              {reservation.maintenanceOptions && reservation.maintenanceOptions.length > 0 && (
+              {maintenanceOptionDetails.length > 0 && (
                 <>
                   <div className="mt-2 mb-1 text-sm font-semibold text-gray-700">メンテナンスオプション：</div>
-                  {reservation.maintenanceOptions.map((option, index) => (
-                    <div key={index} className="flex justify-between pl-4 text-sm">
-                      <span className="text-gray-600">・{option}</span>
+                  {maintenanceOptionDetails.map((option) => (
+                    <div key={option.id} className="flex justify-between pl-4 text-sm">
+                      <span className="text-gray-600">・{option.name}</span>
                     </div>
                   ))}
                   {reservation.maintenancePrice && reservation.maintenancePrice > 0 && (
@@ -141,6 +153,9 @@ export default function ReservationDetailModal({
                       <span className="text-gray-600">メンテナンス料金</span>
                       <span className="font-semibold">+¥{reservation.maintenancePrice.toLocaleString()}</span>
                     </div>
+                  )}
+                  {isFullMaintenanceSelection && (
+                    <p className="pl-4 text-xs text-green-600">フルセット割引が適用されています。</p>
                   )}
                 </>
               )}
@@ -189,6 +204,9 @@ export default function ReservationDetailModal({
             </div>
           </div>
 
+          {/* 問診票 */}
+          {reservation.intakeForm && <IntakeSummary intakeForm={reservation.intakeForm} />}
+
           {/* 備考 */}
           {reservation.notes && (
             <div className="bg-yellow-50 rounded-lg p-4">
@@ -230,7 +248,7 @@ export default function ReservationDetailModal({
                 </button>
               ) : (
                 <div className="text-sm text-gray-500">
-                  ※ キャンセル期限（24時間前）を過ぎています
+                  ※ キャンセル期限（72時間前）を過ぎています
                 </div>
               )}
             </div>
