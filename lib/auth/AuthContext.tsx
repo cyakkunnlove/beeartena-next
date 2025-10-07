@@ -38,13 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // 誕生日ポイントチェック（非同期で実行）
     if (user.role === 'customer') {
-      import('@/lib/services/birthdayPoints').then(({ birthdayPointsService }) => {
-        birthdayPointsService.checkAndGrantBirthdayPoints(user.id).then((granted) => {
-          if (granted) {
-            // Birthday points granted!
-          }
-        })
-      })
+      void apiClient.triggerBirthdayPoints(user.id)
     }
 
     return user

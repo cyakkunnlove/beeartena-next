@@ -158,11 +158,25 @@ class ApiClient {
   // ポイント関連
   async getPoints(userId?: string) {
     const params = userId ? `?userId=${userId}` : ''
-    return this.request<{ balance: number; history: any[] }>(`/points${params}`)
+    return this.request<{ balance: number; history: any[]; warning?: string }>(`/points${params}`)
   }
 
   async getPointBalance() {
     return this.request<{ balance: number }>('/points/balance')
+  }
+
+  async triggerBirthdayPoints(userId: string) {
+    try {
+      const response = await this.request<{ granted?: boolean }>('/points/birthday', {
+        method: 'POST',
+        body: JSON.stringify({ userId }),
+      })
+      return response?.granted ?? false
+    } catch (error: any) {
+      // 認証エラーや未設定環境ではポイント付与をスキップ
+      console.debug('Birthday points trigger skipped', { error: error?.message || error })
+      return false
+    }
   }
 
   async addPoints(userId: string, amount: number, description: string) {
