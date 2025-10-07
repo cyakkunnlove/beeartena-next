@@ -1,5 +1,6 @@
 // eslint-disable-next-line import/order
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 
 import SkipLink from '@/components/a11y/SkipLink'
 import LayoutWrapper from '@/components/layout/LayoutWrapper'
@@ -8,6 +9,54 @@ import StructuredData from '@/components/seo/StructuredData'
 import { AuthProvider } from '@/lib/auth/AuthContext'
 
 import './globals.css'
+
+const disableServiceWorkerScript = `(() => {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  if ('serviceWorker' in navigator) {
+    const unregisterAll = () =>
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) =>
+          Promise.all(
+            registrations.map((registration) =>
+              registration
+                .unregister()
+                .catch(() => undefined),
+            ),
+          ),
+        )
+        .catch(() => undefined);
+
+    unregisterAll();
+
+    navigator.serviceWorker.ready
+      .then((registration) => {
+        registration.unregister().catch(() => undefined);
+      })
+      .catch(() => undefined);
+  }
+
+  if (typeof caches !== 'undefined') {
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter(
+              (key) =>
+                key.startsWith('beeartena-') ||
+                key.startsWith('workbox-precache') ||
+                key === 'form-submissions',
+            )
+            .map((key) => caches.delete(key).catch(() => undefined)),
+        ),
+      )
+      .catch(() => undefined);
+  }
+})();`
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://beeartena.vercel.app'),
@@ -64,9 +113,12 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ja">
+    <html lang="ja" data-scroll-behavior="smooth">
       <head>
         <StructuredData />
+        {process.env.NODE_ENV !== 'production' && (
+          <Script id="dev-sw-reset" strategy="beforeInteractive" dangerouslySetInnerHTML={{ __html: disableServiceWorkerScript }} />
+        )}
       </head>
       <body className="min-h-screen flex flex-col">
         <SkipLink />

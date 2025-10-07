@@ -8,12 +8,32 @@ interface BeforeInstallPromptEvent extends Event {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
+const ENABLE_PWA = process.env.NEXT_PUBLIC_ENABLE_PWA === 'true'
+
 const PWAInstallPrompt: React.FC = () => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null)
   const [showPrompt, setShowPrompt] = useState(false)
   const [isInstalled, setIsInstalled] = useState(false)
 
   useEffect(() => {
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+
+    if (isLocalhost && 'serviceWorker' in navigator) {
+      // ローカルでは既存の Service Worker を強制解除
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((registrations) => {
+          registrations.forEach((registration) => registration.unregister())
+        })
+        .catch((error) => console.warn('Failed to unregister SW on localhost', error))
+    }
+
+    if (!ENABLE_PWA) {
+      return
+    }
+
     // Check if already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true)
@@ -76,7 +96,7 @@ const PWAInstallPrompt: React.FC = () => {
     localStorage.setItem('pwa-install-dismissed', 'true')
   }
 
-  if (!showPrompt || isInstalled || !deferredPrompt) {
+  if (!ENABLE_PWA || !showPrompt || isInstalled || !deferredPrompt) {
     return null
   }
 
@@ -129,41 +149,52 @@ export const useServiceWorker = () => {
   const [updateAvailable, setUpdateAvailable] = useState(false)
 
   useEffect(() => {
-    if ('serviceWorker' in navigator && process.env.NODE_ENV === 'production') {
-      // Register service worker
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((reg) => {
-          setRegistration(reg)
+    const isLocalhost =
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
 
-          // Check for updates
-          reg.addEventListener('updatefound', () => {
-            const newWorker = reg.installing
-            if (newWorker) {
-              newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                  setUpdateAvailable(true)
-                }
-              })
-            }
-          })
-        })
-        .catch((error) => {
-          console.error('Service Worker registration failed:', error)
-        })
-
-      // Handle controller change
-      let refreshing = false
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true
-          window.location.reload()
-        }
-      })
+    if (typeof window === 'undefined' || !('serviceWorker' in navigator)) {
+      return
     }
+
+    if (!ENABLE_PWA || process.env.NODE_ENV !== 'production' || isLocalhost) {
+      return
+    }
+
+    navigator.serviceWorker
+      .register('/sw.js')
+      .then((reg) => {
+        setRegistration(reg)
+
+        reg.addEventListener('updatefound', () => {
+          const newWorker = reg.installing
+          if (newWorker) {
+            newWorker.addEventListener('statechange', () => {
+              if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                setUpdateAvailable(true)
+              }
+            })
+          }
+        })
+      })
+      .catch((error) => {
+        console.error('Service Worker registration failed:', error)
+      })
+
+    let refreshing = false
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!refreshing) {
+        refreshing = true
+        window.location.reload()
+      }
+    })
   }, [])
 
   const updateServiceWorker = () => {
+    if (!ENABLE_PWA) {
+      return
+    }
+
     if (registration && registration.waiting) {
       registration.waiting.postMessage({ type: 'SKIP_WAITING' })
     }
