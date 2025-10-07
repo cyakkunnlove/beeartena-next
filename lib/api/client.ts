@@ -110,6 +110,24 @@ class ApiClient {
     }>('/admin/stats', { cache: 'no-store' })
   }
 
+  async getAdminReservations() {
+    return this.request<{ success: boolean; reservations: any[] }>('/admin/reservations', {
+      cache: 'no-store',
+    })
+  }
+
+  async getAdminCustomers() {
+    return this.request<{ success: boolean; customers: any[] }>('/admin/customers', {
+      cache: 'no-store',
+    })
+  }
+
+  async getAdminPoints() {
+    return this.request<{ success: boolean; points: any[] }>('/admin/points', {
+      cache: 'no-store',
+    })
+  }
+
   async updateProfile(data: any) {
     return this.request<any>('/auth/me', {
       method: 'PUT',

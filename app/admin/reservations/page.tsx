@@ -6,9 +6,9 @@ import { useEffect, useState } from 'react'
 import ReservationCalendar from '@/components/admin/ReservationCalendar'
 import ReservationEditModal from '@/components/admin/ReservationEditModal'
 import IntakeSummary from '@/components/reservation/IntakeSummary'
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStatusManager } from '@/lib/firebase/reservationStatusManager'
-import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { reservationService } from '@/lib/reservationService'
 import { storageService } from '@/lib/storage/storageService'
 import { Reservation } from '@/lib/types'
@@ -38,12 +38,19 @@ export default function AdminReservations() {
 
   const loadReservations = async () => {
     try {
-      // Firebaseから予約データを取得
-      const allReservations = await firebaseReservationService.getAllReservations()
+      const data = await apiClient.getAdminReservations()
+
+      if (!data?.success || !Array.isArray(data.reservations)) {
+        throw new Error('Invalid response format')
+      }
+
       setReservations(
-        allReservations.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
+        data.reservations
+          .map((item: any) => ({
+            ...item,
+            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+          }))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       )
     } catch (error) {
       console.error('Failed to load reservations:', error)

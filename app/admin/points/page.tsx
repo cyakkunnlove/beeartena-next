@@ -4,6 +4,7 @@ import { MagnifyingGlassIcon } from '@heroicons/react/24/outline'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer, PointTransaction } from '@/lib/types'
@@ -29,16 +30,38 @@ export default function PointsManagementPage() {
     loadData()
   }, [user, router])
 
-  const loadData = () => {
-    const allCustomers = storageService.getAllCustomers()
-    setCustomers(allCustomers)
+  const loadData = async () => {
+    try {
+      const data = await apiClient.getAdminPoints()
 
-    const allPoints = JSON.parse(localStorage.getItem('points') || '[]')
-    setPointHistory(
-      allPoints.sort(
-        (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    )
+      if (!data?.success || !Array.isArray(data.points)) {
+        throw new Error('Invalid response format')
+      }
+
+      const customersWithPoints = data.points.map((p: any) => ({
+        id: p.userId,
+        name: p.userName,
+        email: p.userEmail,
+        points: p.currentPoints,
+        tier: p.tier,
+        lifetimePoints: p.lifetimePoints,
+      }))
+
+      setCustomers(customersWithPoints)
+      setPointHistory([])
+    } catch (error) {
+      console.error('Failed to load points data:', error)
+      // フォールバック: LocalStorageから取得
+      const allCustomers = storageService.getAllCustomers()
+      setCustomers(allCustomers)
+
+      const allPoints = JSON.parse(localStorage.getItem('points') || '[]')
+      setPointHistory(
+        allPoints.sort(
+          (a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      )
+    }
   }
 
   const handlePointTransaction = () => {

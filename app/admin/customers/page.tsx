@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
 import CustomerDeleteModal from '@/components/admin/CustomerDeleteModal'
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { userService } from '@/lib/firebase/users'
 import { storageService } from '@/lib/storage/storageService'
@@ -26,13 +27,32 @@ export default function AdminCustomers() {
     loadCustomers()
   }, [user, router])
 
-  const loadCustomers = () => {
-    const allCustomers = storageService.getAllCustomers()
-    setCustomers(
-      allCustomers.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-      ),
-    )
+  const loadCustomers = async () => {
+    try {
+      const data = await apiClient.getAdminCustomers()
+
+      if (!data?.success || !Array.isArray(data.customers)) {
+        throw new Error('Invalid response format')
+      }
+
+      setCustomers(
+        data.customers
+          .map((item: any) => ({
+            ...item,
+            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+          }))
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+      )
+    } catch (error) {
+      console.error('Failed to load customers:', error)
+      // フォールバック: LocalStorageから取得
+      const localCustomers = storageService.getAllCustomers()
+      setCustomers(
+        localCustomers.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
+      )
+    }
   }
 
   const filteredCustomers = customers.filter(

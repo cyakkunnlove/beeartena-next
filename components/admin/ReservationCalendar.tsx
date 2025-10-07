@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import moment from 'moment'
 import { useState, useCallback, useMemo } from 'react'
 import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar'
