@@ -22,6 +22,9 @@ export default function MypageDashboard() {
 
     try {
       const pointsResponse = await apiClient.getPoints()
+      if (pointsResponse?.warning) {
+        console.warn('[mypage] points API warning:', pointsResponse.warning)
+      }
       const snapshot = buildPointsSnapshot(user.id, pointsResponse?.balance, pointsResponse?.history)
       setPoints(snapshot)
     } catch (error) {

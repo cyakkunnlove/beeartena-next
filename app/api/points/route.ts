@@ -117,6 +117,25 @@ export async function GET(request: NextRequest) {
     )
   } catch (error: any) {
     console.error('Failed to load points history:', error)
+
+    const message = typeof error?.message === 'string' ? error.message : ''
+    if (message.includes('Missing or insufficient permissions')) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn('[points] Returning empty response due to missing permissions in development environment')
+        return setCorsHeaders(
+          successResponse({
+            balance: 0,
+            history: [],
+            warning: 'ポイントデータにアクセスできませんでした。環境変数またはFirebase認証情報を確認してください。',
+          }),
+        )
+      }
+
+      return setCorsHeaders(
+        errorResponse('ポイントデータにアクセスする権限がありません。管理者にお問い合わせください。', 403),
+      )
+    }
+
     return setCorsHeaders(errorResponse(error.message || 'ポイント履歴の取得に失敗しました', 500))
   }
 }
