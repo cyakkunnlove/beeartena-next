@@ -38,19 +38,20 @@ export default function AdminReservations() {
 
   const loadReservations = async () => {
     try {
-      const data = await apiClient.getAdminReservations()
+      const { success, reservations } = await apiClient.getAdminReservations()
 
-      if (!data?.success || !Array.isArray(data.reservations)) {
+      if (!success || !Array.isArray(reservations)) {
         throw new Error('Invalid response format')
       }
 
+      const normalized = reservations.map((item: any) => ({
+        ...item,
+        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
+        updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
+      }))
+
       setReservations(
-        data.reservations
-          .map((item: any) => ({
-            ...item,
-            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-          }))
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        normalized.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
       )
     } catch (error) {
       console.error('Failed to load reservations:', error)
