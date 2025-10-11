@@ -12,9 +12,11 @@ import {
 } from 'firebase/firestore'
 
 import { mockUserService } from '../mock/mockFirebase'
-import { User } from '../types'
+import { User, getErrorMessage } from '../types'
 
 import { db } from './config'
+import { getAdminDb } from './admin'
+import { logger } from '@/lib/utils/logger'
 
 // Firebaseが設定されているかチェック
 const isFirebaseConfigured = () => {
@@ -35,28 +37,85 @@ export const userService = {
         ...user,
         createdAt: Timestamp.fromDate(user.createdAt || new Date()),
       })
-    } catch (error: any) {
-      throw new Error(error.message || 'ユーザーの作成に失敗しました')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error) || 'ユーザーの作成に失敗しました')
     }
   },
 
   // ユーザー取得
   async getUser(id: string): Promise<User | null> {
+    const start = Date.now()
+
     if (!isFirebaseConfigured()) {
-      return mockUserService.getUser(id)
+      const mockResult = await mockUserService.getUser(id)
+      logger.debug('users.get.mock', {
+        userId: id,
+        durationMs: Date.now() - start,
+        found: Boolean(mockResult),
+      })
+      return mockResult
     }
 
     try {
+      // サーバーサイドでは Admin SDK を使用（セキュリティルールをバイパス）
+      const adminDb = getAdminDb()
+      if (adminDb) {
+        const docRef = await adminDb.collection('users').doc(id).get()
+        if (!docRef.exists) {
+          logger.debug('users.get.admin.miss', {
+            userId: id,
+            durationMs: Date.now() - start,
+          })
+          return null
+        }
+
+        const data = docRef.data()
+        if (!data) {
+          return null
+        }
+
+        const result = {
+          ...data,
+          createdAt: data.createdAt?.toDate() || new Date(),
+        } as User
+
+        logger.debug('users.get.admin.hit', {
+          userId: id,
+          durationMs: Date.now() - start,
+        })
+
+        return result
+      }
+
+      // Admin SDK が利用できない場合は Client SDK にフォールバック
       const docRef = await getDoc(doc(db, 'users', id))
-      if (!docRef.exists()) return null
+      if (!docRef.exists()) {
+        logger.debug('users.get.firestore.miss', {
+          userId: id,
+          durationMs: Date.now() - start,
+        })
+        return null
+      }
 
       const data = docRef.data()
-      return {
+      const result = {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
       } as User
-    } catch (error: any) {
-      throw new Error(error.message || 'ユーザーの取得に失敗しました')
+
+      logger.debug('users.get.firestore.hit', {
+        userId: id,
+        durationMs: Date.now() - start,
+      })
+
+      return result
+    } catch (error: unknown) {
+      logger.error('users.get.firestore.error', {
+        userId: id,
+        durationMs: Date.now() - start,
+        error,
+      })
+      throw new Error(getErrorMessage(error) || 'ユーザーの取得に失敗しました')
     }
   },
 
@@ -78,8 +137,8 @@ export const userService = {
         ...data,
         createdAt: data.createdAt?.toDate() || new Date(),
       } as User
-    } catch (error: any) {
-      throw new Error(error.message || 'ユーザーの検索に失敗しました')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error) || 'ユーザーの検索に失敗しました')
     }
   },
 
@@ -100,8 +159,8 @@ export const userService = {
           createdAt: data.createdAt?.toDate() || new Date(),
         } as User
       })
-    } catch (error: any) {
-      throw new Error(error.message || 'ユーザー一覧の取得に失敗しました')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error) || 'ユーザー一覧の取得に失敗しました')
     }
   },
 
@@ -112,15 +171,31 @@ export const userService = {
     }
 
     try {
-      const updateData: any = { ...updates }
-      if (updateData.createdAt) {
-        updateData.createdAt = Timestamp.fromDate(updateData.createdAt)
+      const updateData: Record<string, unknown> = { ...updates }
+      const createdAtValue = updateData.createdAt
+
+      if (createdAtValue instanceof Date) {
+        updateData.createdAt = Timestamp.fromDate(createdAtValue)
+      } else if (typeof createdAtValue === 'string') {
+        const parsedDate = new Date(createdAtValue)
+        if (!Number.isNaN(parsedDate.getTime())) {
+          updateData.createdAt = Timestamp.fromDate(parsedDate)
+        }
+      } else if (
+        createdAtValue &&
+        typeof createdAtValue === 'object' &&
+        'toDate' in createdAtValue &&
+        typeof (createdAtValue as { toDate?: () => Date }).toDate === 'function'
+      ) {
+        const date = (createdAtValue as { toDate: () => Date }).toDate()
+        updateData.createdAt = Timestamp.fromDate(date)
       }
+
       updateData.updatedAt = Timestamp.now()
 
       await updateDoc(doc(db, 'users', id), updateData)
-    } catch (error: any) {
-      throw new Error(error.message || 'ユーザー情報の更新に失敗しました')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error) || 'ユーザー情報の更新に失敗しました')
     }
   },
 
@@ -154,8 +229,8 @@ export const userService = {
         rank: newRank,
         updatedAt: Timestamp.now(),
       })
-    } catch (error: any) {
-      throw new Error(error.message || '累計利用金額の更新に失敗しました')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error) || '累計利用金額の更新に失敗しました')
     }
   },
 
@@ -178,8 +253,8 @@ export const userService = {
         deletedBy: 'admin',
         updatedAt: Timestamp.now(),
       })
-    } catch (error: any) {
-      throw new Error(error.message || '顧客の削除に失敗しました')
+    } catch (error: unknown) {
+      throw new Error(getErrorMessage(error) || '顧客の削除に失敗しました')
     }
   },
 }

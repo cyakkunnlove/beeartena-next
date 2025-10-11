@@ -1,12 +1,12 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import CustomerDeleteModal from '@/components/admin/CustomerDeleteModal'
+import CustomerDetailModal from '@/components/admin/CustomerDetailModal'
 import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { userService } from '@/lib/firebase/users'
 import { storageService } from '@/lib/storage/storageService'
 import { Customer } from '@/lib/types'
 
@@ -17,6 +17,113 @@ export default function AdminCustomers() {
   const [searchTerm, setSearchTerm] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null)
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null)
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false)
+  const [isFallbackData, setIsFallbackData] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+
+  const PAGE_SIZE = 20
+
+  const normalizeCustomerDates = (records: Customer[]): Customer[] =>
+    records.map((item) => ({
+      ...item,
+      createdAt:
+        item.createdAt instanceof Date
+          ? item.createdAt
+          : item.createdAt
+            ? new Date(item.createdAt)
+            : new Date(),
+      updatedAt:
+        item.updatedAt instanceof Date
+          ? item.updatedAt
+          : item.updatedAt
+            ? new Date(item.updatedAt)
+            : new Date(),
+    }))
+
+  const loadCustomers = useCallback(
+    async (
+      options: {
+        cursor?: string | null
+        append?: boolean
+        silent?: boolean
+      } = {},
+    ) => {
+      if (!user || user.role !== 'admin') {
+        return
+      }
+
+      if (options.append) {
+        setLoadingMore(true)
+      } else if (options.silent) {
+        setRefreshing(true)
+      } else {
+        setRefreshing(false)
+      }
+
+      try {
+        setIsFallbackData(false)
+        setErrorMessage(null)
+
+        const response = await apiClient.getAdminCustomers({
+          limit: PAGE_SIZE,
+          cursor: options.cursor ?? undefined,
+        })
+
+        if (!response.success || !Array.isArray(response.customers)) {
+          throw new Error('Failed to fetch customers')
+        }
+
+        const normalized = normalizeCustomerDates(response.customers)
+
+        let nextState: Customer[] = []
+        setCustomers((prev) => {
+          const base = options.append ? prev : []
+          const merged = [...base, ...normalized]
+          const deduped = Array.from(new Map(merged.map((item) => [item.id, item])).values())
+          deduped.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          nextState = deduped
+          return deduped
+        })
+
+        setNextCursor(response.cursor ?? null)
+        setHasNextPage(Boolean(response.hasNext) && Boolean(response.cursor))
+
+        try {
+          storageService.replaceCustomers(nextState)
+        } catch (storageError) {
+          console.warn('Failed to persist customers to storage', storageError)
+        }
+      } catch (error) {
+        console.error('Failed to load customers:', error)
+
+        const localCustomers = normalizeCustomerDates(storageService.getAllCustomers() as Customer[])
+        const sortedLocal = localCustomers.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+        setCustomers((prev) => {
+          const base = options.append ? prev : []
+          const merged = [...base, ...sortedLocal]
+          const deduped = Array.from(new Map(merged.map((item) => [item.id, item])).values())
+          deduped.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
+          return deduped
+        })
+        setIsFallbackData(true)
+        setErrorMessage('Firestoreから顧客データを取得できなかったため、ローカルの参考データを表示しています。')
+        setNextCursor(null)
+        setHasNextPage(false)
+      } finally {
+        if (options.append) {
+          setLoadingMore(false)
+        } else {
+          setRefreshing(false)
+        }
+      }
+    },
+    [user, PAGE_SIZE],
+  )
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -24,43 +131,37 @@ export default function AdminCustomers() {
       return
     }
 
-    loadCustomers()
-  }, [user, router])
+    void loadCustomers()
+  }, [user, router, loadCustomers])
 
-  const loadCustomers = async () => {
-    try {
-      const data = await apiClient.getAdminCustomers()
-
-      if (!data?.success || !Array.isArray(data.customers)) {
-        throw new Error('Invalid response format')
-      }
-
-      setCustomers(
-        data.customers
-          .map((item: any) => ({
-            ...item,
-            createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-          }))
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
-      )
-    } catch (error) {
-      console.error('Failed to load customers:', error)
-      // フォールバック: LocalStorageから取得
-      const localCustomers = storageService.getAllCustomers()
-      setCustomers(
-        localCustomers.sort(
-          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-        ),
-      )
+  const requireLiveData = (actionLabel?: string) => {
+    if (!isFallbackData) {
+      return true
     }
+
+    const message = actionLabel
+      ? `${actionLabel}を行う前に Firestore との接続を復旧し、「再読込」を実行してください。`
+      : 'Firestore との接続を復旧し、「再読込」を実行してください。'
+    alert(message)
+    return false
   }
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      customer.phone.includes(searchTerm),
-  )
+  const normalizedSearchTerm = searchTerm.trim().toLowerCase()
+  const rawPhoneTerm = searchTerm.trim()
+
+  const filteredCustomers = customers.filter((customer) => {
+    if (normalizedSearchTerm.length === 0 && rawPhoneTerm.length === 0) {
+      return true
+    }
+
+    const nameMatch = customer.name.toLowerCase().includes(normalizedSearchTerm)
+    const emailMatch = customer.email.toLowerCase().includes(normalizedSearchTerm)
+    const phoneMatch = (customer.phone || '').includes(rawPhoneTerm)
+
+    return normalizedSearchTerm.length > 0
+      ? nameMatch || emailMatch || phoneMatch
+      : phoneMatch
+  })
 
   const getTierColor = (tier: string) => {
     switch (tier) {
@@ -93,25 +194,72 @@ export default function AdminCustomers() {
   }
 
   const handleDeleteClick = (customer: Customer) => {
+    if (!requireLiveData('顧客の削除')) {
+      return
+    }
     setSelectedCustomer(customer)
     setShowDeleteModal(true)
   }
 
   const handleDeleteConfirm = async (customerId: string) => {
+    if (!requireLiveData('顧客の削除')) {
+      setShowDeleteModal(false)
+      return
+    }
+
     try {
-      await userService.deleteCustomerByAdmin(customerId)
-      // ローカルの顧客リストからも削除
-      setCustomers(customers.filter(c => c.id !== customerId))
+      await apiClient.deleteAdminCustomer(customerId)
+
+      let nextCustomers: Customer[] = []
+      setCustomers((prev) => {
+        const updated = prev.filter((c) => c.id !== customerId)
+        nextCustomers = updated
+        return updated
+      })
+
+      try {
+        storageService.replaceCustomers(nextCustomers)
+      } catch (storageError) {
+        console.warn('Failed to update cached customers after deletion', storageError)
+      }
+
       setShowDeleteModal(false)
       setSelectedCustomer(null)
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to delete customer:', error)
-      throw error
+      const message =
+        error instanceof Error && error.message
+          ? error.message
+          : '顧客の削除に失敗しました'
+      throw new Error(message)
     }
+  }
+
+  const handleShowDetail = (customer: Customer) => {
+    setDetailCustomer(customer)
+    setIsDetailModalOpen(true)
   }
 
   if (!user || user.role !== 'admin') {
     return null
+  }
+
+  const handleSendMail = (email: string) => {
+    if (!requireLiveData('メール送信')) {
+      return
+    }
+    window.location.href = `mailto:${email}`
+  }
+
+  const handleReload = () => {
+    void loadCustomers({ silent: true })
+  }
+
+  const handleLoadMore = () => {
+    if (!nextCursor || loadingMore) {
+      return
+    }
+    void loadCustomers({ cursor: nextCursor, append: true })
   }
 
   return (
@@ -120,12 +268,23 @@ export default function AdminCustomers() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">顧客管理</h1>
-            <button
-              onClick={() => router.push('/admin')}
-              className="text-primary hover:text-dark-gold"
-            >
-              ← 管理画面に戻る
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleReload}
+                className="px-4 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-60 disabled:cursor-not-allowed"
+                disabled={refreshing}
+              >
+                {refreshing ? '更新中…' : '再読込'}
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push('/admin')}
+                className="text-primary hover:text-dark-gold"
+              >
+                ← 管理画面に戻る
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -141,6 +300,12 @@ export default function AdminCustomers() {
             className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent"
           />
         </div>
+
+        {errorMessage && (
+          <div className="mb-6 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Customer Stats */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
@@ -183,9 +348,9 @@ export default function AdminCustomers() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     会員ランク
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    ポイント
-                  </th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        旧ポイント残高
+                      </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     総利用額
                   </th>
@@ -240,22 +405,35 @@ export default function AdminCustomers() {
                         </p>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           <button
-                            onClick={() => router.push(`/admin/customers/${customer.id}`)}
-                            className="text-primary hover:text-dark-gold text-sm"
+                            type="button"
+                            onClick={() => handleShowDetail(customer)}
+                            className="text-sm text-primary hover:text-dark-gold"
                           >
                             詳細
                           </button>
-                          <a
-                            href={`mailto:${customer.email}`}
-                            className="text-gray-600 hover:text-gray-800 text-sm"
+                          <button
+                            type="button"
+                            onClick={() => handleSendMail(customer.email)}
+                            className={`text-sm ${
+                              isFallbackData
+                                ? 'text-gray-400 cursor-not-allowed'
+                                : 'text-gray-600 hover:text-gray-800'
+                            }`}
+                            disabled={isFallbackData}
                           >
                             メール
-                          </a>
+                          </button>
                           <button
+                            type="button"
                             onClick={() => handleDeleteClick(customer)}
-                            className="text-red-600 hover:text-red-800 text-sm"
+                            className={`text-sm ${
+                              isFallbackData
+                                ? 'text-gray-400 cursor-not-allowed'
+                                : 'text-red-600 hover:text-red-800'
+                            }`}
+                            disabled={isFallbackData}
                           >
                             削除
                           </button>
@@ -268,6 +446,19 @@ export default function AdminCustomers() {
             </table>
           </div>
         </div>
+
+        {hasNextPage && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore || isFallbackData}
+              className="px-4 py-2 text-sm font-medium text-primary border border-primary rounded-md hover:bg-primary hover:text-white disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loadingMore ? '読み込み中…' : 'さらに読み込む'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* 削除確認モーダル */}
@@ -279,6 +470,16 @@ export default function AdminCustomers() {
           setSelectedCustomer(null)
         }}
         onConfirm={handleDeleteConfirm}
+      />
+
+      <CustomerDetailModal
+        open={isDetailModalOpen && detailCustomer !== null}
+        customer={detailCustomer}
+        onClose={() => {
+          setIsDetailModalOpen(false)
+          setDetailCustomer(null)
+        }}
+        disableLiveRequests={isFallbackData}
       />
     </div>
   )

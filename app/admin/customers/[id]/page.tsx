@@ -2,31 +2,207 @@
 
 import { ChevronLeftIcon } from '@heroicons/react/24/outline'
 import { useRouter, useParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
 import CustomerDeleteModal from '@/components/admin/CustomerDeleteModal'
 import DatePicker from '@/components/ui/DatePicker'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { userService } from '@/lib/firebase/users'
-import { mockUserService } from '@/lib/mock/mockFirebase'
+import { apiClient } from '@/lib/api/client'
 import { storageService } from '@/lib/storage/storageService'
-import { Customer, Reservation, PointTransaction, User } from '@/lib/types'
+import { Customer, Reservation, PointTransaction } from '@/lib/types'
+import { logger } from '@/lib/utils/logger'
+
+const isReservationRecord = (value: unknown): value is Reservation => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const record = value as Partial<Reservation>
+  return (
+    typeof record.id === 'string' &&
+    typeof record.date === 'string' &&
+    typeof record.time === 'string' &&
+    typeof record.status === 'string'
+  )
+}
+
+const isPointTransactionRecord = (value: unknown): value is PointTransaction => {
+  if (!value || typeof value !== 'object') {
+    return false
+  }
+  const record = value as Partial<PointTransaction>
+  return (
+    typeof record.id === 'string' &&
+    typeof record.userId === 'string' &&
+    typeof record.type === 'string' &&
+    typeof record.amount === 'number' &&
+    (typeof record.createdAt === 'string' || record.createdAt instanceof Date)
+  )
+}
+
+const CUSTOMER_TIERS = ['bronze', 'silver', 'gold', 'platinum'] as const
+
+type CustomerTier = (typeof CUSTOMER_TIERS)[number]
+
+const isCustomerTier = (value: string | null | undefined): value is CustomerTier =>
+  typeof value === 'string' && (CUSTOMER_TIERS as readonly string[]).includes(value)
 
 export default function CustomerDetailPage() {
   const router = useRouter()
   const params = useParams()
   const { user } = useAuth()
   const [customer, setCustomer] = useState<Customer | null>(null)
-  const [userRecord, setUserRecord] = useState<User | null>(null)
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [pointHistory, setPointHistory] = useState<PointTransaction[]>([])
   const [notes, setNotes] = useState('')
   const [editingNotes, setEditingNotes] = useState(false)
-  const [selectedTier, setSelectedTier] = useState('')
+  const [selectedTier, setSelectedTier] = useState<CustomerTier>('bronze')
   const [activeTab, setActiveTab] = useState<'reservations' | 'points'>('reservations')
   const [editingBirthday, setEditingBirthday] = useState(false)
   const [birthday, setBirthday] = useState('')
   const [showDeleteModal, setShowDeleteModal] = useState(false)
+
+  const customerId = useMemo(() => {
+    const rawId = params.id
+    if (Array.isArray(rawId)) {
+      return rawId[0] ?? ''
+    }
+    return rawId ?? ''
+  }, [params.id])
+
+  const loadCustomerData = useCallback(
+    async (targetCustomerId: string) => {
+      const cachedCustomers = storageService.getAllCustomers()
+      let provisionalCustomer =
+        cachedCustomers.find((c) => c.id === targetCustomerId) ?? null
+
+      if (provisionalCustomer) {
+        setCustomer(provisionalCustomer)
+        setNotes(provisionalCustomer.notes ?? '')
+        setSelectedTier(
+          isCustomerTier(provisionalCustomer.tier) ? provisionalCustomer.tier : 'bronze',
+        )
+        setBirthday(provisionalCustomer.birthday ?? '')
+      } else {
+        setCustomer(null)
+        setNotes('')
+        setSelectedTier('bronze')
+        setBirthday('')
+      }
+
+      let refreshedCustomer: Customer | null = null
+      try {
+        const aggregated = new Map<string, Customer>()
+        cachedCustomers.forEach((existing) => aggregated.set(existing.id, existing))
+
+        const PAGE_SIZE = 100
+        let cursor: string | undefined
+
+        for (let page = 0; page < 50; page += 1) {
+          const response = await apiClient.getAdminCustomers({
+            limit: PAGE_SIZE,
+            cursor,
+          })
+
+          if (!response.success) {
+            throw new Error('顧客情報の取得に失敗しました')
+          }
+
+          response.customers.forEach((entry) => {
+            aggregated.set(entry.id, entry)
+            if (!refreshedCustomer && entry.id === targetCustomerId) {
+              refreshedCustomer = entry
+            }
+          })
+
+        if (!response.hasNext || !response.cursor || refreshedCustomer) {
+          break
+        }
+        cursor = response.cursor ?? undefined
+        }
+
+        const mergedCustomers = Array.from(aggregated.values()).sort(
+          (a, b) => b.createdAt.getTime() - a.createdAt.getTime(),
+        )
+        storageService.replaceCustomers(mergedCustomers)
+
+        if (!refreshedCustomer) {
+          refreshedCustomer =
+            mergedCustomers.find((c) => c.id === targetCustomerId) ?? null
+        }
+      } catch (error: unknown) {
+        logger.error('Failed to refresh customer from API', {
+          customerId: targetCustomerId,
+          error,
+        })
+      }
+
+      const finalCustomer =
+        refreshedCustomer ??
+        storageService.getAllCustomers().find((c) => c.id === targetCustomerId) ??
+        provisionalCustomer
+
+      if (!finalCustomer) {
+        router.push('/admin/customers')
+        return
+      }
+
+      setCustomer(finalCustomer)
+      setNotes(finalCustomer.notes ?? '')
+      setSelectedTier(isCustomerTier(finalCustomer.tier) ? finalCustomer.tier : 'bronze')
+      setBirthday(finalCustomer.birthday ?? '')
+
+      let reservationsRaw: unknown = []
+      try {
+        reservationsRaw = JSON.parse(localStorage.getItem('reservations') ?? '[]')
+      } catch (error: unknown) {
+        logger.error('Failed to parse reservations from storage', {
+          customerId: targetCustomerId,
+          error,
+        })
+      }
+
+      if (Array.isArray(reservationsRaw)) {
+        const customerReservations = reservationsRaw
+          .filter((reservation): reservation is Reservation => {
+            if (!isReservationRecord(reservation)) {
+              return false
+            }
+            return reservation.customerId === targetCustomerId
+          })
+          .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+        setReservations(customerReservations)
+      } else {
+        setReservations([])
+      }
+
+      let pointsRaw: unknown = []
+      try {
+        pointsRaw = JSON.parse(localStorage.getItem('points') ?? '[]')
+      } catch (error: unknown) {
+        logger.error('Failed to parse points from storage', {
+          customerId: targetCustomerId,
+          error,
+        })
+      }
+
+      if (Array.isArray(pointsRaw)) {
+        const customerPoints = pointsRaw
+          .filter((transaction): transaction is PointTransaction => {
+            if (!isPointTransactionRecord(transaction)) {
+              return false
+            }
+            return transaction.userId === targetCustomerId
+          })
+          .sort(
+            (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+          )
+        setPointHistory(customerPoints)
+      } else {
+        setPointHistory([])
+      }
+    },
+    [router],
+  )
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -34,101 +210,90 @@ export default function CustomerDetailPage() {
       return
     }
 
-    if (params.id) {
-      loadCustomerData(params.id as string)
+    if (customerId) {
+      void loadCustomerData(customerId)
     }
-  }, [user, router, params.id])
+  }, [user, router, customerId, loadCustomerData])
 
-  const loadCustomerData = async (customerId: string) => {
-    // 顧客情報を取得
-    const allCustomers = storageService.getAllCustomers()
-    const customerData = allCustomers.find((c) => c.id === customerId)
+  const handleNotesUpdate = async () => {
+    if (!customer) return
 
-    if (!customerData) {
-      router.push('/admin/customers')
-      return
-    }
-
-    setCustomer(customerData)
-    setNotes(customerData.notes || '')
-    setSelectedTier(customerData.tier || 'bronze')
-
-    // Userレコードも取得（生年月日情報のため）
     try {
-      const isFirebaseConfigured = false // 現在はモックを使用
-      let userData: User | null
-      if (isFirebaseConfigured) {
-        userData = await userService.getUser(customerId)
-      } else {
-        userData = await mockUserService.getUser(customerId)
+      await apiClient.updateAdminCustomer(customer.id, { notes })
+      const updatedCustomer: Customer = {
+        ...customer,
+        notes,
+        updatedAt: new Date(),
       }
-      if (userData) {
-        setUserRecord(userData)
-        setBirthday(userData.birthday || '')
-      }
-    } catch (error) {
-      console.error('Failed to load user data:', error)
+      setCustomer(updatedCustomer)
+      storageService.updateCustomer(customer.id, updatedCustomer)
+      setEditingNotes(false)
+    } catch (error: unknown) {
+      logger.error('Failed to update customer notes', {
+        customerId: customer.id,
+        error,
+      })
+      alert('顧客メモの更新に失敗しました')
     }
-
-    // 予約履歴を取得
-    const allReservations = JSON.parse(localStorage.getItem('reservations') || '[]')
-    const customerReservations = allReservations
-      .filter((r: any) => r.customerId === customerId)
-      .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
-    setReservations(customerReservations)
-
-    // ポイント履歴を取得
-    const allPoints = JSON.parse(localStorage.getItem('points') || '[]')
-    const customerPoints = allPoints
-      .filter((p: any) => p.userId === customerId)
-      .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    setPointHistory(customerPoints)
   }
 
-  const handleNotesUpdate = () => {
+  const handleTierUpdate = async () => {
     if (!customer) return
 
-    const updatedCustomer = { ...customer, notes }
-    storageService.updateCustomer(customer.id, updatedCustomer)
-    setCustomer(updatedCustomer)
-    setEditingNotes(false)
-  }
-
-  const handleTierUpdate = () => {
-    if (!customer) return
-
-    const updatedCustomer = { ...customer, tier: selectedTier as any }
-    storageService.updateCustomer(customer.id, updatedCustomer)
-    setCustomer(updatedCustomer)
+    try {
+      await apiClient.updateAdminCustomer(customer.id, { tier: selectedTier })
+      const updatedCustomer: Customer = {
+        ...customer,
+        tier: selectedTier,
+        updatedAt: new Date(),
+      }
+      setCustomer(updatedCustomer)
+      storageService.updateCustomer(customer.id, updatedCustomer)
+    } catch (error: unknown) {
+      logger.error('Failed to update customer tier', {
+        customerId: customer.id,
+        error,
+      })
+      alert('会員ランクの更新に失敗しました')
+    }
   }
 
   const handleBirthdayUpdate = async () => {
-    if (!customer || !userRecord) return
+    if (!customer) return
 
     try {
-      const isFirebaseConfigured = false // 現在はモックを使用
-      if (isFirebaseConfigured) {
-        await userService.updateUser(customer.id, { birthday })
-      } else {
-        await mockUserService.updateUser(customer.id, { birthday })
+      await apiClient.updateAdminCustomer(customer.id, { birthday })
+      const updatedCustomer: Customer = {
+        ...customer,
+        birthday,
+        updatedAt: new Date(),
       }
-
-      setUserRecord({ ...userRecord, birthday })
+      setCustomer(updatedCustomer)
+      storageService.updateCustomer(customer.id, updatedCustomer)
       setEditingBirthday(false)
-    } catch (error) {
-      console.error('Failed to update birthday:', error)
+    } catch (error: unknown) {
+      logger.error('Failed to update birthday', {
+        customerId: customer.id,
+        error,
+      })
       alert('生年月日の更新に失敗しました')
     }
   }
 
   const handleDeleteConfirm = async (customerId: string) => {
     try {
-      await userService.deleteCustomerByAdmin(customerId)
-      // 削除成功後、顧客一覧に戻る
+      await apiClient.deleteAdminCustomer(customerId)
+      const remaining = storageService
+        .getAllCustomers()
+        .filter((record) => record.id !== customerId)
+      storageService.replaceCustomers(remaining)
       router.push('/admin/customers')
-    } catch (error: any) {
-      console.error('Failed to delete customer:', error)
-      throw error
+    } catch (error: unknown) {
+      logger.error('Failed to delete customer', {
+        customerId,
+        error,
+      })
+      throw error instanceof Error ? error : new Error('顧客の削除に失敗しました')
     }
   }
 
@@ -215,7 +380,12 @@ export default function CustomerDetailPage() {
           <div className="flex items-center gap-4">
             <select
               value={selectedTier}
-              onChange={(e) => setSelectedTier(e.target.value)}
+              onChange={(event) => {
+                const value = event.target.value
+                if (isCustomerTier(value)) {
+                  setSelectedTier(value)
+                }
+              }}
               className="px-4 py-2 border border-gray-300 rounded-md"
             >
               <option value="bronze">ブロンズ</option>
@@ -261,7 +431,7 @@ export default function CustomerDetailPage() {
                   </button>
                   <button
                     onClick={() => {
-                      setBirthday(userRecord?.birthday || '')
+                      setBirthday(customer?.birthday ?? '')
                       setEditingBirthday(false)
                     }}
                     className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50"

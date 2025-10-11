@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   BarChart,
   Bar,
@@ -18,142 +18,137 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { storageService } from '@/lib/storage/storageService'
-import {
+import { buildAdminAnalytics } from '@/lib/utils/analytics'
+
+import type {
   ChartData,
   ServiceChartData,
   TierChartData,
   TimeSlotChartData,
   Reservation,
   User,
+  Customer,
 } from '@/lib/types'
 
+const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FED330']
+
+const mapReservationsForAnalytics = (reservations: Reservation[]) =>
+  reservations.map((reservation) => ({
+    dateIso: reservation.date,
+    status: reservation.status,
+    amount:
+      reservation.finalPrice ?? reservation.totalPrice ?? reservation.price ?? reservation.maintenancePrice ?? 0,
+    serviceName: reservation.serviceName,
+    time: reservation.time,
+    customerId: reservation.customerId ?? '',
+  }))
+
+const mapUsersForAnalytics = (users: User[]) =>
+  users.map((user) => ({
+    role: user.role,
+    tier: (user as Customer).tier ?? 'bronze',
+  }))
+
 export default function AnalyticsPage() {
-  const { user } = useAuth()
   const router = useRouter()
+  const { user } = useAuth()
   const [period, setPeriod] = useState<'week' | 'month' | 'year'>('month')
   const [monthlyData, setMonthlyData] = useState<ChartData[]>([])
   const [serviceData, setServiceData] = useState<ServiceChartData[]>([])
   const [customerTierData, setCustomerTierData] = useState<TierChartData[]>([])
   const [timeSlotData, setTimeSlotData] = useState<TimeSlotChartData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [isFallbackData, setIsFallbackData] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [refreshing, setRefreshing] = useState(false)
+
+  const applyAnalytics = useCallback((analytics: {
+    monthlyRevenue: ChartData[]
+    servicePerformance: ServiceChartData[]
+    customerTierDistribution: TierChartData[]
+    timeSlotDistribution: TimeSlotChartData[]
+  }) => {
+    setMonthlyData(analytics.monthlyRevenue)
+    setServiceData(analytics.servicePerformance)
+    setCustomerTierData(analytics.customerTierDistribution)
+    setTimeSlotData(analytics.timeSlotDistribution)
+  }, [])
+
+  const loadAnalytics = useCallback(
+    async (options: { silent?: boolean } = {}) => {
+      if (options.silent) {
+        setRefreshing(true)
+      } else {
+        setLoading(true)
+      }
+
+      try {
+        setIsFallbackData(false)
+        setErrorMessage(null)
+
+        const response = await apiClient.getAdminStats()
+        applyAnalytics(response.analytics)
+
+        if (response.warning) {
+          setErrorMessage(response.warning)
+        }
+        setIsFallbackData(Boolean(response.fallback))
+      } catch (error) {
+        console.error('Failed to load analytics:', error)
+
+        const localReservations = storageService.getAllReservations() as Reservation[]
+        const localUsers = storageService.getUsers() as User[]
+        const analytics = buildAdminAnalytics(
+          mapReservationsForAnalytics(localReservations),
+          mapUsersForAnalytics(localUsers),
+        )
+
+        applyAnalytics(analytics)
+        setIsFallbackData(true)
+        setErrorMessage('Firestoreから分析データを取得できなかったため、ローカルの参考データを表示しています。')
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [applyAnalytics],
+  )
 
   useEffect(() => {
-    if (!user || user.role !== 'admin') {
-      router.push('/admin')
+    if (!user) {
+      router.push('/login')
       return
     }
 
-    // データの集計
-    const reservations = storageService.getAllReservations()
-    const users = storageService.getUsers()
-
-    // 月別売上データ
-    const now = new Date()
-    const monthlyRevenue: { [key: string]: number } = {}
-    const monthlyCount: { [key: string]: number } = {}
-
-    // 過去12ヶ月のデータを集計
-    for (let i = 11; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
-      const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-      monthlyRevenue[monthKey] = 0
-      monthlyCount[monthKey] = 0
+    if (user.role !== 'admin') {
+      router.push('/')
+      return
     }
 
-    reservations
-      .filter((r: Reservation) => r.status !== 'cancelled')
-      .forEach((r: Reservation) => {
-        const date = new Date(r.date)
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
-        if (monthlyRevenue.hasOwnProperty(monthKey)) {
-          monthlyRevenue[monthKey] += r.price || 0
-          monthlyCount[monthKey]++
-        }
-      })
+    void loadAnalytics()
+  }, [user, router, loadAnalytics])
 
-    const monthlyDataArray = Object.entries(monthlyRevenue).map(([month, revenue]) => ({
-      month: month.split('-')[1] + '月',
-      revenue,
-      count: monthlyCount[month],
-    }))
-
-    setMonthlyData(monthlyDataArray)
-
-    // サービス別売上データ
-    const serviceRevenue: { [key: string]: number } = {}
-    const serviceCount: { [key: string]: number } = {}
-
-    reservations
-      .filter((r: Reservation) => r.status !== 'cancelled')
-      .forEach((r: Reservation) => {
-        const service = r.serviceName || 'その他'
-        serviceRevenue[service] = (serviceRevenue[service] || 0) + (r.price || 0)
-        serviceCount[service] = (serviceCount[service] || 0) + 1
-      })
-
-    const serviceDataArray = Object.entries(serviceRevenue).map(([name, revenue]) => ({
-      name,
-      revenue,
-      count: serviceCount[name],
-      value: revenue,
-    }))
-
-    setServiceData(serviceDataArray)
-
-    // 顧客ティア別データ
-    const tierCounts = {
-      bronze: 0,
-      silver: 0,
-      gold: 0,
-      platinum: 0,
-    }
-
-    users
-      .filter((u: User) => u.role === 'customer')
-      .forEach((u: User & { tier?: string }) => {
-        const tier = u.tier || 'bronze'
-        tierCounts[tier as keyof typeof tierCounts]++
-      })
-
-    const tierColors = {
-      bronze: '#CD7F32',
-      silver: '#C0C0C0',
-      gold: '#FFD700',
-      platinum: '#E5E4E2',
-    }
-
-    const tierDataArray = Object.entries(tierCounts).map(([tier, count]) => ({
-      name: tier.charAt(0).toUpperCase() + tier.slice(1),
-      value: count,
-      fill: tierColors[tier as keyof typeof tierColors],
-    }))
-
-    setCustomerTierData(tierDataArray)
-
-    // 時間帯別予約データ
-    const timeSlots: { [key: string]: number } = {}
-
-    reservations.forEach((r: Reservation) => {
-      const time = r.time || '不明'
-      timeSlots[time] = (timeSlots[time] || 0) + 1
-    })
-
-    const timeSlotDataArray = Object.entries(timeSlots)
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([time, count]) => ({
-        name: time,
-        value: count,
-      }))
-
-    setTimeSlotData(timeSlotDataArray)
-  }, [user, router])
+  const handleReload = () => {
+    void loadAnalytics({ silent: true })
+  }
 
   if (!user || user.role !== 'admin') {
     return null
   }
 
-  const COLORS = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FED330']
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="text-center">
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+          <p className="mt-4">読み込み中...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -193,7 +188,36 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {/* 月別売上推移 */}
+      {isFallbackData && (
+        <div className="mb-6 rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
+          <div>Firestoreとの接続に問題が発生したため、ローカルの参考データを表示しています。</div>
+          <div className="mt-3">
+            <button
+              onClick={handleReload}
+              disabled={refreshing}
+              className="rounded-md border border-yellow-500 px-3 py-1 text-yellow-700 hover:bg-yellow-100 disabled:opacity-60"
+            >
+              {refreshing ? '再読込中…' : '再読込'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isFallbackData && errorMessage && (
+        <div className="mb-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <div>{errorMessage}</div>
+          <div className="mt-3">
+            <button
+              onClick={handleReload}
+              disabled={refreshing}
+              className="rounded-md border border-blue-400 px-3 py-1 text-blue-700 hover:bg-blue-100 disabled:opacity-60"
+            >
+              {refreshing ? '再読込中…' : '最新データを取得'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
         <h2 className="text-xl font-bold mb-4">月別売上推移</h2>
         <ResponsiveContainer width="100%" height={300}>
@@ -203,106 +227,56 @@ export default function AnalyticsPage() {
             <YAxis />
             <Tooltip />
             <Legend />
-            <Line
-              type="monotone"
-              dataKey="revenue"
-              stroke="#FF6B6B"
-              name="売上（円）"
-              strokeWidth={2}
-            />
-            <Line
-              type="monotone"
-              dataKey="count"
-              stroke="#4ECDC4"
-              name="予約数"
-              strokeWidth={2}
-              yAxisId="right"
-            />
-            <YAxis yAxisId="right" orientation="right" />
+            <Line type="monotone" dataKey="revenue" name="売上" stroke="#8884d8" strokeWidth={2} />
+            <Line type="monotone" dataKey="count" name="件数" stroke="#82ca9d" strokeWidth={2} />
           </LineChart>
         </ResponsiveContainer>
       </div>
 
-      {/* サービス別売上 */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-bold mb-4">サービス別売上</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={serviceData}>
               <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" />
+              <XAxis dataKey="name" interval={0} angle={-15} textAnchor="end" height={80} />
               <YAxis />
               <Tooltip />
               <Legend />
-              <Bar dataKey="revenue" fill="#45B7D1" name="売上（円）" />
+              <Bar dataKey="revenue" name="売上" fill="#8884d8" />
+              <Bar dataKey="count" name="件数" fill="#82ca9d" />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
-        {/* 顧客ティア分布 */}
         <div className="bg-white rounded-lg shadow-md p-6">
-          <h2 className="text-xl font-bold mb-4">顧客ティア分布</h2>
+          <h2 className="text-xl font-bold mb-4">顧客ティア構成</h2>
           <ResponsiveContainer width="100%" height={300}>
             <PieChart>
-              <Pie
-                data={customerTierData}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
+              <Pie data={customerTierData} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label>
                 {customerTierData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell key={`cell-${entry.name}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
               <Tooltip />
+              <Legend />
             </PieChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* 時間帯別予約数 */}
-      <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <h2 className="text-xl font-bold mb-4">時間帯別予約数</h2>
+      <div className="bg-white rounded-lg shadow-md p-6 mt-8">
+        <h2 className="text-xl font-bold mb-4">時間帯別予約分布</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={timeSlotData}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="time" />
-            <YAxis />
+            <XAxis dataKey="name" />
+            <YAxis allowDecimals={false} />
             <Tooltip />
             <Legend />
-            <Bar dataKey="count" fill="#FED330" name="予約数" />
+            <Bar dataKey="value" name="予約件数" fill="#45B7D1" />
           </BarChart>
         </ResponsiveContainer>
-      </div>
-
-      {/* KPIカード */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">平均単価</h3>
-          <p className="text-2xl font-bold text-primary">
-            ¥
-            {Math.round(
-              serviceData.reduce((sum, s) => sum + s.revenue, 0) /
-                serviceData.reduce((sum, s) => sum + s.count, 0) || 0,
-            ).toLocaleString()}
-          </p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">リピート率</h3>
-          <p className="text-2xl font-bold text-green-600">78%</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">予約完了率</h3>
-          <p className="text-2xl font-bold text-blue-600">92%</p>
-        </div>
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-sm font-medium text-gray-600 mb-2">顧客満足度</h3>
-          <p className="text-2xl font-bold text-yellow-600">4.8/5.0</p>
-        </div>
       </div>
     </div>
   )
