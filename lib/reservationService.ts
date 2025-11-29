@@ -617,9 +617,17 @@ class ReservationService {
     const [year, month, day] = date.split('-').map(Number)
     const dateObj = new Date(year, month - 1, day)
     const dayOfWeek = dateObj.getDay()
-    const businessHours = this.settings.businessHours[dayOfWeek]
+    const businessHours =
+      this.settings.businessHours.find((h) => h.dayOfWeek === dayOfWeek) ??
+      DEFAULT_BUSINESS_HOURS.find((h) => h.dayOfWeek === dayOfWeek)
 
-    if (!businessHours.isOpen || this.settings.blockedDates?.includes(date)) {
+    if (
+      !businessHours ||
+      !businessHours.isOpen ||
+      !isNonEmptyString(businessHours.open) ||
+      !isNonEmptyString(businessHours.close) ||
+      this.settings.blockedDates?.includes(date)
+    ) {
       return []
     }
 
