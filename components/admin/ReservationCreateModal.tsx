@@ -84,6 +84,13 @@ export default function ReservationCreateModal({
     const next = !isBlocked
     try {
       setTogglingBlock(true)
+      // サーバーAPI経由で保存（Admin設定に統一）
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ blockedDates: next ? [date] : [] }),
+      })
+
       await onToggleBlock(date, next)
       setIsBlocked(next)
 

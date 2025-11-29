@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationService } from '@/lib/reservationService'
+import { apiClient } from '@/lib/api/client'
 import { ReservationSettings, BusinessHours } from '@/lib/types'
 
 const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
@@ -57,11 +58,21 @@ export default function AdminSettingsPage() {
 
   const handleSaveSettings = async () => {
     try {
+      // Admin API経由でFireStoreに保存（Admin SDK利用）
+      await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(settings),
+      })
+
+      // ローカルキャッシュも更新
       await reservationService.saveSettings(settings)
+
       setMessage('設定を保存しました')
       setMessageType('success')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
+      console.error('Failed to save settings via admin API:', error)
       setMessage('設定の保存に失敗しました。もう一度お試しください。')
       setMessageType('error')
       setTimeout(() => setMessage(''), 5000)
