@@ -40,6 +40,7 @@ export default function ReservationCreateModal({
   const [loadingSlots, setLoadingSlots] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [isBlocked, setIsBlocked] = useState(initialBlocked)
+  const [togglingBlock, setTogglingBlock] = useState(false)
 
   const formattedDateLabel = useMemo(() => {
     const [y, m, d] = date.split('-').map(Number)
@@ -81,14 +82,22 @@ export default function ReservationCreateModal({
   const handleToggleBlock = async () => {
     if (!onToggleBlock) return
     const next = !isBlocked
-    await onToggleBlock(date, next)
-    setIsBlocked(next)
-    if (!next) {
-      // ブロック解除したら再度枠を取得
-      loadSlots(date)
-    } else {
-      setTimeSlots([])
-      setSelectedTime('')
+    try {
+      setTogglingBlock(true)
+      await onToggleBlock(date, next)
+      setIsBlocked(next)
+
+      if (next) {
+        // 受付停止にしたらモーダルを閉じる
+        setTimeSlots([])
+        setSelectedTime('')
+        onClose()
+      } else {
+        // 受付再開したら空き枠を再取得
+        loadSlots(date)
+      }
+    } finally {
+      setTogglingBlock(false)
     }
   }
 
@@ -154,11 +163,16 @@ export default function ReservationCreateModal({
             {onToggleBlock && (
               <button
                 onClick={handleToggleBlock}
+                disabled={togglingBlock}
                 className={`px-3 py-2 rounded-lg text-sm font-medium ${
                   isBlocked ? 'bg-gray-200 text-gray-700' : 'bg-amber-100 text-amber-700'
                 }`}
               >
-                {isBlocked ? '受付停止を解除' : 'この日を受付停止'}
+                {togglingBlock
+                  ? '保存中...'
+                  : isBlocked
+                    ? '受付停止を解除'
+                    : 'この日を受付停止'}
               </button>
             )}
             <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
