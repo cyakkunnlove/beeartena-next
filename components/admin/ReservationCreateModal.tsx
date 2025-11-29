@@ -230,12 +230,14 @@ export default function ReservationCreateModal({
                 className="w-full border rounded-lg px-3 py-2"
                 disabled={loadingSlots || isBlocked || availableTimes.length === 0}
               >
-                {availableTimes.length === 0 && <option value="">空き枠なし</option>}
-                {availableTimes.map((slot) => (
-                  <option key={slot.time} value={slot.time}>
-                    {slot.time}
-                  </option>
-                ))}
+                {loadingSlots && <option value="">取得中...</option>}
+                {!loadingSlots && availableTimes.length === 0 && <option value="">空き枠なし</option>}
+                {!loadingSlots &&
+                  availableTimes.map((slot) => (
+                    <option key={slot.time} value={slot.time}>
+                      {slot.time}
+                    </option>
+                  ))}
               </select>
               {loadingSlots && (
                 <span className="absolute right-3 top-2.5 text-xs text-gray-500">読み込み中...</span>

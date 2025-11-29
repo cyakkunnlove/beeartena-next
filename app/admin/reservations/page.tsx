@@ -69,9 +69,19 @@ export default function AdminReservations() {
 
   const loadBlockedDates = async () => {
     try {
-      // 設定読み込みを兼ねて当日の枠を一度取得
-      await reservationService.getTimeSlotsForDate(formatDate(new Date()))
-      const settings = reservationService.getSettings()
+      // Firestore から最新の設定を取得（なければローカル設定を使用）
+      const settings = await (async () => {
+        try {
+          const s = await import('@/lib/firebase/settings').then((m) => m.settingsService.getSettings())
+          if (s) return s
+        } catch (err) {
+          console.warn('Failed to fetch settings from Firestore, fallback to local', err)
+        }
+        // 予約設定読み込みを兼ねて当日の枠を一度取得
+        await reservationService.getTimeSlotsForDate(formatDate(new Date()))
+        return reservationService.getSettings()
+      })()
+
       setBlockedDates(settings.blockedDates || [])
     } catch (error) {
       console.error('Failed to load blocked dates:', error)
