@@ -38,10 +38,40 @@ export async function POST(request: NextRequest) {
 
   const body = await request.json()
 
-  await db
-    .collection(SETTINGS_COLLECTION)
-    .doc(SETTINGS_DOC_ID)
-    .set({ ...body, updatedAt: new Date() }, { merge: true })
+  const docRef = db.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOC_ID)
+  const snap = await docRef.get()
+  const current = snap.exists ? snap.data() ?? {} : {}
+
+  let nextSettings = {
+    ...current,
+    ...body,
+    updatedAt: new Date(),
+  }
+
+  // blockedDate + block フラグでの追加/削除（部分更新）に対応
+  if (typeof body.blockedDate === 'string' && typeof body.block === 'boolean') {
+    const blockedDates: string[] = Array.isArray(current.blockedDates)
+      ? [...current.blockedDates]
+      : []
+
+    const target = body.blockedDate
+    const exists = blockedDates.includes(target)
+
+    if (body.block && !exists) {
+      blockedDates.push(target)
+    }
+    if (!body.block && exists) {
+      blockedDates.splice(blockedDates.indexOf(target), 1)
+    }
+
+    nextSettings.blockedDates = blockedDates
+
+    // 元の一時フィールドは保存しない
+    delete (nextSettings as any).blockedDate
+    delete (nextSettings as any).block
+  }
+
+  await docRef.set(nextSettings, { merge: true })
 
   return setCorsHeaders(NextResponse.json({ success: true }))
 }

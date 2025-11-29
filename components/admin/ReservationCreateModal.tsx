@@ -91,7 +91,7 @@ export default function ReservationCreateModal({
       await fetch('/api/admin/settings', {
         method: 'POST',
         headers,
-        body: JSON.stringify({ blockedDates: next ? [date] : [] }),
+        body: JSON.stringify({ blockedDate: date, block: next }),
       })
 
       await onToggleBlock(date, next)
