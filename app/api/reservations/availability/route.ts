@@ -50,9 +50,9 @@ export async function GET(request: NextRequest) {
     const availability: { [key: string]: boolean } = {}
     const daysInMonth = endDate.getDate()
 
+    // 診断用ログ（必要に応じてコメントアウト可）
     console.log(`Calculating availability for ${year}-${month}:`, {
       daysInMonth,
-      totalReservations,
       reservedSlots: Array.from(reservedSlots.entries()).map(([date, times]) => ({
         date,
         count: times.size,
