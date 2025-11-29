@@ -41,6 +41,7 @@ export default function ReservationCreateModal({
   })
   const [customers, setCustomers] = useState<Customer[]>([])
   const [customerSearch, setCustomerSearch] = useState('')
+  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
   const [servicePlans, setServicePlans] = useState<ServicePlan[]>([])
   const [selectedServiceId, setSelectedServiceId] = useState<string>('')
   const [isCustomService, setIsCustomService] = useState(false)
@@ -123,11 +124,19 @@ export default function ReservationCreateModal({
     setCustomerSearch(customer.name || customer.email || '')
   }
 
+  const sortedCustomers = useMemo(() => {
+    return [...customers].sort((a, b) => {
+      const aKey = (a.name || a.email || '').toString()
+      const bKey = (b.name || b.email || '').toString()
+      return aKey.localeCompare(bKey, 'ja')
+    })
+  }, [customers])
+
   const filteredCustomers = useMemo(() => {
-    if (!customerSearch.trim()) return customers.slice(0, 5)
+    if (!customerSearch.trim()) return sortedCustomers.slice(0, 20)
     const keyword = customerSearch.toLowerCase()
     const phoneDigits = customerSearch.replace(/\D/g, '')
-    return customers
+    return sortedCustomers
       .filter((c) => {
         const nameMatch = c.name?.toLowerCase().includes(keyword)
         const emailMatch = c.email?.toLowerCase().includes(keyword)
@@ -136,8 +145,8 @@ export default function ReservationCreateModal({
           : false
         return nameMatch || emailMatch || phoneMatch
       })
-      .slice(0, 5)
-  }, [customerSearch, customers])
+      .slice(0, 20)
+  }, [customerSearch, sortedCustomers])
 
   const selectableServices = useMemo(() => {
     if (servicePlans.length > 0) return servicePlans
@@ -339,7 +348,7 @@ export default function ReservationCreateModal({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="md:col-span-2">
+          <div className="md:col-span-2 relative">
             <label className="block text-sm font-medium text-gray-700 mb-1">
               顧客検索（名前 / メール / 電話）
             </label>
@@ -347,19 +356,27 @@ export default function ReservationCreateModal({
               type="text"
               value={customerSearch}
               onChange={(e) => setCustomerSearch(e.target.value)}
+              onFocus={() => setShowCustomerDropdown(true)}
+              onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 120)}
               className="w-full border rounded-lg px-3 py-2"
               placeholder="例）山田、080、mail@example.com"
             />
-            {filteredCustomers.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
+            {showCustomerDropdown && filteredCustomers.length > 0 && (
+              <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto border rounded-lg bg-white shadow-lg">
                 {filteredCustomers.map((c) => (
                   <button
                     key={c.id}
                     type="button"
-                    onClick={() => handleCustomerSelect(c)}
-                    className="px-3 py-1 rounded-full border text-sm bg-gray-100 hover:bg-primary/10"
+                    onMouseDown={(e) => {
+                      e.preventDefault()
+                      handleCustomerSelect(c)
+                      setShowCustomerDropdown(false)
+                    }}
+                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-primary/10"
                   >
-                    {c.name || '名称未登録'} / {c.email || 'メールなし'} / {c.phone || '電話なし'}
+                    <span className="font-semibold mr-2">{c.name || '名称未登録'}</span>
+                    <span className="text-gray-500 mr-2">{c.email || 'メールなし'}</span>
+                    <span className="text-gray-500">{c.phone || '電話なし'}</span>
                   </button>
                 ))}
               </div>
