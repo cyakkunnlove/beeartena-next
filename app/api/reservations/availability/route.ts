@@ -51,14 +51,7 @@ export async function GET(request: NextRequest) {
     const daysInMonth = endDate.getDate()
 
     // 診断用ログ（必要に応じてコメントアウト可）
-    console.log(`Calculating availability for ${year}-${month}:`, {
-      daysInMonth,
-      reservedSlots: Array.from(reservedSlots.entries()).map(([date, times]) => ({
-        date,
-        count: times.size,
-        times: Array.from(times),
-      })),
-    })
+    console.log(`Calculating availability for ${year}-${month}`)
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
