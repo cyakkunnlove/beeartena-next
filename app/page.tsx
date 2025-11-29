@@ -3,6 +3,7 @@ import ContactSection from '@/components/home/ContactSection'
 import FAQSection from '@/components/home/FAQSection'
 import GallerySection from '@/components/home/GallerySection'
 import HeroSection from '@/components/home/HeroSection'
+import NewsSection from '@/components/home/NewsSection'
 import MemberBenefitsSection from '@/components/home/MemberBenefitsSection'
 import MenuSection from '@/components/home/MenuSection'
 import PlanSection from '@/components/home/PlanSection'
@@ -12,6 +13,7 @@ export default function Home() {
   return (
     <>
       <HeroSection />
+      <NewsSection />
       <MenuSection />
       <PlanSection />
       <CareSection />
