@@ -47,8 +47,45 @@ export async function GET(request: NextRequest) {
 
     const reservedSlots = new Map<string, Set<string>>()
     let totalReservations = 0
+    let blockedDates: string[] = []
+    let businessHours: Array<{
+      dayOfWeek: number
+      open: string
+      close: string
+      isOpen: boolean
+      allowMultipleSlots?: boolean
+      slotInterval?: number
+      maxCapacityPerDay?: number
+    }> = []
+    const defaultBusinessHours = [
+      { dayOfWeek: 0, open: '', close: '', isOpen: false, maxCapacityPerDay: 0 },
+      { dayOfWeek: 1, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+      { dayOfWeek: 2, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+      { dayOfWeek: 3, open: '09:00', close: '17:00', isOpen: true, allowMultipleSlots: true, slotInterval: 30, maxCapacityPerDay: 10 },
+      { dayOfWeek: 4, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+      { dayOfWeek: 5, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+      { dayOfWeek: 6, open: '18:30', close: '20:30', isOpen: true, maxCapacityPerDay: 1 },
+    ]
 
     if (db) {
+      // 設定取得（blockedDates / businessHours）
+      try {
+        const settingsSnap = await db.collection('settings').doc('reservation-settings').get()
+        if (settingsSnap.exists) {
+          const data = settingsSnap.data() || {}
+          blockedDates = Array.isArray(data.blockedDates) ? data.blockedDates : []
+          if (Array.isArray(data.businessHours) && data.businessHours.length === 7) {
+            businessHours = data.businessHours
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load reservation settings for availability; using defaults', err)
+      }
+
+      if (businessHours.length === 0) {
+        businessHours = defaultBusinessHours
+      }
+
       const reservationsSnapshot = await db
         .collection('reservations')
         .where('date', '>=', startDateStr)
@@ -112,43 +149,36 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      // 日曜日は定休日
-      if (date.getDay() === 0) {
+      // 設定に基づく定休日/ブロック日判定
+      const dayOfWeek = date.getDay()
+      const hours = businessHours[dayOfWeek] || defaultBusinessHours[dayOfWeek]
+
+      if (!hours.isOpen || blockedDates.includes(dateStr)) {
         availability[dateStr] = false
         continue
       }
 
-      // 曜日に応じた営業時間枠数を設定
-      let maxSlotsPerDay: number
-      const dayOfWeek = date.getDay()
+      // 設定に基づく最大受付数
+      let maxSlotsPerDay = hours.maxCapacityPerDay ?? 1
 
-      if (dayOfWeek === 0) {
-        // 日曜日は定休日なので0枠
-        maxSlotsPerDay = 0
-      } else if (dayOfWeek === 3) {
-        // 水曜日は日中営業（9:00-17:00、30分刻みで16枠）
-        maxSlotsPerDay = 16
-      } else if (dayOfWeek === 6) {
-        // 土曜日は複数枠可能（夜間営業で4枠）
-        maxSlotsPerDay = 4
-      } else {
-        // 平日（月、火、木、金）は1日1枠のみ
-        // IMPORTANT: 平日は1件でも予約が入ったら、その日は他の予約不可
-        maxSlotsPerDay = 1
+      if (hours.allowMultipleSlots) {
+        const [openH, openM] = hours.open.split(':').map(Number)
+        const [closeH, closeM] = hours.close.split(':').map(Number)
+        const openMinutes = openH * 60 + openM
+        const closeMinutes = closeH * 60 + closeM
+        const interval = hours.slotInterval ?? 30
+        const slotDuration = 120 // 2h施術前提（元設定では150だったがカレンダー判定用に保守的に2h）
+        const slots = Math.max(
+          1,
+          Math.floor((closeMinutes - openMinutes - slotDuration) / interval) + 1,
+        )
+        // 明示指定があればそれを優先
+        maxSlotsPerDay = hours.maxCapacityPerDay ?? slots
       }
 
       // 予約済みスロット数を確認
       const reservedCount = reservedSlots.get(dateStr)?.size || 0
-
-      // 平日の場合: 1件でも予約があれば利用不可
-      // それ以外の曜日: 空きスロットがあれば利用可能
-      if (dayOfWeek >= 1 && dayOfWeek <= 5 && dayOfWeek !== 3) {
-        // 月、火、木、金の平日は1件でも予約があれば不可
-        availability[dateStr] = reservedCount === 0
-      } else {
-        // 水曜、土曜は通常通り空きスロットで判定
-        availability[dateStr] = reservedCount < maxSlotsPerDay
-      }
+      availability[dateStr] = reservedCount < maxSlotsPerDay
     }
 
     // キャッシュに保存（極短TTL: 5秒）
