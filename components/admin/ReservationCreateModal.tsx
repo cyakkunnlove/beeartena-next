@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react'
 
 import { apiClient } from '@/lib/api/client'
+import { getAllServicePlans, getServicePlans } from '@/lib/firebase/servicePlans'
 import { Reservation, TimeSlot, Customer, ServicePlan } from '@/lib/types'
 import { reservationService } from '@/lib/reservationService'
 
@@ -74,19 +75,27 @@ export default function ReservationCreateModal({
       }
 
       try {
-        // 公開サービスプラン（管理者権限で全件を取得できればそれを優先）
-        const adminPlans = await apiClient.getAdminServicePlans().catch(() => null)
-        if (adminPlans?.plans?.length) {
-          setServicePlans(adminPlans.plans)
-          setSelectedServiceId(adminPlans.plans[0].id)
-          applyServicePlan(adminPlans.plans[0])
+        // 管理画面と同じ Firestore 取得ロジックを使用
+        const plansFromFirestore = await getAllServicePlans()
+        if (plansFromFirestore?.length) {
+          setServicePlans(plansFromFirestore)
+          setSelectedServiceId(plansFromFirestore[0].id)
+          applyServicePlan(plansFromFirestore[0])
           return
         }
-        const published = await apiClient.getPublishedServicePlans()
+        const published = await getServicePlans()
         if (published?.length) {
           setServicePlans(published)
           setSelectedServiceId(published[0].id)
           applyServicePlan(published[0])
+          return
+        }
+        // 最後のフォールバックとしてAPIクライアント
+        const apiPublished = await apiClient.getPublishedServicePlans()
+        if (apiPublished?.length) {
+          setServicePlans(apiPublished)
+          setSelectedServiceId(apiPublished[0].id)
+          applyServicePlan(apiPublished[0])
         }
       } catch (error) {
         console.warn('Failed to load service plans', error)
