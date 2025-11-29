@@ -5,13 +5,20 @@ import { useEffect, useState } from 'react'
 
 import ReservationCalendar from '@/components/admin/ReservationCalendar'
 import ReservationEditModal from '@/components/admin/ReservationEditModal'
-import IntakeSummary from '@/components/reservation/IntakeSummary'
-import { apiClient } from '@/lib/api/client'
+import ReservationCreateModal from '@/components/admin/ReservationCreateModal'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { reservationStatusManager } from '@/lib/firebase/reservationStatusManager'
 import { reservationService } from '@/lib/reservationService'
 import { storageService } from '@/lib/storage/storageService'
+import { reservationStatusManager } from '@/lib/firebase/reservationStatusManager'
+import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { Reservation } from '@/lib/types'
+
+const formatDate = (date: Date) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 
 export default function AdminReservations() {
   const router = useRouter()
@@ -26,6 +33,8 @@ export default function AdminReservations() {
   const [isProcessing, setIsProcessing] = useState(false)
   const [showStatusAlert, setShowStatusAlert] = useState(false)
   const [statusAlertMessage, setStatusAlertMessage] = useState('')
+  const [blockedDates, setBlockedDates] = useState<string[]>([])
+  const [createDate, setCreateDate] = useState<string | null>(null)
 
   useEffect(() => {
     if (!user || user.role !== 'admin') {
@@ -34,24 +43,17 @@ export default function AdminReservations() {
     }
 
     loadReservations()
+    loadBlockedDates()
   }, [user, router])
 
   const loadReservations = async () => {
     try {
-      const { success, reservations } = await apiClient.getAdminReservations()
-
-      if (!success || !Array.isArray(reservations)) {
-        throw new Error('Invalid response format')
-      }
-
-      const normalized = reservations.map((item: any) => ({
-        ...item,
-        createdAt: item.createdAt ? new Date(item.createdAt) : new Date(),
-        updatedAt: item.updatedAt ? new Date(item.updatedAt) : new Date(),
-      }))
-
+      // Firebaseから予約データを取得
+      const allReservations = await firebaseReservationService.getAllReservations()
       setReservations(
-        normalized.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()),
+        allReservations.sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
+        ),
       )
     } catch (error) {
       console.error('Failed to load reservations:', error)
@@ -62,6 +64,38 @@ export default function AdminReservations() {
           (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
         ),
       )
+    }
+  }
+
+  const loadBlockedDates = async () => {
+    try {
+      // 設定読み込みを兼ねて当日の枠を一度取得
+      await reservationService.getTimeSlotsForDate(formatDate(new Date()))
+      const settings = reservationService.getSettings()
+      setBlockedDates(settings.blockedDates || [])
+    } catch (error) {
+      console.error('Failed to load blocked dates:', error)
+    }
+  }
+
+  const handleToggleBlockDate = async (dateStr: string, nextBlocked?: boolean) => {
+    try {
+      const currentSettings = reservationService.getSettings()
+      const currentBlocked = currentSettings.blockedDates || []
+      const willBlock = nextBlocked ?? !currentBlocked.includes(dateStr)
+      const updatedBlocked = willBlock
+        ? Array.from(new Set([...currentBlocked, dateStr]))
+        : currentBlocked.filter((d) => d !== dateStr)
+
+      await reservationService.saveSettings({
+        ...currentSettings,
+        blockedDates: updatedBlocked,
+      })
+
+      setBlockedDates(updatedBlocked)
+    } catch (error) {
+      console.error('Failed to update blocked date:', error)
+      alert('休業日設定の更新に失敗しました')
     }
   }
 
@@ -125,10 +159,17 @@ export default function AdminReservations() {
   }
 
   const handleReservationUpdate = (updatedReservation: Reservation) => {
-    storageService.updateReservation(updatedReservation.id, {
-      ...updatedReservation,
-    })
-    loadReservations()
+    // Update the reservation in storage
+    const allReservations = storageService.getAllReservations()
+    const index = allReservations.findIndex((r) => r.id === updatedReservation.id)
+    if (index !== -1) {
+      allReservations[index] = {
+        ...updatedReservation,
+        updatedAt: new Date(),
+      }
+      localStorage.setItem('reservations', JSON.stringify(allReservations))
+      loadReservations()
+    }
   }
 
   const handleExportICal = () => {
@@ -188,6 +229,12 @@ export default function AdminReservations() {
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold">予約管理</h1>
             <div className="flex gap-2">
+              <button
+                onClick={() => setCreateDate(formatDate(new Date()))}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                ＋ 新規予約
+              </button>
               <button
                 onClick={handleBatchProcessCompletedReservations}
                 disabled={isProcessing}
@@ -278,10 +325,9 @@ export default function AdminReservations() {
           <div className="bg-white rounded-lg shadow-md p-6">
             <ReservationCalendar
               reservations={reservations}
+              blockedDates={blockedDates}
               onEventClick={(reservation) => setSelectedReservation(reservation)}
-              onDateClick={(_date) => {
-                /* Date clicked */
-              }}
+              onDateClick={(date) => setCreateDate(formatDate(date))}
             />
           </div>
         )}
@@ -386,6 +432,23 @@ export default function AdminReservations() {
           </div>
         )}
 
+        {/* Create Modal */}
+        {createDate && (
+          <ReservationCreateModal
+            date={createDate}
+            adminUserId={user?.id}
+            onClose={() => setCreateDate(null)}
+            onCreated={() => {
+              loadReservations()
+            }}
+            onToggleBlock={async (dateStr, nextBlocked) => {
+              await handleToggleBlockDate(dateStr, nextBlocked)
+              await loadBlockedDates()
+            }}
+            isBlocked={createDate ? blockedDates.includes(createDate) : false}
+          />
+        )}
+
         {/* Reservation Detail Modal */}
         {selectedReservation && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -425,16 +488,6 @@ export default function AdminReservations() {
                   <p>{selectedReservation.customerEmail}</p>
                   <p>{selectedReservation.customerPhone}</p>
                 </div>
-
-                {selectedReservation.intakeForm && (
-                  <div>
-                    <p className="text-sm text-gray-600">施術前問診</p>
-                    <IntakeSummary
-                      intakeForm={selectedReservation.intakeForm}
-                      className="bg-gray-50 border-gray-200 mt-2"
-                    />
-                  </div>
-                )}
 
                 {selectedReservation.notes && (
                   <div>
