@@ -84,10 +84,13 @@ export default function ReservationCreateModal({
     const next = !isBlocked
     try {
       setTogglingBlock(true)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
       // サーバーAPI経由で保存（Admin設定に統一）
       await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ blockedDates: next ? [date] : [] }),
       })
 

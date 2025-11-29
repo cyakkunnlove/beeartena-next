@@ -58,10 +58,14 @@ export default function AdminSettingsPage() {
 
   const handleSaveSettings = async () => {
     try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+      if (token) headers['Authorization'] = `Bearer ${token}`
+
       // Admin API経由でFireStoreに保存（Admin SDK利用）
       await fetch('/api/admin/settings', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify(settings),
       })
 
