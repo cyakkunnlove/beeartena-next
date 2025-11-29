@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cache as cacheService } from '@/lib/api/cache'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
 import { reservationService } from '@/lib/reservationService'
+import { getAdminDb } from '@/lib/firebase/admin'
 
 export async function GET(request: NextRequest) {
   try {
