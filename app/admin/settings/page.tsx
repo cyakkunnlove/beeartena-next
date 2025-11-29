@@ -14,7 +14,7 @@ export default function AdminSettingsPage() {
   const router = useRouter()
   const { user } = useAuth()
   const [settings, setSettings] = useState<ReservationSettings>({
-    slotDuration: 120,
+    slotDuration: 60,
     maxCapacityPerSlot: 1,
     businessHours: [],
     blockedDates: [],

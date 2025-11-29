@@ -71,7 +71,7 @@ export const settingsService = {
         : []
 
       const sanitizedSettings: ReservationSettings = {
-        slotDuration: Number.isFinite(settings.slotDuration) ? settings.slotDuration : 120,
+        slotDuration: Number.isFinite(settings.slotDuration) ? settings.slotDuration : 60,
         maxCapacityPerSlot: Number.isFinite(settings.maxCapacityPerSlot)
           ? settings.maxCapacityPerSlot
           : 1,

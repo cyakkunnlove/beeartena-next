@@ -231,7 +231,7 @@ export function validateReservationData(data: Record<string, unknown>): {
 
 class ReservationService {
   private settings: ReservationSettings = {
-    slotDuration: 120,
+    slotDuration: 60,
     maxCapacityPerSlot: 1,
     businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
     blockedDates: [],
@@ -333,7 +333,7 @@ class ReservationService {
         this.settings = {
           ...normalizedSettings,
           businessHours,
-          slotDuration: normalizedSettings.slotDuration || 120,
+          slotDuration: normalizedSettings.slotDuration || 60,
           maxCapacityPerSlot: normalizedSettings.maxCapacityPerSlot || 1,
           cancellationDeadlineHours: normalizedSettings.cancellationDeadlineHours ?? 24,
           cancellationPolicy:
@@ -658,6 +658,12 @@ class ReservationService {
     const closeTimeInMinutes = closeHour * 60 + closeMinute
 
     const baseDuration = defaultDuration
+    const totalMinutes = closeTimeInMinutes - openTimeInMinutes
+    if (totalMinutes <= 0) {
+      return []
+    }
+
+    const effectiveDurationMinutes = Math.min(requiredDurationMinutes, totalMinutes)
     let interval = baseDuration
 
     if (businessHours.allowMultipleSlots) {
@@ -693,13 +699,13 @@ class ReservationService {
 
     for (
       let currentMinutes = openTimeInMinutes;
-      currentMinutes + requiredDurationMinutes <= closeTimeInMinutes;
+      currentMinutes + effectiveDurationMinutes <= closeTimeInMinutes;
       currentMinutes += interval
     ) {
       const hour = Math.floor(currentMinutes / 60)
       const minute = currentMinutes % 60
       const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
-      const candidateEndMinutes = currentMinutes + requiredDurationMinutes
+      const candidateEndMinutes = currentMinutes + effectiveDurationMinutes
 
       const overlappingCount = reservationsWithDuration.filter(({ startMinutes, endMinutes }) => {
         if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
@@ -717,7 +723,7 @@ class ReservationService {
         date,
         maxCapacity,
         currentBookings,
-        requiredDurationMinutes,
+        requiredDurationMinutes: effectiveDurationMinutes,
       })
     }
 
