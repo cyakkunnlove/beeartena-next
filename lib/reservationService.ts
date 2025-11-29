@@ -627,7 +627,7 @@ class ReservationService {
     if (this.preloadedReservationsByDate.has(date)) {
       reservations = this.preloadedReservationsByDate.get(date) ?? []
     } else {
-      reservations = await firebaseReservationService.getReservationsByDate(date)
+      reservations = await firebaseReservationService.getReservationsByDate(dateObj)
       if (!isBrowser) {
         this.preloadedReservationsByDate.set(date, reservations)
       }
@@ -743,32 +743,15 @@ class ReservationService {
       }
     }
 
-    let monthlyReservations: Reservation[] = []
+    let reservationsByDate = new Map<string, Reservation[]>()
     try {
-      monthlyReservations = await firebaseReservationService.getReservationsForMonth(
-        year,
-        month + 1,
-      )
+      reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
     } catch (error) {
       logger.error('Failed to preload monthly reservations', {
         year,
         month,
         error: getErrorMessage(error),
       })
-    }
-
-    const reservationsByDate = new Map<string, Reservation[]>()
-    for (const reservation of monthlyReservations) {
-      const rawDate = reservation.date
-      const dateKey =
-        typeof rawDate === 'string'
-          ? rawDate
-          : new Date(rawDate).toISOString().split('T')[0]
-
-      if (!reservationsByDate.has(dateKey)) {
-        reservationsByDate.set(dateKey, [])
-      }
-      reservationsByDate.get(dateKey)!.push(reservation)
     }
 
     const monthPrefetch = new Map<string, Reservation[]>()

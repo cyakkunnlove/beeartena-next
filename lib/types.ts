@@ -35,6 +35,10 @@ export interface User {
   lastBirthdayPointsYear?: number
   createdAt: Date
   updatedAt: Date
+  // Search optimization fields
+  nameLower?: string // lowercase name for case-insensitive search
+  emailLower?: string // lowercase email for case-insensitive search
+  phoneDigits?: string // digits-only phone for normalized search
 }
 
 export interface Customer extends User {
@@ -51,6 +55,7 @@ export interface Customer extends User {
   tier?: 'bronze' | 'silver' | 'gold' | 'platinum'
   points?: number
   totalSpent?: number
+  lifetimePoints?: number
 }
 
 // Points types
@@ -114,6 +119,7 @@ export interface Reservation {
   totalPrice?: number // サービス料金 + メンテナンス料金
   date: string
   time: string
+  durationMinutes?: number // 任意の施術時間（分）
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
   notes?: string
   createdAt: Date
@@ -221,6 +227,7 @@ export interface TimeSlot {
   date?: string
   maxCapacity?: number
   currentBookings?: number
+  requiredDurationMinutes?: number
 }
 
 // Business hours and settings

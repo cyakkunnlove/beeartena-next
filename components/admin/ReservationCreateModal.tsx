@@ -125,6 +125,7 @@ export default function ReservationCreateModal({
           totalPrice: service.price,
           finalPrice: service.price,
           pointsUsed: 0,
+          updatedAt: new Date(),
         },
         adminUserId,
       )
