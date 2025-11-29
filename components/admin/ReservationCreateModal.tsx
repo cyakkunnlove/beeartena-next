@@ -66,39 +66,29 @@ export default function ReservationCreateModal({
 
   useEffect(() => {
     const fetchInitial = async () => {
-      try {
-        // 顧客一覧（管理者API）
-        const customersResponse = await apiClient.getAdminCustomers({ limit: 200 })
-        setCustomers(customersResponse.customers || [])
-      } catch (error) {
-        console.warn('Failed to load customers', error)
+      const [customersResult, plansResult] = await Promise.allSettled([
+        apiClient.getAdminCustomers({ limit: 200 }),
+        (async () => {
+          const plansFromFirestore = await getAllServicePlans()
+          if (plansFromFirestore?.length) return plansFromFirestore
+          const published = await getServicePlans()
+          if (published?.length) return published
+          return apiClient.getPublishedServicePlans()
+        })(),
+      ])
+
+      if (customersResult.status === 'fulfilled') {
+        setCustomers(customersResult.value?.customers || [])
+      } else {
+        console.warn('Failed to load customers', customersResult.reason)
       }
 
-      try {
-        // 管理画面と同じ Firestore 取得ロジックを使用
-        const plansFromFirestore = await getAllServicePlans()
-        if (plansFromFirestore?.length) {
-          setServicePlans(plansFromFirestore)
-          setSelectedServiceId(plansFromFirestore[0].id)
-          applyServicePlan(plansFromFirestore[0])
-          return
-        }
-        const published = await getServicePlans()
-        if (published?.length) {
-          setServicePlans(published)
-          setSelectedServiceId(published[0].id)
-          applyServicePlan(published[0])
-          return
-        }
-        // 最後のフォールバックとしてAPIクライアント
-        const apiPublished = await apiClient.getPublishedServicePlans()
-        if (apiPublished?.length) {
-          setServicePlans(apiPublished)
-          setSelectedServiceId(apiPublished[0].id)
-          applyServicePlan(apiPublished[0])
-        }
-      } catch (error) {
-        console.warn('Failed to load service plans', error)
+      if (plansResult.status === 'fulfilled' && plansResult.value?.length) {
+        setServicePlans(plansResult.value)
+        setSelectedServiceId(plansResult.value[0].id)
+        applyServicePlan(plansResult.value[0])
+      } else {
+        console.warn('Failed to load service plans', plansResult.status === 'rejected' ? plansResult.reason : 'empty')
       }
     }
 
