@@ -617,9 +617,20 @@ class ReservationService {
     const [year, month, day] = date.split('-').map(Number)
     const dateObj = new Date(year, month - 1, day)
     const dayOfWeek = dateObj.getDay()
+    const configuredHours = this.settings.businessHours.find(
+      (h) => h.dayOfWeek === dayOfWeek,
+    )
+    const defaultHours = DEFAULT_BUSINESS_HOURS.find((h) => h.dayOfWeek === dayOfWeek)
+
+    // open/close が空の場合はデフォルト時間にフォールバック（isOpen=falseは尊重）
     const businessHours =
-      this.settings.businessHours.find((h) => h.dayOfWeek === dayOfWeek) ??
-      DEFAULT_BUSINESS_HOURS.find((h) => h.dayOfWeek === dayOfWeek)
+      configuredHours && configuredHours.isOpen &&
+      isNonEmptyString(configuredHours.open) &&
+      isNonEmptyString(configuredHours.close)
+        ? configuredHours
+        : configuredHours && !configuredHours.isOpen
+          ? configuredHours
+          : defaultHours
 
     if (
       !businessHours ||
