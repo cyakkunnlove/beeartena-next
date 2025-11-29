@@ -168,3 +168,4 @@ dist
 /e2e/videos/
 __screenshots__/
 __diff_output__/
+/.serena/
