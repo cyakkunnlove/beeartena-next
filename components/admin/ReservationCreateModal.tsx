@@ -2,7 +2,8 @@
 
 import { useEffect, useMemo, useState } from 'react'
 
-import { Reservation, TimeSlot } from '@/lib/types'
+import { apiClient } from '@/lib/api/client'
+import { Reservation, TimeSlot, Customer, ServicePlan } from '@/lib/types'
 import { reservationService } from '@/lib/reservationService'
 
 interface ReservationCreateModalProps {
@@ -29,12 +30,21 @@ export default function ReservationCreateModal({
   isBlocked: initialBlocked = false,
 }: ReservationCreateModalProps) {
   const [form, setForm] = useState({
+    customerId: '',
     customerName: '',
     customerEmail: '',
     customerPhone: '',
     serviceType: serviceOptions[0].value,
+    serviceName: serviceOptions[0].name,
+    servicePrice: serviceOptions[0].price,
     notes: '',
   })
+  const [customers, setCustomers] = useState<Customer[]>([])
+  const [customerSearch, setCustomerSearch] = useState('')
+  const [servicePlans, setServicePlans] = useState<ServicePlan[]>([])
+  const [selectedServiceId, setSelectedServiceId] = useState<string>('')
+  const [isCustomService, setIsCustomService] = useState(false)
+
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [selectedTime, setSelectedTime] = useState('')
   const [loadingSlots, setLoadingSlots] = useState(false)
@@ -53,9 +63,124 @@ export default function ReservationCreateModal({
   }, [date])
 
   useEffect(() => {
+    const fetchInitial = async () => {
+      try {
+        // 顧客一覧（管理者API）
+        const customersResponse = await apiClient.getAdminCustomers({ limit: 200 })
+        setCustomers(customersResponse.customers || [])
+      } catch (error) {
+        console.warn('Failed to load customers', error)
+      }
+
+      try {
+        // 公開サービスプラン（管理者権限で全件を取得できればそれを優先）
+        const adminPlans = await apiClient.getAdminServicePlans().catch(() => null)
+        if (adminPlans?.plans?.length) {
+          setServicePlans(adminPlans.plans)
+          setSelectedServiceId(adminPlans.plans[0].id)
+          applyServicePlan(adminPlans.plans[0])
+          return
+        }
+        const published = await apiClient.getPublishedServicePlans()
+        if (published?.length) {
+          setServicePlans(published)
+          setSelectedServiceId(published[0].id)
+          applyServicePlan(published[0])
+        }
+      } catch (error) {
+        console.warn('Failed to load service plans', error)
+      }
+    }
+
+    fetchInitial()
+  }, [])
+
+  useEffect(() => {
     loadSlots(date)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date])
+
+  const applyServicePlan = (plan?: ServicePlan) => {
+    if (!plan) return
+    setIsCustomService(false)
+    setSelectedServiceId(plan.id)
+    setForm((prev) => ({
+      ...prev,
+      serviceType: plan.type || prev.serviceType,
+      serviceName: plan.name || prev.serviceName,
+      servicePrice: typeof plan.price === 'number' ? plan.price : prev.servicePrice,
+    }))
+  }
+
+  const handleCustomerSelect = (customer: Customer) => {
+    setForm((prev) => ({
+      ...prev,
+      customerId: customer.id,
+      customerName: customer.name || prev.customerName,
+      customerEmail: customer.email || prev.customerEmail,
+      customerPhone: customer.phone || prev.customerPhone,
+    }))
+    setCustomerSearch(customer.name || customer.email || '')
+  }
+
+  const filteredCustomers = useMemo(() => {
+    if (!customerSearch.trim()) return customers.slice(0, 5)
+    const keyword = customerSearch.toLowerCase()
+    const phoneDigits = customerSearch.replace(/\D/g, '')
+    return customers
+      .filter((c) => {
+        const nameMatch = c.name?.toLowerCase().includes(keyword)
+        const emailMatch = c.email?.toLowerCase().includes(keyword)
+        const phoneMatch = phoneDigits
+          ? (c.phone || '').replace(/\D/g, '').includes(phoneDigits)
+          : false
+        return nameMatch || emailMatch || phoneMatch
+      })
+      .slice(0, 5)
+  }, [customerSearch, customers])
+
+  const selectableServices = useMemo(() => {
+    if (servicePlans.length > 0) return servicePlans
+    const nowIso = new Date().toISOString()
+    return serviceOptions.map((opt, index) => ({
+      id: opt.value,
+      type: opt.value,
+      name: opt.name,
+      description: opt.label,
+      price: opt.price,
+      duration: 60,
+      isPublished: true,
+      effectiveFrom: nowIso,
+      displayOrder: index + 1,
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    })) as ServicePlan[]
+  }, [servicePlans])
+
+  useEffect(() => {
+    if (!selectedServiceId && selectableServices.length > 0) {
+      applyServicePlan(selectableServices[0])
+    }
+  }, [selectableServices, selectedServiceId])
+
+  const handleServiceSelect = (value: string) => {
+    if (value === 'custom') {
+      setIsCustomService(true)
+      setSelectedServiceId('')
+      setForm((prev) => ({
+        ...prev,
+        serviceType: 'custom',
+        serviceName: '',
+        servicePrice: 0,
+      }))
+      return
+    }
+
+    const plan = selectableServices.find((p) => p.id === value)
+    if (plan) {
+      applyServicePlan(plan)
+    }
+  }
 
   const loadSlots = async (targetDate: string) => {
     try {
@@ -122,27 +247,43 @@ export default function ReservationCreateModal({
       return
     }
 
-    const service = serviceOptions.find((s) => s.value === form.serviceType) || serviceOptions[0]
+    const selectedPlan = servicePlans.find((p) => p.id === selectedServiceId)
+    const fallbackOption = serviceOptions.find((s) => s.value === form.serviceType) || serviceOptions[0]
+    const serviceName = form.serviceName?.trim() || selectedPlan?.name || fallbackOption.name
+    const serviceType = selectedPlan?.type || form.serviceType || fallbackOption.value
+    const price = Number(form.servicePrice || selectedPlan?.price || fallbackOption.price || 0)
+
+    if (!serviceName) {
+      alert('サービス名を入力してください')
+      return
+    }
+    if (!(price > 0)) {
+      alert('料金を入力してください')
+      return
+    }
+
+    const durationMinutes = typeof selectedPlan?.duration === 'number' ? selectedPlan.duration : undefined
 
     try {
       setSubmitting(true)
       const newReservation = await reservationService.createReservation(
         {
-          customerId: null,
+          customerId: form.customerId || null,
           customerName: form.customerName,
           customerEmail: form.customerEmail,
           customerPhone: form.customerPhone,
-          serviceType: service.value,
-          serviceName: service.name,
-          price: service.price,
+          serviceType,
+          serviceName,
+          price,
+          durationMinutes,
           date,
           time: selectedTime,
           status: 'confirmed',
           notes: form.notes,
           maintenanceOptions: [],
           maintenancePrice: 0,
-          totalPrice: service.price,
-          finalPrice: service.price,
+          totalPrice: price,
+          finalPrice: price,
           pointsUsed: 0,
           updatedAt: new Date(),
         },
@@ -198,6 +339,33 @@ export default function ReservationCreateModal({
         )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          <div className="md:col-span-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              顧客検索（名前 / メール / 電話）
+            </label>
+            <input
+              type="text"
+              value={customerSearch}
+              onChange={(e) => setCustomerSearch(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+              placeholder="例）山田、080、mail@example.com"
+            />
+            {filteredCustomers.length > 0 && (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {filteredCustomers.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => handleCustomerSelect(c)}
+                    className="px-3 py-1 rounded-full border text-sm bg-gray-100 hover:bg-primary/10"
+                  >
+                    {c.name || '名称未登録'} / {c.email || 'メールなし'} / {c.phone || '電話なし'}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
             <input
@@ -231,20 +399,56 @@ export default function ReservationCreateModal({
               required
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">サービス</label>
+
+          <div className="md:col-span-2 space-y-2">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              サービス（登録一覧から選択 or 手入力）
+            </label>
             <select
-              value={form.serviceType}
-              onChange={(e) => setForm({ ...form, serviceType: e.target.value })}
+              value={isCustomService ? 'custom' : selectedServiceId}
+              onChange={(e) => handleServiceSelect(e.target.value)}
               className="w-full border rounded-lg px-3 py-2"
             >
-              {serviceOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {selectableServices.map((plan) => (
+                <option key={plan.id} value={plan.id}>
+                  {plan.name} / {plan.type} / ¥{Number(plan.price || 0).toLocaleString()}
                 </option>
               ))}
+              <option value="custom">カスタム入力（直書き）</option>
             </select>
+            <p className="text-xs text-gray-500">選択するとサービス名・金額を自動入力します。上書きも可能です。</p>
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">サービス名</label>
+            <input
+              type="text"
+              value={form.serviceName}
+              onChange={(e) => setForm({ ...form, serviceName: e.target.value })}
+              className="w-full border rounded-lg px-3 py-2"
+              placeholder="メニュー名"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">料金（円）</label>
+            <input
+              type="number"
+              value={form.servicePrice}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  servicePrice: Number(e.target.value) || 0,
+                })
+              }
+              className="w-full border rounded-lg px-3 py-2"
+              min={0}
+              step={500}
+              placeholder="22000"
+              required
+            />
+          </div>
+
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">時間</label>
             <div className="relative">
