@@ -16,9 +16,6 @@ const nextConfig = {
   // Avoid bundling firebase-admin (and its wasm/node: deps) into Next build output.
   // This prevents webpack from trying to parse wasm / node:* imports.
   serverExternalPackages: SERVER_EXTERNAL_PACKAGES,
-  experimental: {
-    serverComponentsExternalPackages: SERVER_EXTERNAL_PACKAGES,
-  },
   async headers() {
     return [
       {
