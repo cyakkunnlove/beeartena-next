@@ -627,7 +627,7 @@ class ReservationService {
     if (this.preloadedReservationsByDate.has(date)) {
       reservations = this.preloadedReservationsByDate.get(date) ?? []
     } else {
-      reservations = await firebaseReservationService.getReservationsByDate(date)
+      reservations = await firebaseReservationService.getReservationsByDate(dateObj)
       if (!isBrowser) {
         this.preloadedReservationsByDate.set(date, reservations)
       }
