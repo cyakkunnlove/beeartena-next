@@ -140,6 +140,10 @@ class StorageService {
     return data ? JSON.parse(data) : []
   }
 
+  replaceCustomers(customers: Customer[]): void {
+    localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers))
+  }
+
   getCustomer(userId: string): Customer | null {
     const customers = this.getCustomers()
     return customers.find((c) => c.id === userId) || null
