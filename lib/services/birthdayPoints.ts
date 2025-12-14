@@ -83,7 +83,6 @@ class BirthdayPointsService {
           userId,
           BIRTHDAY_POINTS,
           `お誕生日おめでとうございます！特別ポイント`,
-          'redeemed',
         )
       } else {
         await mockPointService.addPoints(
