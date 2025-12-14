@@ -745,10 +745,8 @@ class ReservationService {
 
     let monthlyReservations: Reservation[] = []
     try {
-      monthlyReservations = await firebaseReservationService.getReservationsForMonth(
-        year,
-        month + 1,
-      )
+      const reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
+      monthlyReservations = Array.from(reservationsByDate.values()).flat()
     } catch (error) {
       logger.error('Failed to preload monthly reservations', {
         year,
