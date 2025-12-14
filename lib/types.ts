@@ -9,11 +9,28 @@ export type ApiError = Error | ErrorWithMessage | unknown
 
 // Helper function to get error message
 export function getErrorMessage(error: unknown): string {
-  if (error instanceof Error) return error.message
-  if (error && typeof error === 'object' && 'message' in error) {
-    return String(error.message)
+  if (!error) {
+    return ''
   }
-  return String(error)
+
+  if (typeof error === 'string') {
+    return error
+  }
+
+  if (typeof error === 'number' || typeof error === 'boolean') {
+    return String(error)
+  }
+
+  if (error instanceof Error) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && 'message' in error) {
+    const { message } = error as { message?: unknown }
+    return typeof message === 'string' ? message : String(message ?? '')
+  }
+
+  return ''
 }
 
 // User types
@@ -50,6 +67,7 @@ export interface Customer extends User {
   // For admin views
   tier?: 'bronze' | 'silver' | 'gold' | 'platinum'
   points?: number
+  lifetimePoints?: number
   totalSpent?: number
 }
 
@@ -114,6 +132,8 @@ export interface Reservation {
   totalPrice?: number // サービス料金 + メンテナンス料金
   date: string
   time: string
+  durationMinutes?: number // 施術に必要な合計時間（分）
+  endTime?: string // 終了予定時刻（HH:mm）
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
   notes?: string
   createdAt: Date
@@ -155,6 +175,40 @@ export interface AuthContextType {
   ) => Promise<User>
   logout: () => Promise<void>
   updateProfile: (updates: Record<string, unknown>) => Promise<User>
+}
+
+// LINE integration (admin)
+export type LineConversationStatus = 'open' | 'pending' | 'closed'
+
+export interface LineConversation {
+  userId: string
+  displayName?: string
+  pictureUrl?: string
+  statusMessage?: string
+  customerId?: string
+  customerName?: string
+  customerEmail?: string
+  customerPhone?: string
+  lastMessageAt?: string
+  lastMessageText?: string
+  unreadCount?: number
+  status?: LineConversationStatus
+  createdAt?: string
+  updatedAt?: string
+}
+
+export type LineMessageDirection = 'in' | 'out'
+
+export type LineMessageType = 'text' | 'image' | 'video' | 'audio' | 'file' | 'sticker' | 'unknown'
+
+export interface LineMessage {
+  id: string
+  userId: string
+  direction: LineMessageDirection
+  type: LineMessageType
+  text?: string
+  timestamp: string
+  raw?: Record<string, unknown>
 }
 
 // Service types
@@ -221,6 +275,7 @@ export interface TimeSlot {
   date?: string
   maxCapacity?: number
   currentBookings?: number
+  requiredDurationMinutes?: number
 }
 
 // Business hours and settings
@@ -229,10 +284,16 @@ export interface BusinessHours {
   open: string // "09:00"
   close: string // "17:00"
   isOpen: boolean
+  allowedSlots?: string[]
+  alternateSlotSets?: string[][]
   slots?: TimeSlot[]
   allowMultipleSlots?: boolean // 複数予約枠を許可するか
   slotInterval?: number // スロット間隔（分）、allowMultipleSlotsがtrueの場合のみ使用
   maxCapacityPerDay?: number // 1日の最大受付人数（デフォルト: 1）
+}
+
+export interface ReservationDateOverride {
+  allowedSlots?: string[]
 }
 
 export interface ReservationSettings {
@@ -240,6 +301,7 @@ export interface ReservationSettings {
   maxCapacityPerSlot: number
   businessHours: BusinessHours[]
   blockedDates?: string[] // ISO date strings
+  dateOverrides?: Record<string, ReservationDateOverride>
   cancellationDeadlineHours?: number // キャンセル可能期限（予約日の何時間前まで）
   cancellationPolicy?: string // キャンセルポリシーのテキスト
 }
@@ -277,6 +339,7 @@ export interface CalendarEvent {
   start: Date
   end: Date
   resource: Reservation
+  status: Reservation['status']
 }
 
 export interface CalendarEventProps {

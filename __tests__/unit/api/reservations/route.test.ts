@@ -1,8 +1,9 @@
 import { NextRequest } from 'next/server'
-import { GET, POST, OPTIONS } from '@/app/api/reservations/route'
-import { reservationService } from '@/lib/reservationService'
+
+import { GET, OPTIONS, POST } from '@/app/api/reservations/route'
 import * as middleware from '@/lib/api/middleware'
-import { Reservation, TimeSlot, User } from '@/lib/types'
+import { reservationService } from '@/lib/reservationService'
+import { Reservation, TimeSlot } from '@/lib/types'
 
 // Mock dependencies
 jest.mock('@/lib/reservationService')
@@ -72,7 +73,7 @@ describe('Reservations API Route', () => {
         method: 'OPTIONS',
       })
 
-      const response = await OPTIONS(mockRequest)
+      const response = await OPTIONS()
 
       expect(middleware.setCorsHeaders).toHaveBeenCalled()
       expect(response.status).toBe(200)
@@ -94,7 +95,7 @@ describe('Reservations API Route', () => {
       ;(middleware.verifyAuth as jest.Mock).mockResolvedValue(mockAuthUser)
       ;(reservationService.getUserReservations as jest.Mock).mockResolvedValue(mockReservations)
 
-      const response = await GET(mockRequest)
+      const _response = await GET(mockRequest)
 
       expect(middleware.verifyAuth).toHaveBeenCalledWith(mockRequest)
       expect(reservationService.getUserReservations).toHaveBeenCalledWith('customer123')
@@ -109,7 +110,7 @@ describe('Reservations API Route', () => {
       ;(middleware.verifyAuth as jest.Mock).mockResolvedValue(mockAdminUser)
       ;(reservationService.getAllReservations as jest.Mock).mockResolvedValue(mockReservations)
 
-      const response = await GET(mockRequest)
+      const _response = await GET(mockRequest)
 
       expect(reservationService.getAllReservations).toHaveBeenCalled()
       expect(reservationService.getUserReservations).not.toHaveBeenCalled()
@@ -121,7 +122,7 @@ describe('Reservations API Route', () => {
 
       ;(middleware.verifyAuth as jest.Mock).mockResolvedValue(null)
 
-      const response = await GET(mockRequest)
+      const _response = await GET(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('認証が必要です', 401)
       expect(reservationService.getUserReservations).not.toHaveBeenCalled()
@@ -136,7 +137,7 @@ describe('Reservations API Route', () => {
         new Error('Database connection failed'),
       )
 
-      const response = await GET(mockRequest)
+      const _response = await GET(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('Database connection failed', 500)
     })
@@ -147,7 +148,7 @@ describe('Reservations API Route', () => {
       ;(middleware.verifyAuth as jest.Mock).mockResolvedValue(mockAuthUser)
       ;(reservationService.getUserReservations as jest.Mock).mockRejectedValue('Unknown error')
 
-      const response = await GET(mockRequest)
+      const _response = await GET(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('予約一覧の取得に失敗しました', 500)
     })
@@ -216,7 +217,7 @@ describe('Reservations API Route', () => {
       ;(reservationService.getTimeSlotsForDate as jest.Mock).mockResolvedValue(mockTimeSlots)
       ;(reservationService.createReservation as jest.Mock).mockResolvedValue(mockReservation)
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(middleware.verifyAuth).toHaveBeenCalledWith(mockRequest)
       expect(reservationService.getTimeSlotsForDate).toHaveBeenCalledWith('2025-08-01')
@@ -246,7 +247,7 @@ describe('Reservations API Route', () => {
         customerId: null,
       })
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(reservationService.createReservation).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -286,7 +287,7 @@ describe('Reservations API Route', () => {
       })
       ;(reservationService.getTimeSlotsForDate as jest.Mock).mockResolvedValue(mockTimeSlots)
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('選択された時間枠は予約できません', 400)
       expect(reservationService.createReservation).not.toHaveBeenCalled()
@@ -309,7 +310,7 @@ describe('Reservations API Route', () => {
       })
       ;(reservationService.getTimeSlotsForDate as jest.Mock).mockResolvedValue(mockTimeSlots)
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('選択された時間枠は予約できません', 400)
     })
@@ -362,7 +363,7 @@ describe('Reservations API Route', () => {
       })
       ;(reservationService.getTimeSlotsForDate as jest.Mock).mockResolvedValue(mockTimeSlots)
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('無効なサービスIDです', 400)
       expect(reservationService.createReservation).not.toHaveBeenCalled()
@@ -372,7 +373,6 @@ describe('Reservations API Route', () => {
       const dataWithOptionalFields = {
         ...validReservationData,
         finalPrice: 4500,
-        pointsUsed: 500,
       }
       const mockRequest = createMockRequest(dataWithOptionalFields)
       const mockTimeSlots: TimeSlot[] = [{ time: '18:30', available: true, date: '2025-08-01' }]
@@ -390,7 +390,6 @@ describe('Reservations API Route', () => {
       expect(reservationService.createReservation).toHaveBeenCalledWith(
         expect.objectContaining({
           finalPrice: 4500,
-          pointsUsed: 500,
         }),
       )
     })
@@ -409,7 +408,7 @@ describe('Reservations API Route', () => {
         new Error('Database error'),
       )
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('Database error', 500)
     })
@@ -424,7 +423,7 @@ describe('Reservations API Route', () => {
       })
       ;(reservationService.getTimeSlotsForDate as jest.Mock).mockRejectedValue('Unknown error')
 
-      const response = await POST(mockRequest)
+      const _response = await POST(mockRequest)
 
       expect(middleware.errorResponse).toHaveBeenCalledWith('予約の作成に失敗しました', 500)
     })
@@ -450,7 +449,7 @@ describe('Reservations API Route', () => {
         .mockResolvedValueOnce([{ ...mockTimeSlots[0], available: false, currentBookings: 1 }])
       ;(reservationService.createReservation as jest.Mock).mockResolvedValueOnce(mockReservation)
 
-      const [response1, response2] = await Promise.all([POST(request1), POST(request2)])
+      const [_response1, _response2] = await Promise.all([POST(request1), POST(request2)])
 
       expect(reservationService.createReservation).toHaveBeenCalledTimes(1)
       expect(middleware.successResponse).toHaveBeenCalledTimes(1)

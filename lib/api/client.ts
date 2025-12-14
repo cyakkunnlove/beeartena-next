@@ -3,12 +3,12 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 import type {
   Announcement,
   Customer,
-  Points,
-  PointTransaction,
   Reservation,
   ReservationSettings,
   ServicePlan,
   Inquiry,
+  LineConversation,
+  LineMessage,
 } from '@/lib/types'
 import type { AdminAnalyticsPayload } from '@/lib/utils/analytics'
 
@@ -30,17 +30,6 @@ export type AdminReservationRecord = Omit<
   completedAt?: FirestoreDateInput | null
   cancelledAt?: FirestoreDateInput | null
   intakeForm?: Reservation['intakeForm']
-}
-
-export type AdminPointSummary = Omit<Points, 'tierExpiry'> & {
-  tierExpiry?: string | Date
-  userName: string
-  userEmail: string
-  userPhone?: string
-}
-
-export type AdminPointTransactionRecord = Omit<PointTransaction, 'createdAt'> & {
-  createdAt: string
 }
 
 export type AdminServicePlanRecord = Omit<
@@ -95,13 +84,6 @@ export type AdminCustomerRecord = {
   street?: unknown
   createdAt?: FirestoreDateInput
   updatedAt?: FirestoreDateInput
-}
-
-export interface AdminBirthdayBatchResults {
-  checked: number
-  granted: number
-  errors: number
-  errorDetails?: unknown[]
 }
 
 export interface AdminStatsOverview {
@@ -180,6 +162,42 @@ export interface AdminReservationProcessResult {
   skipped: Array<{ reservationId: string; reason: string }>
   errors: Array<{ reservationId: string; error: string }>
   message?: string
+}
+
+export interface AdminCreateCustomerPayload {
+  name: string
+  email?: string
+  phone?: string
+  birthday?: string
+  birthDate?: string
+  gender?: string
+  notes?: string
+  tags?: string[]
+  tier?: 'bronze' | 'silver' | 'gold' | 'platinum'
+}
+
+export interface AdminCreateReservationPayload {
+  customerId?: string
+  customerName: string
+  customerEmail?: string
+  customerPhone?: string
+  serviceId?: string
+  serviceName: string
+  serviceType: string
+  price: number
+  maintenanceOptions?: string[]
+  maintenancePrice?: number
+  totalPrice?: number
+  date: string
+  time: string
+  durationMinutes?: number
+  notes?: string
+  status?: Reservation['status']
+  finalPrice?: number
+  pointsUsed?: number
+  cancelReason?: string
+  isMonitor?: boolean
+  allowConflict?: boolean
 }
 
 const toDateValue = (value?: FirestoreDateInput | null): Date | null => {
@@ -611,8 +629,9 @@ class ApiClient {
   }
 
   // 管理者ダッシュボード
-  async getAdminStats() {
-    const response = await this.request<AdminStatsResponse>('/admin/stats', {
+  async getAdminStats(options: { forceRefresh?: boolean } = {}) {
+    const endpoint = options.forceRefresh ? '/admin/stats?refresh=1' : '/admin/stats'
+    const response = await this.request<AdminStatsResponse>(endpoint, {
       cache: 'no-store',
     })
 
@@ -810,19 +829,60 @@ class ApiClient {
     })
   }
 
+  async createAdminReservation(payload: AdminCreateReservationPayload) {
+    const response = await this.request<{
+      success: boolean
+      reservation?: AdminReservationRecord
+      error?: string
+      details?: string
+    }>('/admin/reservations', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.success || !response.reservation) {
+      const message = response.error ?? response.details ?? '予約の作成に失敗しました'
+      throw new Error(message)
+    }
+
+    return {
+      success: true,
+      reservation: response.reservation,
+    }
+  }
+
   async processAdminReservations() {
     return this.request<AdminReservationProcessResult>('/admin/reservations/process', {
       method: 'POST',
     })
   }
 
-  async getAdminCustomers(params?: { limit?: number; cursor?: string }) {
+  async getAdminCustomers(params?: {
+    limit?: number
+    cursor?: string
+    q?: string
+    tier?: 'bronze' | 'silver' | 'gold' | 'platinum'
+    createdAfter?: string
+    createdBefore?: string
+  }) {
     const searchParams = new URLSearchParams()
     if (params?.limit) {
       searchParams.set('limit', String(params.limit))
     }
     if (params?.cursor) {
       searchParams.set('cursor', params.cursor)
+    }
+    if (params?.q) {
+      searchParams.set('q', params.q)
+    }
+    if (params?.tier) {
+      searchParams.set('tier', params.tier)
+    }
+    if (params?.createdAfter) {
+      searchParams.set('createdAfter', params.createdAfter)
+    }
+    if (params?.createdBefore) {
+      searchParams.set('createdBefore', params.createdBefore)
     }
 
     const query = searchParams.toString()
@@ -831,11 +891,10 @@ class ApiClient {
       customers: AdminCustomerRecord[]
       cursor?: string | null
       hasNext?: boolean
-    }>(`/admin/customers${query ? `?${query}` : ''}`,
-      {
-        cache: 'no-store',
-      },
-    )
+      appliedFilters?: Record<string, string>
+    }>(`/admin/customers${query ? `?${query}` : ''}`, {
+      cache: 'no-store',
+    })
 
     const customers = Array.isArray(response.customers)
       ? response.customers
@@ -848,6 +907,7 @@ class ApiClient {
       customers,
       cursor: response.cursor ?? null,
       hasNext: Boolean(response.hasNext),
+      appliedFilters: response.appliedFilters ?? {},
     }
   }
 
@@ -866,13 +926,27 @@ class ApiClient {
     )
   }
 
-  async runAdminBirthdayBatch() {
-    return this.request<{ message?: string; results?: AdminBirthdayBatchResults }>(
-      '/admin/birthday-points',
-      {
-        method: 'POST',
-      },
-    )
+  async createAdminCustomer(payload: AdminCreateCustomerPayload) {
+    if (!payload?.name || payload.name.trim().length === 0) {
+      throw new Error('顧客名は必須です')
+    }
+
+    const response = await this.request<{
+      success: boolean
+      customer?: AdminCustomerRecord
+      error?: string
+      details?: string
+    }>('/admin/customers', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+
+    if (!response.success || !response.customer) {
+      const message = response.error ?? response.details ?? '顧客の作成に失敗しました'
+      throw new Error(message)
+    }
+
+    return normalizeCustomerRecord(response.customer)
   }
 
   async deleteAdminCustomer(id: string) {
@@ -886,40 +960,6 @@ class ApiClient {
         method: 'DELETE',
       },
     )
-  }
-
-  async getAdminPoints() {
-    return this.request<{
-      success: boolean
-      points: AdminPointSummary[]
-      transactions: AdminPointTransactionRecord[]
-    }>('/admin/points', {
-      cache: 'no-store',
-    })
-  }
-
-  async getAdminPointTransactions(userId: string) {
-    return this.request<{ success: boolean; transactions: AdminPointTransactionRecord[] }>('/admin/points', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'getTransactions', userId }),
-    })
-  }
-
-  async adjustAdminPoints(payload: {
-    userId: string
-    amount: number
-    description: string
-    mode: 'add' | 'use'
-  }) {
-    return this.request<{
-      success: boolean
-      summary: AdminPointSummary
-      transaction: AdminPointTransactionRecord
-      message?: string
-    }>('/admin/points', {
-      method: 'POST',
-      body: JSON.stringify({ action: 'adjust', ...payload }),
-    })
   }
 
   // 予約関連
@@ -958,46 +998,6 @@ class ApiClient {
 
   async getTimeSlots(date: string) {
     return this.request<Record<string, unknown>[]>(`/reservations/slots?date=${date}`, {}, false)
-  }
-
-  // ポイント関連（ユーザー向け）
-  async getPoints(userId?: string) {
-    const params = userId ? `?userId=${userId}` : ''
-    return this.request<{ balance: number; history: PointTransaction[]; warning?: string }>(`/points${params}`)
-  }
-
-  async getPointBalance() {
-    return this.request<{ balance: number }>('/points/balance')
-  }
-
-  async triggerBirthdayPoints(userId: string) {
-    try {
-      const response = await this.request<{ granted?: boolean }>('/points/birthday', {
-        method: 'POST',
-        body: JSON.stringify({ userId }),
-      })
-      return response?.granted ?? false
-    } catch (error: unknown) {
-      if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-        const message = error instanceof Error ? error.message : String(error)
-        console.warn('Birthday points trigger skipped', { message })
-      }
-      return false
-    }
-  }
-
-  async addPoints(userId: string, amount: number, description: string) {
-    return this.request<Record<string, unknown>>('/points', {
-      method: 'POST',
-      body: JSON.stringify({ userId, amount, description, type: 'add' }),
-    })
-  }
-
-  async usePoints(userId: string, amount: number, description: string) {
-    return this.request<Record<string, unknown>>('/points', {
-      method: 'POST',
-      body: JSON.stringify({ userId, amount, description, type: 'use' }),
-    })
   }
 
   // 顧客関連（ユーザー向け）
@@ -1133,6 +1133,82 @@ class ApiClient {
     return this.request<{ success: boolean }>(`/admin/inquiries?id=${id}`, {
       method: 'PATCH',
       body: JSON.stringify(data),
+    })
+  }
+
+  // LINE公式アカウント（管理）
+  async getAdminLineConversations(options: { limit?: number; cursor?: string } = {}) {
+    const params = new URLSearchParams()
+    if (typeof options.limit === 'number') {
+      params.set('limit', String(options.limit))
+    }
+    if (typeof options.cursor === 'string' && options.cursor.trim().length > 0) {
+      params.set('cursor', options.cursor.trim())
+    }
+
+    const endpoint = params.toString()
+      ? `/admin/line/conversations?${params.toString()}`
+      : '/admin/line/conversations'
+
+    return this.request<{
+      success: boolean
+      conversations?: LineConversation[]
+      nextCursor?: string | null
+      error?: string
+    }>(endpoint, { cache: 'no-store' })
+  }
+
+  async getAdminLineConversation(userId: string, options: { limit?: number; cursor?: string } = {}) {
+    const encoded = encodeURIComponent(userId)
+    const params = new URLSearchParams()
+    if (typeof options.limit === 'number') {
+      params.set('limit', String(options.limit))
+    }
+    if (typeof options.cursor === 'string' && options.cursor.trim().length > 0) {
+      params.set('cursor', options.cursor.trim())
+    }
+
+    const endpoint = params.toString()
+      ? `/admin/line/conversations/${encoded}?${params.toString()}`
+      : `/admin/line/conversations/${encoded}`
+
+    return this.request<{
+      success: boolean
+      conversation?: LineConversation
+      messages?: LineMessage[]
+      nextCursor?: string | null
+      error?: string
+    }>(endpoint, { cache: 'no-store' })
+  }
+
+  async markAdminLineConversationRead(userId: string) {
+    const encoded = encodeURIComponent(userId)
+    return this.request<{ success: boolean }>(`/admin/line/conversations/${encoded}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ action: 'markRead' }),
+    })
+  }
+
+  async linkAdminLineConversationCustomer(lineUserId: string, customerId: string) {
+    const encoded = encodeURIComponent(lineUserId)
+    return this.request<{ success: boolean }>(`/admin/line/conversations/${encoded}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ customerId }),
+    })
+  }
+
+  async unlinkAdminLineConversationCustomer(lineUserId: string) {
+    const encoded = encodeURIComponent(lineUserId)
+    return this.request<{ success: boolean }>(`/admin/line/conversations/${encoded}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ customerId: null }),
+    })
+  }
+
+  async sendAdminLineMessage(userId: string, text: string) {
+    return this.request<{ success: boolean }>(`/admin/line/send`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, text }),
     })
   }
 }

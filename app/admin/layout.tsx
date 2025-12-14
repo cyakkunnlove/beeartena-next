@@ -5,7 +5,9 @@ import Link from 'next/link'
 import { useRouter, usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
 
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
+import { storageService } from '@/lib/storage/storageService'
 
 interface NavItem {
   name: string
@@ -17,7 +19,7 @@ interface NavItem {
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
-  const { user, logout } = useAuth()
+  const { user, logout, loading } = useAuth()
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [pendingInquiries, setPendingInquiries] = useState(0)
   const [pendingReservations, setPendingReservations] = useState(0)
@@ -26,9 +28,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'ダッシュボード', href: '/admin', icon: '📊' },
     { name: '予約管理', href: '/admin/reservations', icon: '📅', badge: pendingReservations },
     { name: '顧客管理', href: '/admin/customers', icon: '👥' },
-    { name: 'ポイント管理', href: '/admin/points', icon: '⭐' },
-    { name: '誕生日管理', href: '/admin/birthday', icon: '🎂' },
     { name: 'お問い合わせ', href: '/admin/inquiries', icon: '💬', badge: pendingInquiries },
+    { name: 'LINE管理', href: '/admin/line', icon: '💚' },
     { name: '売上・統計', href: '/admin/analytics', icon: '📈' },
     { name: 'サービスプラン', href: '/admin/service-plans', icon: '💼' },
     { name: 'お知らせ管理', href: '/admin/announcements', icon: '📰' },
@@ -36,22 +37,53 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   ]
 
   useEffect(() => {
+    if (loading) return
     if (!user || user.role !== 'admin') {
-      router.push('/login')
+      router.replace('/login')
       return
     }
 
-    // バッジの数を計算
-    const inquiries = JSON.parse(localStorage.getItem('inquiries') || '[]')
-    const reservations = JSON.parse(localStorage.getItem('reservations') || '[]')
+    let cancelled = false
 
-    setPendingInquiries(inquiries.filter((i: any) => i.status === 'unread').length)
-    setPendingReservations(reservations.filter((r: any) => r.status === 'pending').length)
-  }, [user, router, pathname])
+    const loadCounts = async () => {
+      try {
+        const data = await apiClient.getAdminStats({ forceRefresh: true })
+        if (!cancelled && data?.stats) {
+          setPendingInquiries(data.stats.unreadInquiries ?? 0)
+          setPendingReservations(data.stats.pendingReservations ?? 0)
+          return
+        }
+      } catch (error) {
+        console.warn('Failed to load admin stats for navigation badges', error)
+      }
+
+      const inquiries = storageService.getInquiries()
+      const reservations = storageService.getReservations()
+
+      if (!cancelled) {
+        setPendingInquiries(inquiries.filter((inquiry) => inquiry.status === 'unread').length)
+        setPendingReservations(reservations.filter((reservation) => reservation.status === 'pending').length)
+      }
+    }
+
+    loadCounts()
+
+    return () => {
+      cancelled = true
+    }
+  }, [user, loading, router, pathname])
 
   const handleLogout = async () => {
     await logout()
     router.push('/')
+  }
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 text-sm text-gray-600">
+        管理者情報を確認しています…
+      </div>
+    )
   }
 
   if (!user || user.role !== 'admin') {
