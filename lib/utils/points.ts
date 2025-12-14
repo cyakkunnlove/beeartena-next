@@ -1,7 +1,5 @@
 import { Points, PointTransaction } from '@/lib/types'
 
-type RawPointTransaction = Record<string, any> | null | undefined
-
 const toNumber = (value: unknown, fallback = 0): number => {
   if (typeof value === 'number' && Number.isFinite(value)) {
     return value
@@ -56,7 +54,7 @@ const allowedTypes: ReadonlyArray<PointTransaction['type']> = [
 ]
 
 export const normalizePointTransactions = (
-  history: RawPointTransaction[] = [],
+  history: unknown[] = [],
   fallbackUserId?: string,
 ): PointTransaction[] => {
   return history
@@ -105,7 +103,7 @@ export const determineTier = (lifetimePoints: number): Points['tier'] => {
 export const buildPointsSnapshot = (
   userId: string,
   balance: unknown,
-  history: RawPointTransaction[] = [],
+  history: unknown[] = [],
 ): Points => {
   const normalizedHistory = normalizePointTransactions(history, userId)
   const firstBalance = normalizedHistory.find((tx) => typeof tx.balance === 'number')?.balance
