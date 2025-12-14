@@ -21,9 +21,11 @@ export default function PointsPage() {
 
     try {
       const response = await apiClient.getPoints()
-      const normalizedHistory = normalizePointTransactions(response?.history, user.id)
+      const historyValue = (response as Record<string, unknown> | undefined)?.history
+      const rawHistory = Array.isArray(historyValue) ? historyValue : []
+      const normalizedHistory = normalizePointTransactions(rawHistory, user.id)
       setTransactions(normalizedHistory)
-      setPoints(buildPointsSnapshot(user.id, response?.balance, response?.history ?? normalizedHistory))
+      setPoints(buildPointsSnapshot(user.id, response?.balance, rawHistory))
     } catch (error) {
       console.error('Failed to fetch points via API:', error)
       const fallbackHistory = normalizePointTransactions(storageService.getPointTransactions(user.id), user.id)

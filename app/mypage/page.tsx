@@ -25,7 +25,9 @@ export default function MypageDashboard() {
       if (pointsResponse?.warning) {
         console.warn('[mypage] points API warning:', pointsResponse.warning)
       }
-      const snapshot = buildPointsSnapshot(user.id, pointsResponse?.balance, pointsResponse?.history)
+      const historyValue = (pointsResponse as Record<string, unknown> | undefined)?.history
+      const history = Array.isArray(historyValue) ? historyValue : undefined
+      const snapshot = buildPointsSnapshot(user.id, pointsResponse?.balance, history)
       setPoints(snapshot)
     } catch (error) {
       console.error('Failed to fetch points from API:', error)
