@@ -3,6 +3,7 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || ''
 import type {
   Announcement,
   Customer,
+  PointTransaction,
   Reservation,
   ReservationSettings,
   ServicePlan,
@@ -162,6 +163,29 @@ export interface AdminReservationProcessResult {
   skipped: Array<{ reservationId: string; reason: string }>
   errors: Array<{ reservationId: string; error: string }>
   message?: string
+}
+
+export type AdminPointSummary = {
+  userId: string
+  userName: string
+  userEmail: string
+  userPhone?: string
+  currentPoints: number
+  lifetimePoints: number
+  tier: 'bronze' | 'silver' | 'gold' | 'platinum'
+  tierExpiry?: FirestoreDateInput | null
+}
+
+export type AdminPointTransactionRecord = {
+  id: string
+  userId: string
+  amount: number
+  balance?: number
+  type: PointTransaction['type']
+  description?: string
+  reason?: string
+  referenceId?: string
+  createdAt: string
 }
 
 export interface AdminCreateCustomerPayload {
@@ -857,6 +881,13 @@ class ApiClient {
     })
   }
 
+  async runAdminBirthdayBatch() {
+    return this.request<Record<string, unknown>>('/admin/birthday-points', {
+      method: 'POST',
+      body: JSON.stringify({}),
+    })
+  }
+
   async getAdminCustomers(params?: {
     limit?: number
     cursor?: string
@@ -960,6 +991,61 @@ class ApiClient {
         method: 'DELETE',
       },
     )
+  }
+
+  // ポイント関連
+  async getPoints(params?: { userId?: string }) {
+    const searchParams = new URLSearchParams()
+    if (params?.userId) {
+      searchParams.set('userId', params.userId)
+    }
+
+    const query = searchParams.toString()
+    return this.request<Record<string, unknown>>(`/points${query ? `?${query}` : ''}`, {
+      cache: 'no-store',
+    })
+  }
+
+  async triggerBirthdayPoints(userId: string) {
+    return this.request<Record<string, unknown>>('/points/birthday', {
+      method: 'POST',
+      body: JSON.stringify({ userId }),
+    })
+  }
+
+  async getAdminPoints() {
+    return this.request<{
+      success: boolean
+      disabled?: boolean
+      message?: string
+      points?: AdminPointSummary[]
+      transactions?: AdminPointTransactionRecord[]
+    }>('/admin/points', {
+      cache: 'no-store',
+    })
+  }
+
+  async adjustAdminPoints(payload: {
+    userId: string
+    amount: number
+    description: string
+    mode: 'add' | 'use'
+  }) {
+    return this.request<{
+      success: boolean
+      summary: AdminPointSummary
+      transaction: AdminPointTransactionRecord
+      message?: string
+    }>('/admin/points', {
+      method: 'POST',
+      body: JSON.stringify({
+        action: 'adjust',
+        userId: payload.userId,
+        amount: payload.amount,
+        description: payload.description,
+        mode: payload.mode,
+      }),
+    })
   }
 
   // 予約関連

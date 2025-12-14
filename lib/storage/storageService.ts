@@ -256,6 +256,10 @@ class StorageService {
     return reservations
   }
 
+  replaceReservations(reservations: Reservation[]): void {
+    localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservations))
+  }
+
   createReservation(reservation: Omit<Reservation, 'id' | 'createdAt' | 'updatedAt'>): Reservation {
     const reservations = this.getReservations()
     const newReservation: Reservation = {

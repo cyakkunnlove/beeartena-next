@@ -642,8 +642,8 @@ export default function AdminReservations() {
     window.location.href = `tel:${phone}`
   }
 
-  const handleCalendarSlotSelect = (slotInfo: SlotInfo) => {
-    const start = slotInfo?.start instanceof Date ? slotInfo.start : new Date(slotInfo?.start ?? Date.now())
+  const handleCalendarDateClick = (selectedDate: Date) => {
+    const start = selectedDate instanceof Date ? selectedDate : new Date(selectedDate ?? Date.now())
     if (Number.isNaN(start.getTime())) {
       openCreateModal()
       return
@@ -877,7 +877,7 @@ export default function AdminReservations() {
             <ReservationCalendar
               reservations={reservations}
               onEventClick={(reservation) => setSelectedReservation(reservation)}
-              onSlotSelect={handleCalendarSlotSelect}
+              onDateClick={handleCalendarDateClick}
             />
           </div>
         )}
