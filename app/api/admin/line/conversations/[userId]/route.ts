@@ -114,7 +114,10 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
   }
 }
 
-export async function GET(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
   const adminError = await requireAdmin(request)
   if (adminError) {
     return setCorsHeaders(adminError)
@@ -127,7 +130,8 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
     )
   }
 
-  const userId = decodeURIComponent(params.userId ?? '').trim()
+  const resolvedParams = await params
+  const userId = decodeURIComponent(resolvedParams.userId ?? '').trim()
   if (!userId) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 }))
   }
@@ -187,7 +191,10 @@ export async function GET(request: NextRequest, { params }: { params: { userId: 
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: { userId: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
   const adminError = await requireAdmin(request)
   if (adminError) {
     return setCorsHeaders(adminError)
@@ -200,7 +207,8 @@ export async function PATCH(request: NextRequest, { params }: { params: { userId
     )
   }
 
-  const userId = decodeURIComponent(params.userId ?? '').trim()
+  const resolvedParams = await params
+  const userId = decodeURIComponent(resolvedParams.userId ?? '').trim()
   if (!userId) {
     return setCorsHeaders(NextResponse.json({ success: false, error: 'userId is required' }, { status: 400 }))
   }
