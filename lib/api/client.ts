@@ -1321,6 +1321,7 @@ class ApiClient {
         storageBucketConfigured?: boolean
         storageBucket?: string
         storageBucketError?: string | null
+        storageBucketVerified?: boolean | null
         receivingEnabled: boolean
         sendingEnabled: boolean
       }

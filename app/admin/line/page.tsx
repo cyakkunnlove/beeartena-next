@@ -15,6 +15,7 @@ type LineConfigState = {
   storageBucketConfigured?: boolean
   storageBucket?: string
   storageBucketError?: string | null
+  storageBucketVerified?: boolean | null
   receivingEnabled: boolean
   sendingEnabled: boolean
 }
@@ -674,6 +675,11 @@ export default function AdminLinePage() {
               {lineConfig?.storageBucket && (
                 <div className="mt-2 text-[11px] text-gray-500">
                   Storage Bucket: <code className="bg-white border rounded px-1 py-0.5">{lineConfig.storageBucket}</code>
+                </div>
+              )}
+              {typeof lineConfig?.storageBucketVerified !== 'undefined' && lineConfig?.storageBucketConfigured && (
+                <div className="mt-1 text-[11px] text-gray-500">
+                  Storage確認: {lineConfig.storageBucketVerified ? 'OK' : 'NG'}
                 </div>
               )}
               {lineConfig?.storageBucketError && (
