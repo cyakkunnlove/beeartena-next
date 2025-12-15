@@ -33,7 +33,7 @@ if (isLocalhost) {
   self.addEventListener('push', () => {})
   self.addEventListener('notificationclick', () => {})
 } else {
-  const CACHE_NAME = 'beeartena-v5'
+  const CACHE_NAME = 'beeartena-v6'
   const OFFLINE_URL = '/offline.html'
   const CORE_ASSETS = [
     '/',
