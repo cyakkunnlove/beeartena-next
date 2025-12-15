@@ -1,7 +1,7 @@
 'use client'
 
 import { usePathname } from 'next/navigation'
-import { createContext, useContext } from 'react'
+import { createContext, useContext, useEffect, useRef } from 'react'
 
 import ErrorBoundary from '@/components/error/ErrorBoundary'
 import BottomNav from '@/components/layout/BottomNav'
@@ -26,16 +26,26 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   const isAdminPage = pathname?.startsWith('/admin')
   const toast = useToast()
   const { updateAvailable, updateServiceWorker: _updateServiceWorker } = useServiceWorker()
+  const updateToastShownRef = useRef(false)
 
   // サービスワーカーのアップデート通知
-  if (updateAvailable) {
+  useEffect(() => {
+    if (!updateAvailable) {
+      updateToastShownRef.current = false
+      return
+    }
+    if (updateToastShownRef.current) {
+      return
+    }
+    updateToastShownRef.current = true
+
     toast.showToast({
       type: 'info',
       title: '新しいバージョンが利用可能です',
       message: 'ページを更新して最新版をご利用ください',
       duration: 0, // 自動で消えない
     })
-  }
+  }, [toast, updateAvailable])
 
   // 管理画面の場合はヘッダー、フッター、ボトムナビを表示しない
   if (isAdminPage) {
