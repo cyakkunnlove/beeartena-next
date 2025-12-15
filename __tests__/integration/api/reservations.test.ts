@@ -1,9 +1,11 @@
 import { NextRequest } from 'next/server'
+
 import {
   GET as getReservationsHandler,
   POST as createReservationHandler,
 } from '@/app/api/reservations/route'
 import { GET as getSlotsHandler } from '@/app/api/reservations/slots/route'
+import { reservationService } from '@/lib/reservationService'
 
 // Mock Firebase Admin
 jest.mock('@/lib/firebase/admin', () => ({
@@ -74,6 +76,8 @@ jest.mock('@/lib/api/middleware', () => ({
   }),
 }))
 
+const mockedReservationService = reservationService as jest.Mocked<typeof reservationService>
+
 describe('Reservations API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -81,33 +85,41 @@ describe('Reservations API Integration Tests', () => {
 
   describe('GET /api/reservations', () => {
     it('should return user reservations with valid token', async () => {
+      const now = new Date('2025-07-01T10:00:00.000Z')
       const mockReservations = [
         {
           id: 'res-1',
           customerId: 'test-user-id',
-          serviceId: '2D',
+          customerName: 'テスト太郎',
+          customerEmail: 'test@example.com',
+          customerPhone: '090-1234-5678',
+          serviceType: '2D' as const,
           serviceName: '2D眉毛',
           date: '2025-08-01',
           time: '10:00',
-          status: 'confirmed',
+          status: 'confirmed' as const,
           price: 30000,
-          pointsUsed: 0,
+          createdAt: now,
+          updatedAt: now,
         },
         {
           id: 'res-2',
           customerId: 'test-user-id',
-          serviceId: '3D',
+          customerName: 'テスト太郎',
+          customerEmail: 'test@example.com',
+          customerPhone: '090-1234-5678',
+          serviceType: '3D' as const,
           serviceName: '3D眉毛',
           date: '2025-08-05',
           time: '14:00',
-          status: 'pending',
+          status: 'pending' as const,
           price: 50000,
-          pointsUsed: 1000,
+          createdAt: now,
+          updatedAt: now,
         },
       ]
 
-      const { reservationService } = require('@/lib/reservationService')
-      reservationService.getUserReservations.mockResolvedValue(mockReservations)
+      mockedReservationService.getUserReservations.mockResolvedValue(mockReservations)
 
       const req = new NextRequest('http://localhost:3000/api/reservations', {
         method: 'GET',
@@ -131,8 +143,7 @@ describe('Reservations API Integration Tests', () => {
     })
 
     it('should return empty array when user has no reservations', async () => {
-      const { reservationService } = require('@/lib/reservationService')
-      reservationService.getUserReservations.mockResolvedValue([])
+      mockedReservationService.getUserReservations.mockResolvedValue([])
 
       const req = new NextRequest('http://localhost:3000/api/reservations', {
         method: 'GET',
@@ -163,6 +174,7 @@ describe('Reservations API Integration Tests', () => {
 
   describe('POST /api/reservations', () => {
     it('should create reservation successfully', async () => {
+      const now = new Date('2025-07-01T10:00:00.000Z')
       const newReservation = {
         serviceId: '2D',
         serviceName: '2D眉毛',
@@ -173,22 +185,29 @@ describe('Reservations API Integration Tests', () => {
         customerEmail: 'test@example.com',
         customerPhone: '090-1234-5678',
         notes: 'テストメモ',
-        pointsUsed: 0,
       }
 
-      const { reservationService } = require('@/lib/reservationService')
-      const { db } = require('@/lib/firebase/admin')
-
       // Mock availability check
-      reservationService.getTimeSlotsForDate.mockResolvedValue([
+      mockedReservationService.getTimeSlotsForDate.mockResolvedValue([
         { time: '10:00', available: true },
         { time: '11:00', available: false },
       ])
 
       // Mock reservation creation
-      reservationService.createReservation.mockResolvedValue({
+      mockedReservationService.createReservation.mockResolvedValue({
         id: 'new-res-id',
-        message: '予約が確定しました',
+        customerId: 'test-user-id',
+        customerName: 'テスト太郎',
+        customerEmail: 'test@example.com',
+        customerPhone: '090-1234-5678',
+        serviceType: '2D' as const,
+        serviceName: '2D眉毛',
+        price: 30000,
+        date: '2025-08-01',
+        time: '10:00',
+        status: 'pending' as const,
+        createdAt: now,
+        updatedAt: now,
       })
 
       const req = new NextRequest('http://localhost:3000/api/reservations', {
@@ -204,28 +223,22 @@ describe('Reservations API Integration Tests', () => {
       const data = await response.json()
 
       expect(response.status).toBe(201)
-      expect(data).toMatchObject({
-        id: 'new-res-id',
-        message: '予約が確定しました',
-      })
+      expect(data).toMatchObject({ id: 'new-res-id' })
 
-      expect(reservationService.createReservation).toHaveBeenCalledWith(
+      expect(mockedReservationService.createReservation).toHaveBeenCalledWith(
         expect.objectContaining({
           serviceId: '2D',
           serviceName: '2D眉毛',
           date: '2025-08-01',
           time: '10:00',
           price: 30000,
-          pointsUsed: 0,
         }),
       )
     })
 
     it('should fail when time slot is not available', async () => {
-      const { reservationService } = require('@/lib/reservationService')
-
       // Mock slot not available
-      reservationService.getTimeSlotsForDate.mockResolvedValue([
+      mockedReservationService.getTimeSlotsForDate.mockResolvedValue([
         { time: '10:00', available: false },
       ])
 
@@ -277,15 +290,25 @@ describe('Reservations API Integration Tests', () => {
     })
 
     it('should handle points usage correctly', async () => {
-      const { reservationService } = require('@/lib/reservationService')
-
+      const now = new Date('2025-07-01T10:00:00.000Z')
       // Mock time slots
-      reservationService.getTimeSlotsForDate.mockResolvedValue([{ time: '14:00', available: true }])
+      mockedReservationService.getTimeSlotsForDate.mockResolvedValue([{ time: '14:00', available: true }])
 
       // Mock reservation creation with points
-      reservationService.createReservation.mockResolvedValue({
+      mockedReservationService.createReservation.mockResolvedValue({
         id: 'new-res-id',
-        message: '予約が確定しました',
+        customerId: 'test-user-id',
+        customerName: 'テスト太郎',
+        customerEmail: 'test@example.com',
+        customerPhone: '090-1234-5678',
+        serviceType: '3D' as const,
+        serviceName: '3D眉毛',
+        price: 50000,
+        date: '2025-08-01',
+        time: '14:00',
+        status: 'pending' as const,
+        createdAt: now,
+        updatedAt: now,
       })
 
       const req = new NextRequest('http://localhost:3000/api/reservations', {
@@ -303,57 +326,18 @@ describe('Reservations API Integration Tests', () => {
           customerName: 'テスト太郎',
           customerEmail: 'test@example.com',
           customerPhone: '090-1234-5678',
-          pointsUsed: 1000,
         }),
       })
 
       const response = await createReservationHandler(req)
-      const data = await response.json()
 
       expect(response.status).toBe(201)
 
-      // Check reservation includes points used
-      expect(reservationService.createReservation).toHaveBeenCalledWith(
+      expect(mockedReservationService.createReservation).toHaveBeenCalledWith(
         expect.objectContaining({
-          pointsUsed: 1000,
           price: 50000,
         }),
       )
-    })
-
-    it('should fail if user does not have enough points', async () => {
-      const { reservationService } = require('@/lib/reservationService')
-
-      // Mock time slots
-      reservationService.getTimeSlotsForDate.mockResolvedValue([{ time: '10:00', available: true }])
-
-      // Mock reservation creation to fail due to insufficient points
-      reservationService.createReservation.mockRejectedValue(new Error('ポイントが不足しています'))
-
-      const req = new NextRequest('http://localhost:3000/api/reservations', {
-        method: 'POST',
-        headers: {
-          authorization: 'Bearer mock-jwt-token',
-          'content-type': 'application/json',
-        },
-        body: JSON.stringify({
-          serviceId: '2D',
-          serviceName: '2D眉毛',
-          price: 30000,
-          date: '2025-08-01',
-          time: '10:00',
-          customerName: 'テスト太郎',
-          customerEmail: 'test@example.com',
-          customerPhone: '090-1234-5678',
-          pointsUsed: 1000, // More than available
-        }),
-      })
-
-      const response = await createReservationHandler(req)
-      const data = await response.json()
-
-      expect(response.status).toBe(500)
-      expect(data.error).toBe('ポイントが不足しています')
     })
   })
 
@@ -370,8 +354,7 @@ describe('Reservations API Integration Tests', () => {
         { time: '17:00', available: true },
       ]
 
-      const { reservationService } = require('@/lib/reservationService')
-      reservationService.getTimeSlotsForDate.mockResolvedValue(mockSlots)
+      mockedReservationService.getTimeSlotsForDate.mockResolvedValue(mockSlots)
 
       const req = new NextRequest('http://localhost:3000/api/reservations/slots?date=2025-08-01', {
         method: 'GET',
@@ -382,7 +365,7 @@ describe('Reservations API Integration Tests', () => {
 
       expect(response.status).toBe(200)
       expect(data).toEqual(mockSlots)
-      expect(reservationService.getTimeSlotsForDate).toHaveBeenCalledWith('2025-08-01')
+      expect(mockedReservationService.getTimeSlotsForDate).toHaveBeenCalledWith('2025-08-01')
     })
 
     it('should validate date parameter', async () => {
@@ -398,8 +381,7 @@ describe('Reservations API Integration Tests', () => {
     })
 
     it('should handle service errors gracefully', async () => {
-      const { reservationService } = require('@/lib/reservationService')
-      reservationService.getTimeSlotsForDate.mockRejectedValue(new Error('Database error'))
+      mockedReservationService.getTimeSlotsForDate.mockRejectedValue(new Error('Database error'))
 
       const req = new NextRequest('http://localhost:3000/api/reservations/slots?date=2025-08-01', {
         method: 'GET',

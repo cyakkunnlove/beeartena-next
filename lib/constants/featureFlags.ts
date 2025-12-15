@@ -1,3 +1,4 @@
-export const POINTS_PROGRAM_ENABLED = true
+export const LINE_CONTACT_URL = 'https://line.me/R/ti/p/@174geemy'
 
-// 追加のフラグが必要になった場合はここに追記してください。
+// ポイント制度は完全に終了したため、フロントでは常に無効化する
+export const POINTS_PROGRAM_ENABLED = false

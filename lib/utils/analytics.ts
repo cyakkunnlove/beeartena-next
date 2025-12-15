@@ -1,82 +1,153 @@
-import {
+import type {
   ChartData,
   ServiceChartData,
   TierChartData,
   TimeSlotChartData,
 } from '@/lib/types'
 
-// ローカルストレージなどの簡易データから管理画面用の集計を組み立てる軽量ユーティリティ。
-// Firestore取得に失敗した際のフォールバックでのみ使用されるため、最低限の実装です。
-
-type ReservationLite = {
-  dateIso: string
-  status: string
-  amount: number
-  serviceName: string
-  time: string
-  customerId: string
+const TIER_COLORS: Record<string, string> = {
+  bronze: '#CD7F32',
+  silver: '#C0C0C0',
+  gold: '#FFD700',
+  platinum: '#E5E4E2',
 }
 
-type UserLite = {
-  role: string
-  tier: string
+export interface AnalyticsReservationRecord {
+  dateIso?: string | null
+  status?: string | null
+  amount?: number | null
+  serviceName?: string | null
+  time?: string | null
 }
 
-export type AdminAnalyticsPayload = {
+export interface AnalyticsCustomerRecord {
+  role?: string | null
+  tier?: string | null
+  deleted?: boolean | null
+}
+
+export interface AdminAnalyticsPayload {
   monthlyRevenue: ChartData[]
   servicePerformance: ServiceChartData[]
   customerTierDistribution: TierChartData[]
   timeSlotDistribution: TimeSlotChartData[]
-  fallback?: boolean
-  warning?: string
 }
 
-export function buildAdminAnalytics(
-  reservations: ReservationLite[],
-  users: UserLite[],
-): AdminAnalyticsPayload {
-  // 月別売上
-  const monthlyMap = new Map<string, number>()
-  reservations.forEach((r) => {
-    const monthKey = r.dateIso.slice(0, 7) // YYYY-MM
-    const prev = monthlyMap.get(monthKey) || 0
-    monthlyMap.set(monthKey, prev + (r.amount || 0))
+const parseDate = (value?: string | null): Date | null => {
+  if (!value) {
+    return null
+  }
+
+  const parsed = new Date(value)
+  if (Number.isNaN(parsed.getTime())) {
+    return null
+  }
+
+  return parsed
+}
+
+const createMonthlyBuckets = () => {
+  const now = new Date()
+  const buckets: { [key: string]: { revenue: number; count: number } } = {}
+
+  for (let i = 11; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1)
+    const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+    buckets[key] = { revenue: 0, count: 0 }
+  }
+
+  return buckets
+}
+
+const isCancelled = (status?: string | null) => {
+  if (!status) {
+    return false
+  }
+  const normalized = status.toLowerCase()
+  return normalized === 'cancelled' || normalized === 'canceled'
+}
+
+export const buildAdminAnalytics = (
+  reservations: AnalyticsReservationRecord[],
+  customers: AnalyticsCustomerRecord[],
+): AdminAnalyticsPayload => {
+  const monthlyBuckets = createMonthlyBuckets()
+  const serviceBuckets = new Map<string, { revenue: number; count: number }>()
+  const tierBuckets: Record<string, number> = {
+    bronze: 0,
+    silver: 0,
+    gold: 0,
+    platinum: 0,
+  }
+  const timeSlotBuckets = new Map<string, number>()
+
+  reservations.forEach((entry) => {
+    if (isCancelled(entry.status)) {
+      return
+    }
+
+    const amount = Number.isFinite(entry.amount ?? Number.NaN) ? Number(entry.amount) : 0
+    const date = parseDate(entry.dateIso ?? null)
+
+    if (date) {
+      const key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`
+      if (monthlyBuckets[key]) {
+        monthlyBuckets[key].revenue += amount
+        monthlyBuckets[key].count += 1
+      }
+    }
+
+    const serviceName = (entry.serviceName ?? '').trim() || 'その他'
+    const service = serviceBuckets.get(serviceName) ?? { revenue: 0, count: 0 }
+    service.revenue += amount
+    service.count += 1
+    serviceBuckets.set(serviceName, service)
+
+    const timeKey = (entry.time ?? '').trim() || '不明'
+    timeSlotBuckets.set(timeKey, (timeSlotBuckets.get(timeKey) ?? 0) + 1)
   })
-  const monthlyRevenue: ChartData[] = Array.from(monthlyMap.entries()).map(([month, revenue]) => ({
-    month,
-    revenue,
-    count: reservations.filter((r) => r.dateIso.startsWith(month)).length,
+
+  customers.forEach((customer) => {
+    if (customer.deleted) {
+      return
+    }
+    const role = (customer.role ?? '').toLowerCase()
+    if (role !== '' && role !== 'customer') {
+      return
+    }
+    const tier = (customer.tier ?? '').toLowerCase()
+    const key = tierBuckets[tier] !== undefined ? tier : 'bronze'
+    tierBuckets[key] += 1
+  })
+
+  const monthlyRevenue: ChartData[] = Object.entries(monthlyBuckets).map(([key, value]) => {
+    const [, month] = key.split('-')
+    return {
+      month: `${month}月`,
+      revenue: Number(value.revenue.toFixed(2)),
+      count: value.count,
+    }
+  })
+
+  const servicePerformance: ServiceChartData[] = Array.from(serviceBuckets.entries())
+    .map(([name, value]) => ({
+      name,
+      revenue: Number(value.revenue.toFixed(2)),
+      count: value.count,
+      value: Number(value.revenue.toFixed(2)),
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  const tierEntries = Object.entries(tierBuckets)
+  const customerTierDistribution: TierChartData[] = tierEntries.map(([tier, count]) => ({
+    name: tier.charAt(0).toUpperCase() + tier.slice(1),
+    value: count,
+    fill: TIER_COLORS[tier] ?? '#CBD5F5',
   }))
 
-  // サービス別
-  const serviceMap = new Map<string, { revenue: number; count: number }>()
-  reservations.forEach((r) => {
-    const prev = serviceMap.get(r.serviceName) || { revenue: 0, count: 0 }
-    serviceMap.set(r.serviceName, {
-      revenue: prev.revenue + (r.amount || 0),
-      count: prev.count + 1,
-    })
-  })
-  const servicePerformance: ServiceChartData[] = Array.from(serviceMap.entries()).map(
-    ([name, { revenue, count }]) => ({ name, revenue, count, value: revenue }),
-  )
-
-  // 顧客ティア
-  const tierMap = new Map<string, number>()
-  users.forEach((u) => tierMap.set(u.tier, (tierMap.get(u.tier) || 0) + 1))
-  const customerTierDistribution: TierChartData[] = Array.from(tierMap.entries()).map(
-    ([name, value]) => ({ name, value, fill: '#8884d8' }),
-  )
-
-  // 時間帯分布（HH:MMをHH:00に丸めてカウント）
-  const slotMap = new Map<string, number>()
-  reservations.forEach((r) => {
-    const hour = r.time?.split(':')[0] || '00'
-    slotMap.set(hour, (slotMap.get(hour) || 0) + 1)
-  })
-  const timeSlotDistribution: TimeSlotChartData[] = Array.from(slotMap.entries()).map(
-    ([name, value]) => ({ name: `${name}:00`, value }),
-  )
+  const timeSlotDistribution: TimeSlotChartData[] = Array.from(timeSlotBuckets.entries())
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([name, count]) => ({ name, value: count }))
 
   return {
     monthlyRevenue,

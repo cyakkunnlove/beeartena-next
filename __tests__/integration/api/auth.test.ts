@@ -1,8 +1,10 @@
 import { NextRequest } from 'next/server'
+
 import { POST as loginHandler } from '@/app/api/auth/login/route'
-import { POST as registerHandler } from '@/app/api/auth/register/route'
 import { GET as meHandler } from '@/app/api/auth/me/route'
-import * as bcrypt from 'bcryptjs'
+import { POST as registerHandler } from '@/app/api/auth/register/route'
+import { authService } from '@/lib/auth/authService'
+import { userService } from '@/lib/firebase/users'
 
 // Mock Firebase Admin
 jest.mock('@/lib/firebase/admin', () => ({
@@ -65,6 +67,9 @@ jest.mock('@/lib/api/middleware', () => ({
   }),
 }))
 
+const mockedAuthService = authService as jest.Mocked<typeof authService>
+const mockedUserService = userService as jest.Mocked<typeof userService>
+
 describe('Auth API Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -72,15 +77,18 @@ describe('Auth API Integration Tests', () => {
 
   describe('POST /api/auth/login', () => {
     it('should login successfully with valid credentials', async () => {
+      const now = new Date('2025-07-01T10:00:00.000Z')
       const mockUser = {
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'customer',
+        phone: '090-0000-0000',
+        role: 'customer' as const,
+        createdAt: now,
+        updatedAt: now,
       }
 
-      const { authService } = require('@/lib/auth/authService')
-      authService.login.mockResolvedValue(mockUser)
+      mockedAuthService.login.mockResolvedValue(mockUser)
 
       const req = new NextRequest('http://localhost:3000/api/auth/login', {
         method: 'POST',
@@ -109,8 +117,7 @@ describe('Auth API Integration Tests', () => {
     })
 
     it('should fail with invalid email', async () => {
-      const { authService } = require('@/lib/auth/authService')
-      authService.login.mockRejectedValue(
+      mockedAuthService.login.mockRejectedValue(
         new Error('メールアドレスまたはパスワードが正しくありません'),
       )
 
@@ -133,8 +140,7 @@ describe('Auth API Integration Tests', () => {
     })
 
     it('should fail with invalid password', async () => {
-      const { authService } = require('@/lib/auth/authService')
-      authService.login.mockRejectedValue(
+      mockedAuthService.login.mockRejectedValue(
         new Error('メールアドレスまたはパスワードが正しくありません'),
       )
 
@@ -175,17 +181,18 @@ describe('Auth API Integration Tests', () => {
 
   describe('POST /api/auth/register', () => {
     it('should register a new user successfully', async () => {
-      const { authService } = require('@/lib/auth/authService')
-
+      const now = new Date('2025-07-01T10:00:00.000Z')
       const mockUser = {
         id: 'new-user-id',
         email: 'newuser@example.com',
         name: 'New User',
-        role: 'customer',
+        role: 'customer' as const,
         phone: '090-1234-5678',
+        createdAt: now,
+        updatedAt: now,
       }
 
-      authService.register.mockResolvedValue(mockUser)
+      mockedAuthService.register.mockResolvedValue(mockUser)
 
       const req = new NextRequest('http://localhost:3000/api/auth/register', {
         method: 'POST',
@@ -215,8 +222,7 @@ describe('Auth API Integration Tests', () => {
     })
 
     it('should fail if email already exists', async () => {
-      const { authService } = require('@/lib/auth/authService')
-      authService.register.mockRejectedValue(new Error('このメールアドレスは既に登録されています'))
+      mockedAuthService.register.mockRejectedValue(new Error('このメールアドレスは既に登録されています'))
 
       const req = new NextRequest('http://localhost:3000/api/auth/register', {
         method: 'POST',
@@ -281,16 +287,19 @@ describe('Auth API Integration Tests', () => {
 
   describe('GET /api/auth/me', () => {
     it('should return user data with valid token', async () => {
+      const now = new Date('2025-07-01T10:00:00.000Z')
       const mockUser = {
         id: 'user-123',
         email: 'test@example.com',
         name: 'Test User',
-        role: 'customer',
+        phone: '090-0000-0000',
+        role: 'customer' as const,
         points: 100,
+        createdAt: now,
+        updatedAt: now,
       }
 
-      const { userService } = require('@/lib/firebase/users')
-      userService.getUser.mockResolvedValue(mockUser)
+      mockedUserService.getUser.mockResolvedValue(mockUser)
 
       const req = new NextRequest('http://localhost:3000/api/auth/me', {
         method: 'GET',
@@ -334,8 +343,7 @@ describe('Auth API Integration Tests', () => {
     })
 
     it('should fail when user not found', async () => {
-      const { userService } = require('@/lib/firebase/users')
-      userService.getUser.mockResolvedValue(null)
+      mockedUserService.getUser.mockResolvedValue(null)
 
       const req = new NextRequest('http://localhost:3000/api/auth/me', {
         method: 'GET',

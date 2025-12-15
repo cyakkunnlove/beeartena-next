@@ -140,7 +140,7 @@ class StorageService {
     return data ? JSON.parse(data) : []
   }
 
-  replaceCustomers(customers: Customer[]) {
+  replaceCustomers(customers: Customer[]): void {
     localStorage.setItem(STORAGE_KEYS.CUSTOMERS, JSON.stringify(customers))
   }
 
@@ -254,6 +254,10 @@ class StorageService {
       return reservations.filter((r: Reservation) => r.customerId === customerId)
     }
     return reservations
+  }
+
+  replaceReservations(reservations: Reservation[]): void {
+    localStorage.setItem(STORAGE_KEYS.RESERVATIONS, JSON.stringify(reservations))
   }
 
   createReservation(reservation: Omit<Reservation, 'id' | 'createdAt' | 'updatedAt'>): Reservation {

@@ -1,21 +1,20 @@
-import { Reservation } from '@/lib/types'
+import type { Reservation } from '@/lib/types'
 
-// 予約一覧をiCalフォーマットに変換するユーティリティ
+const formatDateForIcs = (date: Date): string =>
+  date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
+
 export function exportReservationsToICal(reservations: Reservation[]): string {
   const events = reservations
-    .filter((r) => r.status === 'confirmed' || r.status === 'completed')
+    .filter((reservation) => reservation.status === 'confirmed' || reservation.status === 'completed')
     .map((reservation) => {
       const startDate = new Date(`${reservation.date}T${reservation.time}`)
       const endDate = new Date(startDate)
       endDate.setHours(startDate.getHours() + 2)
 
-      const formatDate = (date: Date): string =>
-        date.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '')
-
       return `BEGIN:VEVENT
 UID:${reservation.id}@beeartena.jp
-DTSTART:${formatDate(startDate)}
-DTEND:${formatDate(endDate)}
+DTSTART:${formatDateForIcs(startDate)}
+DTEND:${formatDateForIcs(endDate)}
 SUMMARY:${reservation.serviceName} - ${reservation.customerName}
 DESCRIPTION:${reservation.serviceName}\\n顧客: ${reservation.customerName}\\n電話: ${reservation.customerPhone}\\n${reservation.notes || ''}
 LOCATION:Bee Artena
@@ -31,6 +30,17 @@ CALSCALE:GREGORIAN
 METHOD:PUBLISH
 X-WR-CALNAME:Bee Artena 予約
 X-WR-TIMEZONE:Asia/Tokyo
+BEGIN:VTIMEZONE
+TZID:Asia/Tokyo
+TZURL:http://tzurl.org/zoneinfo-outlook/Asia/Tokyo
+X-LIC-LOCATION:Asia/Tokyo
+BEGIN:STANDARD
+TZOFFSETFROM:+0900
+TZOFFSETTO:+0900
+TZNAME:JST
+DTSTART:19700101T000000
+END:STANDARD
+END:VTIMEZONE
 ${events}
 END:VCALENDAR`
 }

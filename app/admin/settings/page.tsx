@@ -1,159 +1,313 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
-import { useAuth } from '@/lib/auth/AuthContext'
-import { reservationService } from '@/lib/reservationService'
 import { apiClient } from '@/lib/api/client'
-import { ReservationSettings, BusinessHours } from '@/lib/types'
+import { useAuth } from '@/lib/auth/AuthContext'
+import { cloneDefaultSettings } from '@/lib/utils/reservationSettings'
+
+import type { BusinessHours, ReservationSettings } from '@/lib/types'
 
 const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
 
+const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/
+
+const parseSlotsInput = (value: string): string[] =>
+  value
+    .split(',')
+    .map((slot) => slot.trim())
+    .filter((slot) => timePattern.test(slot))
+
+const loadFromLocalStorage = (): ReservationSettings => {
+  if (typeof window === 'undefined') {
+    return cloneDefaultSettings()
+  }
+  try {
+    const raw = window.localStorage.getItem('reservationSettings')
+    if (!raw) {
+      return cloneDefaultSettings()
+    }
+    const parsed = JSON.parse(raw) as ReservationSettings
+    return {
+      ...cloneDefaultSettings(),
+      ...parsed,
+    }
+  } catch {
+    return cloneDefaultSettings()
+  }
+}
+
+const persistToLocalStorage = (settings: ReservationSettings) => {
+  if (typeof window === 'undefined') {
+    return
+  }
+  try {
+    window.localStorage.setItem('reservationSettings', JSON.stringify(settings))
+  } catch {
+    // ignore storage errors
+  }
+}
+
 export default function AdminSettingsPage() {
   const router = useRouter()
-  const { user } = useAuth()
-  const [settings, setSettings] = useState<ReservationSettings>({
-    slotDuration: 60,
-    maxCapacityPerSlot: 1,
-    businessHours: [],
-    blockedDates: [],
-    cancellationDeadlineHours: 72, // デフォルト72時間前（3日前）
-    cancellationPolicy: '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
-  })
+  const { user, loading: authLoading } = useAuth()
+  const [settings, setSettings] = useState<ReservationSettings>(cloneDefaultSettings())
   const [newBlockedDate, setNewBlockedDate] = useState('')
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
-  const [isLoading, setIsLoading] = useState(true)
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
+  const [isFallbackData, setIsFallbackData] = useState(false)
+  const [warningMessage, setWarningMessage] = useState<string | null>(null)
+  const [newOverrideDate, setNewOverrideDate] = useState('')
+  const [newOverrideSlots, setNewOverrideSlots] = useState('')
+
+  const notify = (type: 'success' | 'error', text: string) => {
+    setMessage(text)
+    setMessageType(type)
+    if (typeof window !== 'undefined') {
+      window.setTimeout(() => setMessage(''), type === 'success' ? 3000 : 5000)
+    }
+  }
+
+  const loadSettings = async (options: { silent?: boolean } = {}) => {
+    if (options.silent) {
+      setRefreshing(true)
+    } else {
+      setLoading(true)
+    }
+
+    try {
+      setWarningMessage(null)
+      const response = await apiClient.getAdminSettings()
+      const normalizedSettings = {
+        ...response.settings,
+        dateOverrides: response.settings.dateOverrides ?? {},
+      }
+      setSettings(normalizedSettings)
+      persistToLocalStorage(normalizedSettings)
+      setIsFallbackData(Boolean(response.fallback))
+      if (response.warning) {
+        setWarningMessage(response.warning)
+      }
+    } catch (error) {
+      console.error('Failed to load reservation settings:', error)
+      const fallbackSettings = loadFromLocalStorage()
+      setSettings(fallbackSettings)
+      setIsFallbackData(true)
+      setWarningMessage('Firestoreから設定を取得できなかったため、ローカルに保存された設定を表示しています。')
+    } finally {
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }
 
   useEffect(() => {
-    if (!user) {
-      router.push('/login')
+    if (authLoading) return
+    if (!user || user.role !== 'admin') {
+      router.replace('/login')
       return
     }
 
-    if (user.role !== 'admin') {
-      router.push('/')
-      return
-    }
-
-    // 設定を読み込む
-    const loadedSettings = reservationService.getSettings()
-    setSettings(loadedSettings)
-    setIsLoading(false)
-  }, [user, router])
+    void loadSettings()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authLoading, user, router])
 
   const handleBusinessHoursChange = (
     dayIndex: number,
     field: keyof BusinessHours,
-    value: string | boolean | number
+    value: string | boolean | number | string[],
   ) => {
-    const updatedHours = [...settings.businessHours]
-    updatedHours[dayIndex] = {
-      ...updatedHours[dayIndex],
-      [field]: value,
+    setSettings((prev) => {
+      const updated = [...prev.businessHours]
+      updated[dayIndex] = {
+        ...updated[dayIndex],
+        [field]: value,
+      }
+      return { ...prev, businessHours: updated }
+    })
+  }
+
+  const handleAddDateOverride = () => {
+    if (!newOverrideDate) {
+      return
     }
-    setSettings({ ...settings, businessHours: updatedHours })
+    const slots = parseSlotsInput(newOverrideSlots)
+    setSettings((prev) => {
+      const overrides = { ...(prev.dateOverrides ?? {}) }
+      if (slots.length === 0) {
+        delete overrides[newOverrideDate]
+      } else {
+        overrides[newOverrideDate] = { allowedSlots: slots }
+      }
+      return {
+        ...prev,
+        dateOverrides: overrides,
+      }
+    })
+    setNewOverrideDate('')
+    setNewOverrideSlots('')
+  }
+
+  const handleRemoveDateOverride = (date: string) => {
+    setSettings((prev) => {
+      const updated = { ...(prev.dateOverrides ?? {}) }
+      delete updated[date]
+      return { ...prev, dateOverrides: updated }
+    })
+  }
+
+  const requireLiveData = () => {
+    if (!isFallbackData) {
+      return true
+    }
+    alert('Firestoreとの接続を復旧し、「再読込」で最新データを取得してから保存を実行してください。')
+    return false
   }
 
   const handleSaveSettings = async () => {
+    if (!requireLiveData()) {
+      return
+    }
+
+    setSaving(true)
     try {
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (token) headers['Authorization'] = `Bearer ${token}`
+      const response = await apiClient.updateAdminSettings(settings)
+      if (!response.success) {
+        notify('error', response.message ?? '設定の保存に失敗しました。')
+        return
+      }
 
-      // Admin API経由でFireStoreに保存（Admin SDK利用）
-      await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(settings),
-      })
-
-      // ローカルキャッシュも更新
-      await reservationService.saveSettings(settings)
-
-      setMessage('設定を保存しました')
-      setMessageType('success')
-      setTimeout(() => setMessage(''), 3000)
+      const normalizedSettings = {
+        ...response.settings,
+        dateOverrides: response.settings.dateOverrides ?? {},
+      }
+      setSettings(normalizedSettings)
+      persistToLocalStorage(normalizedSettings)
+      setIsFallbackData(false)
+      notify('success', '設定を保存しました。')
     } catch (error) {
-      console.error('Failed to save settings via admin API:', error)
-      setMessage('設定の保存に失敗しました。もう一度お試しください。')
-      setMessageType('error')
-      setTimeout(() => setMessage(''), 5000)
+      console.error('Failed to save reservation settings:', error)
+      notify('error', '設定の保存に失敗しました。もう一度お試しください。')
+    } finally {
+      setSaving(false)
     }
   }
 
   const handleAddBlockedDate = () => {
     if (newBlockedDate && !settings.blockedDates?.includes(newBlockedDate)) {
-      setSettings({
-        ...settings,
-        blockedDates: [...(settings.blockedDates || []), newBlockedDate],
-      })
+      setSettings((prev) => ({
+        ...prev,
+        blockedDates: [...(prev.blockedDates ?? []), newBlockedDate],
+      }))
       setNewBlockedDate('')
     }
   }
 
   const handleRemoveBlockedDate = (date: string) => {
-    setSettings({
-      ...settings,
-      blockedDates: settings.blockedDates?.filter((d) => d !== date) || [],
-    })
+    setSettings((prev) => ({
+      ...prev,
+      blockedDates: prev.blockedDates?.filter((d) => d !== date) || [],
+    }))
   }
 
-  if (isLoading) {
+  const handleReload = () => {
+    void loadSettings({ silent: true })
+  }
+
+  if (authLoading || loading) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
+      <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          <p className="mt-4">読み込み中...</p>
+          <div className="inline-block h-8 w-8 animate-spin rounded-full border-b-2 border-primary"></div>
+          <p className="mt-4">設定を読み込んでいます...</p>
         </div>
       </div>
     )
   }
 
+  if (!user || user.role !== 'admin') {
+    return null
+  }
+
   return (
     <div className="max-w-6xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-8">予約システム設定</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-3xl font-bold">予約システム設定</h1>
+        <button
+          onClick={handleReload}
+          disabled={refreshing}
+          className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+        >
+          {refreshing ? '再読込中…' : '再読込'}
+        </button>
+      </div>
+
+      {isFallbackData && (
+        <div className="mt-6 rounded-md border border-yellow-300 bg-yellow-50 p-4 text-sm text-yellow-800">
+          Firestoreとの接続に問題が発生したため、ローカルに保存された設定を表示しています。接続が復旧したら「再読込」で最新データを取得してください。
+        </div>
+      )}
+
+      {warningMessage && !isFallbackData && (
+        <div className="mt-6 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          {warningMessage}
+        </div>
+      )}
 
       {message && (
-        <div className={`border px-4 py-3 rounded mb-4 ${
-          messageType === 'success' 
-            ? 'bg-green-100 border-green-400 text-green-700'
-            : 'bg-red-100 border-red-400 text-red-700'
-        }`}>
+        <div
+          className={`mt-6 rounded-md border px-4 py-3 ${
+            messageType === 'success'
+              ? 'border-green-300 bg-green-50 text-green-800'
+              : 'border-red-300 bg-red-50 text-red-800'
+          }`}
+        >
           {message}
         </div>
       )}
 
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
         <h2 className="text-xl font-semibold mb-4">基本設定</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="slotDuration">
+            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="slotDuration">
               予約枠の長さ（分）
             </label>
             <input
               id="slotDuration"
               type="number"
               value={settings.slotDuration}
-              onChange={(e) => setSettings({ ...settings, slotDuration: parseInt(e.target.value) || 120 })}
-              className="w-full border rounded-lg px-3 py-2"
+              onChange={(event) =>
+                setSettings({ ...settings, slotDuration: parseInt(event.target.value, 10) || 120 })
+              }
+              className="w-full rounded-lg border px-3 py-2"
               min="30"
               step="30"
             />
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="maxCapacityPerSlot">
+            <label
+              className="mb-1 block text-sm font-medium text-gray-700"
+              htmlFor="maxCapacityPerSlot"
+            >
               1枠あたりの最大予約数
             </label>
             <input
               id="maxCapacityPerSlot"
               type="number"
               value={settings.maxCapacityPerSlot}
-              onChange={(e) => setSettings({ ...settings, maxCapacityPerSlot: parseInt(e.target.value) || 1 })}
-              className="w-full border rounded-lg px-3 py-2"
+              onChange={(event) =>
+                setSettings({
+                  ...settings,
+                  maxCapacityPerSlot: parseInt(event.target.value, 10) || 1,
+                })
+              }
+              className="w-full rounded-lg border px-3 py-2"
               min="1"
               max="5"
             />
@@ -161,13 +315,13 @@ export default function AdminSettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
+      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
         <h2 className="text-xl font-semibold mb-4">キャンセルポリシー設定</h2>
-        
+
         <div className="space-y-4">
           <div>
             <label
-              className="block text-sm font-medium text-gray-700 mb-1"
+              className="mb-1 block text-sm font-medium text-gray-700"
               htmlFor="cancellationDeadlineHours"
             >
               キャンセル可能期限（予約日の何時間前まで）
@@ -177,183 +331,296 @@ export default function AdminSettingsPage() {
                 id="cancellationDeadlineHours"
                 type="number"
                 value={settings.cancellationDeadlineHours || 72}
-                onChange={(e) =>
+                onChange={(event) =>
                   setSettings({
                     ...settings,
-                    cancellationDeadlineHours: parseInt(e.target.value) || 72,
+                    cancellationDeadlineHours: parseInt(event.target.value, 10) || 72,
                   })
                 }
-                className="w-32 border rounded-lg px-3 py-2"
+                className="w-32 rounded-lg border px-3 py-2"
                 min="1"
                 max="168"
               />
               <span className="text-gray-600">時間前まで</span>
             </div>
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm text-gray-500">
               ※ お客様がオンラインでキャンセルできる期限を設定します（1〜168時間）
             </p>
           </div>
-          
+
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor="cancellationPolicy">
+            <label
+              className="mb-1 block text-sm font-medium text-gray-700"
+              htmlFor="cancellationPolicy"
+            >
               キャンセルポリシー説明文
             </label>
             <textarea
               id="cancellationPolicy"
               value={settings.cancellationPolicy || ''}
-              onChange={(e) => setSettings({ ...settings, cancellationPolicy: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
+              onChange={(event) => setSettings({ ...settings, cancellationPolicy: event.target.value })}
+              className="w-full rounded-lg border px-3 py-2"
               rows={4}
               placeholder="予約フォームに表示されるキャンセルポリシーの説明文を入力してください"
             />
-            <p className="text-sm text-gray-500 mt-1">
+            <p className="mt-1 text-sm text-gray-500">
               ※ 予約フォームで表示されるキャンセルポリシーの説明文です
             </p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">営業時間設定</h2>
-        
+      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">営業日・営業時間</h2>
+
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
-              <tr className="border-b">
-                <th className="text-left py-2 px-4">曜日</th>
-                <th className="text-left py-2 px-4">営業</th>
-                <th className="text-left py-2 px-4">開店時間</th>
-                <th className="text-left py-2 px-4">閉店時間</th>
-                <th className="text-left py-2 px-4">複数予約</th>
-                <th className="text-left py-2 px-4">スロット間隔（分）</th>
-                <th className="text-left py-2 px-4">最大受付人数</th>
+          <table className="admin-table min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">曜日</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">営業</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">開始時間</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">終了時間</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">最大予約数/日</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">複数枠</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">枠間隔（分）</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">固定枠（カンマ区切り）</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="divide-y divide-gray-200 bg-white">
               {settings.businessHours.map((hours, index) => (
-                <tr key={index} className="border-b">
-                  <td className="py-2 px-4">{daysOfWeek[index]}</td>
-                  <td className="py-2 px-4">
-                    <input
-                      type="checkbox"
-                      checked={hours.isOpen}
-                      onChange={(e) => handleBusinessHoursChange(index, 'isOpen', e.target.checked)}
-                      className="w-4 h-4"
-                    />
+                <tr key={daysOfWeek[index]}>
+                  <td className="px-4 py-2 text-sm text-gray-700" data-label="曜日">
+                    {daysOfWeek[index]}
                   </td>
-                  <td className="py-2 px-4">
+                  <td className="px-4 py-2 text-sm" data-label="営業">
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(hours.isOpen)}
+                        onChange={(event) => handleBusinessHoursChange(index, 'isOpen', event.target.checked)}
+                        className="h-4 w-4"
+                      />
+                      営業
+                    </label>
+                  </td>
+                  <td className="px-4 py-2 text-sm" data-label="開始時間">
                     <input
                       type="time"
                       value={hours.open}
-                      onChange={(e) => handleBusinessHoursChange(index, 'open', e.target.value)}
+                      onChange={(event) => handleBusinessHoursChange(index, 'open', event.target.value)}
+                      className="rounded border px-2 py-1"
                       disabled={!hours.isOpen}
-                      className="border rounded px-2 py-1 disabled:bg-gray-100"
                     />
                   </td>
-                  <td className="py-2 px-4">
+                  <td className="px-4 py-2 text-sm" data-label="終了時間">
                     <input
                       type="time"
                       value={hours.close}
-                      onChange={(e) => handleBusinessHoursChange(index, 'close', e.target.value)}
+                      onChange={(event) => handleBusinessHoursChange(index, 'close', event.target.value)}
+                      className="rounded border px-2 py-1"
                       disabled={!hours.isOpen}
-                      className="border rounded px-2 py-1 disabled:bg-gray-100"
                     />
                   </td>
-                  <td className="py-2 px-4">
-                    <input
-                      type="checkbox"
-                      checked={hours.allowMultipleSlots || false}
-                      onChange={(e) => handleBusinessHoursChange(index, 'allowMultipleSlots', e.target.checked)}
-                      disabled={!hours.isOpen}
-                      className="w-4 h-4 disabled:opacity-50"
-                    />
-                  </td>
-                  <td className="py-2 px-4">
+                  <td className="px-4 py-2 text-sm" data-label="最大予約数/日">
                     <input
                       type="number"
-                      value={hours.slotInterval || 30}
-                      onChange={(e) => handleBusinessHoursChange(index, 'slotInterval', parseInt(e.target.value) || 30)}
-                      disabled={!hours.isOpen || !hours.allowMultipleSlots}
-                      className="border rounded px-2 py-1 w-20 disabled:bg-gray-100"
-                      min="15"
-                      max="120"
-                      step="15"
-                    />
-                  </td>
-                  <td className="py-2 px-4">
-                    <input
-                      type="number"
-                      value={hours.maxCapacityPerDay || 1}
-                      onChange={(e) => handleBusinessHoursChange(index, 'maxCapacityPerDay', parseInt(e.target.value) || 1)}
-                      disabled={!hours.isOpen}
-                      className="border rounded px-2 py-1 w-20 disabled:bg-gray-100"
+                      value={hours.maxCapacityPerDay ?? 1}
+                      onChange={(event) =>
+                        handleBusinessHoursChange(
+                          index,
+                          'maxCapacityPerDay',
+                          parseInt(event.target.value, 10) || 1,
+                        )
+                      }
+                      className="w-24 rounded border px-2 py-1"
                       min="1"
-                      max="20"
+                      max="10"
                     />
+                  </td>
+                  <td className="px-4 py-2 text-sm" data-label="複数枠">
+                    <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(hours.allowMultipleSlots)}
+                        onChange={(event) => {
+                          const checked = event.target.checked
+                          setSettings((prev) => {
+                            const updated = [...prev.businessHours]
+                            const current = { ...updated[index], allowMultipleSlots: checked }
+                            if (checked && (!current.slotInterval || current.slotInterval <= 0)) {
+                              current.slotInterval = 30
+                            }
+                            if (!checked) {
+                              delete current.slotInterval
+                            }
+                            updated[index] = current
+                            return { ...prev, businessHours: updated }
+                          })
+                        }}
+                        className="h-4 w-4"
+                        disabled={!hours.isOpen}
+                      />
+                      複数枠を許可
+                    </label>
+                    <p className="mt-1 text-xs text-gray-500 text-left">
+                      チェックすると指定間隔で連続枠を作成します
+                    </p>
+                  </td>
+                  <td className="px-4 py-2 text-sm" data-label="枠間隔（分）">
+                    <input
+                      type="number"
+                      value={hours.slotInterval ?? 30}
+                      onChange={(event) =>
+                        handleBusinessHoursChange(
+                          index,
+                          'slotInterval',
+                          Math.max(5, parseInt(event.target.value, 10) || 30),
+                        )
+                      }
+                      className="w-24 rounded border px-2 py-1"
+                      min="5"
+                      step="5"
+                      disabled={!hours.isOpen || !hours.allowMultipleSlots}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      初期値 30 分。複数枠が有効のときのみ適用されます。
+                    </p>
+                  </td>
+                  <td className="px-4 py-2 text-sm" data-label="固定枠（カンマ区切り）">
+                    <input
+                      type="text"
+                      value={(hours.allowedSlots ?? []).join(', ')}
+                      onChange={(event) =>
+                        handleBusinessHoursChange(
+                          index,
+                          'allowedSlots',
+                          parseSlotsInput(event.target.value),
+                        )
+                      }
+                      className="w-full rounded border px-2 py-1"
+                      placeholder="例: 09:00,12:00,15:00"
+                      disabled={!hours.isOpen}
+                    />
+                    <p className="mt-1 text-xs text-gray-500">
+                      指定するとこの時間のみ予約可能になります（未入力なら従来通り）
+                    </p>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
-        <p className="text-sm text-gray-600 mt-4">
-          ※ 複数予約を有効にすると、指定した間隔で複数の予約枠が生成されます。
-          <br />
-          ※ スロット間隔は15分単位で設定できます。
-          <br />
-          ※ 最大受付人数は、その曜日の1日あたりの最大予約数を設定します（複数予約無効時は1日1枠のみ）。
-        </p>
       </div>
 
-      <div className="bg-white rounded-lg shadow-lg p-6 mb-8">
-        <h2 className="text-xl font-semibold mb-4">休業日設定</h2>
-        
-        <div className="flex gap-2 mb-4">
-          <input
-            type="date"
-            value={newBlockedDate}
-            onChange={(e) => setNewBlockedDate(e.target.value)}
-            className="border rounded-lg px-3 py-2"
-            min={new Date().toISOString().split('T')[0]}
-          />
-          <button
-            onClick={handleAddBlockedDate}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-dark-gold"
-          >
-            追加
-          </button>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {settings.blockedDates?.map((date) => (
-            <div
-              key={date}
-              className="bg-gray-100 rounded-lg px-3 py-2 flex justify-between items-center"
+      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">ブロック日設定</h2>
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="flex flex-1 items-center gap-2">
+            <input
+              type="date"
+              value={newBlockedDate}
+              onChange={(event) => setNewBlockedDate(event.target.value)}
+              className="flex-1 rounded border px-3 py-2"
+            />
+            <button
+              type="button"
+              onClick={handleAddBlockedDate}
+              className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
             >
-              <span>{new Date(date + 'T00:00:00').toLocaleDateString('ja-JP')}</span>
-              <button
-                onClick={() => handleRemoveBlockedDate(date)}
-                className="text-red-500 hover:text-red-700 ml-2"
-              >
-                ✕
-              </button>
-            </div>
-          ))}
+              追加
+            </button>
+          </div>
         </div>
+
+        <ul className="mt-4 space-y-2">
+          {(settings.blockedDates || []).map((date) => (
+            <li key={date} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+              <span>{date}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveBlockedDate(date)}
+                className="text-red-600 hover:underline"
+              >
+                削除
+              </button>
+            </li>
+          ))}
+
+          {(!settings.blockedDates || settings.blockedDates.length === 0) && (
+            <li className="text-sm text-gray-500">現在、ブロック日は設定されていません。</li>
+          )}
+        </ul>
       </div>
 
-      <div className="flex justify-end gap-4">
-        <button
-          onClick={() => router.push('/admin')}
-          className="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
-        >
-          キャンセル
-        </button>
+      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
+        <h2 className="text-xl font-semibold mb-4">日付別の固定枠設定</h2>
+        <p className="text-sm text-gray-600 mb-4">
+          特定の日のみ開始時間を変更したい場合に追加してください。時間はカンマ区切りで入力します。
+        </p>
+
+        <div className="flex flex-col gap-4 md:flex-row md:items-center">
+          <div className="flex flex-1 items-center gap-2">
+            <input
+              type="date"
+              value={newOverrideDate}
+              onChange={(event) => setNewOverrideDate(event.target.value)}
+              className="flex-1 rounded border px-3 py-2"
+            />
+            <input
+              type="text"
+              value={newOverrideSlots}
+              onChange={(event) => setNewOverrideSlots(event.target.value)}
+              className="flex-1 rounded border px-3 py-2"
+              placeholder="例: 09:00,12:00,15:00"
+            />
+            <button
+              type="button"
+              onClick={handleAddDateOverride}
+              className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
+            >
+              追加
+            </button>
+          </div>
+        </div>
+
+        <ul className="mt-4 space-y-2">
+          {Object.entries(settings.dateOverrides ?? {}).length === 0 && (
+            <li className="text-sm text-gray-500">設定されている日付はありません。</li>
+          )}
+          {Object.entries(settings.dateOverrides ?? {}).map(([date, override]) => (
+            <li
+              key={date}
+              className="flex items-center justify-between rounded border px-3 py-2 text-sm"
+            >
+              <div>
+                <p className="font-medium text-gray-900">{date}</p>
+                <p className="text-gray-600">
+                  {(override.allowedSlots ?? []).length > 0
+                    ? `固定枠: ${(override.allowedSlots ?? []).join(', ')}`
+                    : 'この日の固定枠設定はありません'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleRemoveDateOverride(date)}
+                className="rounded-md bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+              >
+                削除
+              </button>
+            </li>
+          ))}
+        </ul>
+      </div>
+
+      <div className="mt-8 flex justify-end">
         <button
           onClick={handleSaveSettings}
-          className="px-6 py-2 bg-primary text-white rounded-lg hover:bg-dark-gold"
+          disabled={saving || isFallbackData}
+          className="rounded-md bg-primary px-6 py-2 text-white hover:bg-primary-dark disabled:cursor-not-allowed disabled:opacity-60"
         >
-          設定を保存
+          {saving ? '保存中…' : '設定を保存'}
         </button>
       </div>
     </div>

@@ -1,5 +1,21 @@
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+
+const SERVER_EXTERNAL_PACKAGES = [
+  'firebase-admin',
+  '@google-cloud/storage',
+  'google-auth-library',
+  'farmhash-modern',
+]
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Avoid bundling firebase-admin (and its wasm/node: deps) into Next build output.
+  // This prevents webpack from trying to parse wasm / node:* imports.
+  serverExternalPackages: SERVER_EXTERNAL_PACKAGES,
   async headers() {
     return [
       {
@@ -26,6 +42,10 @@ const nextConfig = {
         protocol: 'https',
         hostname: 'scontent.cdninstagram.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'qr-official.line.me',
+      },
     ],
   },
   compress: true,
@@ -36,8 +56,12 @@ const nextConfig = {
     // your project has ESLint errors.
     ignoreDuringBuilds: true,
   },
-  webpack: (config, { isServer }) => {
+  webpack: (config, { isServer, dev }) => {
     if (!isServer) {
+      config.resolve.alias = {
+        ...(config.resolve.alias ?? {}),
+        '@/lib/api/cache.server': path.resolve(__dirname, 'lib/api/cache.client.ts'),
+      }
       // クライアントサイドでNode.jsモジュールを使用しない
       config.resolve.fallback = {
         ...config.resolve.fallback,
@@ -48,6 +72,9 @@ const nextConfig = {
         path: false,
         crypto: false,
       }
+    }
+    if (dev) {
+      config.devtool = 'source-map'
     }
     return config
   },

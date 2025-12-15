@@ -1,527 +1,709 @@
 'use client'
 
+import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 
-import { apiClient } from '@/lib/api/client'
-import { getAllServicePlans, getServicePlans } from '@/lib/firebase/servicePlans'
-import { Reservation, TimeSlot, Customer, ServicePlan } from '@/lib/types'
-import { reservationService } from '@/lib/reservationService'
+import type { AdminCreateReservationPayload } from '@/lib/api/client'
+import type { Customer, ServicePlan, TimeSlot } from '@/lib/types'
 
 interface ReservationCreateModalProps {
-  date: string
-  adminUserId?: string
+  isOpen: boolean
   onClose: () => void
-  onCreated?: (reservation: Reservation) => void
-  onToggleBlock?: (date: string, nextBlocked: boolean) => Promise<void>
-  isBlocked?: boolean
+  onSubmit: (payload: AdminCreateReservationPayload) => Promise<void>
+  customers: Customer[]
+  services: ServicePlan[]
+  defaultDate?: string
+  defaultTime?: string
+  loadingOptions?: boolean
+  loadingMoreCustomers?: boolean
+  hasMoreCustomers?: boolean
+  onLoadMoreCustomers?: () => Promise<void>
+  onReloadCustomers?: () => Promise<void>
+  onRefreshServices?: () => Promise<void>
+  refreshingServices?: boolean
 }
 
-const serviceOptions = [
-  { value: '2D', label: '2D - パウダーブロウ', name: 'パウダーブロウ', price: 22000 },
-  { value: '3D', label: '3D - フェザーブロウ', name: 'フェザーブロウ', price: 23000 },
-  { value: '4D', label: '4D - パウダー&フェザー', name: 'パウダー&フェザー', price: 25000 },
-]
+const initialFormState = ({
+  date,
+  time,
+}: {
+  date?: string
+  time?: string
+}): AdminCreateReservationPayload & { customerName: string; customerEmail?: string; customerPhone?: string } => ({
+  customerId: undefined,
+  customerName: '',
+  customerEmail: '',
+  customerPhone: '',
+  serviceId: undefined,
+  serviceName: '',
+  serviceType: '2D',
+  price: 0,
+  maintenanceOptions: undefined,
+  maintenancePrice: undefined,
+  totalPrice: undefined,
+  date: date ?? '',
+  time: time ?? '',
+  durationMinutes: undefined,
+  notes: '',
+  status: 'confirmed',
+  finalPrice: undefined,
+  pointsUsed: undefined,
+  cancelReason: undefined,
+  isMonitor: false,
+  allowConflict: false,
+})
+
+const emptySlots: TimeSlot[] = []
 
 export default function ReservationCreateModal({
-  date,
-  adminUserId,
+  isOpen,
   onClose,
-  onCreated,
-  onToggleBlock,
-  isBlocked: initialBlocked = false,
+  onSubmit,
+  customers,
+  services,
+  defaultDate,
+  defaultTime,
+  loadingOptions = false,
+  loadingMoreCustomers = false,
+  hasMoreCustomers = false,
+  onLoadMoreCustomers,
+  onReloadCustomers,
+  onRefreshServices,
+  refreshingServices = false,
 }: ReservationCreateModalProps) {
-  const [form, setForm] = useState({
-    customerId: '',
-    customerName: '',
-    customerEmail: '',
-    customerPhone: '',
-    serviceType: serviceOptions[0].value,
-    serviceName: serviceOptions[0].name,
-    servicePrice: serviceOptions[0].price,
-    notes: '',
-  })
-  const [customers, setCustomers] = useState<Customer[]>([])
-  const [customerSearch, setCustomerSearch] = useState('')
-  const [showCustomerDropdown, setShowCustomerDropdown] = useState(false)
-  const [servicePlans, setServicePlans] = useState<ServicePlan[]>([])
-  const [selectedServiceId, setSelectedServiceId] = useState<string>('')
-  const [isCustomService, setIsCustomService] = useState(false)
-
-  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
-  const [selectedTime, setSelectedTime] = useState('')
-  const [loadingSlots, setLoadingSlots] = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [isBlocked, setIsBlocked] = useState(initialBlocked)
-  const [togglingBlock, setTogglingBlock] = useState(false)
-
-  const formattedDateLabel = useMemo(() => {
-    const [y, m, d] = date.split('-').map(Number)
-    return new Date(y, m - 1, d).toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-      weekday: 'long',
-    })
-  }, [date])
+  const [form, setForm] = useState(() => initialFormState({ date: defaultDate, time: defaultTime }))
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [slotCandidates, setSlotCandidates] = useState<TimeSlot[]>(emptySlots)
+  const [slotsLoading, setSlotsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
   useEffect(() => {
-    const fetchInitial = async () => {
-      const [customersResult, plansResult] = await Promise.allSettled([
-        apiClient.getAdminCustomers({ limit: 200 }),
-        (async () => {
-          const plansFromFirestore = await getAllServicePlans()
-          if (plansFromFirestore?.length) return plansFromFirestore
-          const published = await getServicePlans()
-          if (published?.length) return published
-          return apiClient.getPublishedServicePlans()
-        })(),
-      ])
-
-      if (customersResult.status === 'fulfilled') {
-        setCustomers(customersResult.value?.customers || [])
-      } else {
-        console.warn('Failed to load customers', customersResult.reason)
-      }
-
-      if (plansResult.status === 'fulfilled' && plansResult.value?.length) {
-        setServicePlans(plansResult.value)
-        setSelectedServiceId(plansResult.value[0].id)
-        applyServicePlan(plansResult.value[0])
-      } else {
-        console.warn('Failed to load service plans', plansResult.status === 'rejected' ? plansResult.reason : 'empty')
+    if (isOpen) {
+      setForm((prev) =>
+        initialFormState({
+          date: defaultDate ?? prev.date,
+          time: defaultTime ?? prev.time,
+        }),
+      )
+      setError(null)
+      setSlotCandidates(emptySlots)
+      if (defaultDate) {
+        void loadSlots(defaultDate)
       }
     }
-
-    fetchInitial()
-  }, [])
-
+  }, [isOpen, defaultDate, defaultTime])
   useEffect(() => {
-    loadSlots(date)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date])
+    setSearchTerm('')
+  }, [isOpen])
 
-  const applyServicePlan = (plan?: ServicePlan) => {
-    if (!plan) return
-    setIsCustomService(false)
-    setSelectedServiceId(plan.id)
-    setForm((prev) => ({
-      ...prev,
-      serviceType: plan.type || prev.serviceType,
-      serviceName: plan.name || prev.serviceName,
-      servicePrice: typeof plan.price === 'number' ? plan.price : prev.servicePrice,
-    }))
-  }
-
-  const handleCustomerSelect = (customer: Customer) => {
-    setForm((prev) => ({
-      ...prev,
-      customerId: customer.id,
-      customerName: customer.name || prev.customerName,
-      customerEmail: customer.email || prev.customerEmail,
-      customerPhone: customer.phone || prev.customerPhone,
-    }))
-    setCustomerSearch(customer.name || customer.email || '')
-  }
-
-  const sortedCustomers = useMemo(() => {
-    return [...customers].sort((a, b) => {
-      const aKey = (a.name || a.email || '').toString()
-      const bKey = (b.name || b.email || '').toString()
-      return aKey.localeCompare(bKey, 'ja')
-    })
+  const customerOptions = useMemo(() => {
+    return [...customers].sort((a, b) => a.name.localeCompare(b.name, 'ja'))
   }, [customers])
 
+  const serviceOptions = useMemo(() => {
+    return services
+      .filter((service) => service.isPublished !== false)
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+  }, [services])
+
   const filteredCustomers = useMemo(() => {
-    if (!customerSearch.trim()) return sortedCustomers.slice(0, 20)
-    const keyword = customerSearch.toLowerCase()
-    const phoneDigits = customerSearch.replace(/\D/g, '')
-    return sortedCustomers
-      .filter((c) => {
-        const nameMatch = c.name?.toLowerCase().includes(keyword)
-        const emailMatch = c.email?.toLowerCase().includes(keyword)
-        const phoneMatch = phoneDigits
-          ? (c.phone || '').replace(/\D/g, '').includes(phoneDigits)
-          : false
-        return nameMatch || emailMatch || phoneMatch
-      })
-      .slice(0, 20)
-  }, [customerSearch, sortedCustomers])
-
-  const selectableServices = useMemo(() => {
-    if (servicePlans.length > 0) return servicePlans
-    const nowIso = new Date().toISOString()
-    return serviceOptions.map((opt, index) => ({
-      id: opt.value,
-      type: opt.value,
-      name: opt.name,
-      description: opt.label,
-      price: opt.price,
-      duration: 60,
-      isPublished: true,
-      effectiveFrom: nowIso,
-      displayOrder: index + 1,
-      createdAt: nowIso,
-      updatedAt: nowIso,
-    })) as ServicePlan[]
-  }, [servicePlans])
-
-  useEffect(() => {
-    if (!selectedServiceId && selectableServices.length > 0) {
-      applyServicePlan(selectableServices[0])
+    const keyword = searchTerm.trim().toLowerCase()
+    if (!keyword) {
+      return customerOptions
     }
-  }, [selectableServices, selectedServiceId])
+    return customerOptions.filter((customer) => {
+      const nameMatch = customer.name?.toLowerCase().includes(keyword)
+      const emailMatch = customer.email?.toLowerCase().includes(keyword)
+      const phoneMatch = customer.phone?.toLowerCase().includes(keyword)
+      return Boolean(nameMatch || emailMatch || phoneMatch)
+    })
+  }, [customerOptions, searchTerm])
 
-  const handleServiceSelect = (value: string) => {
-    if (value === 'custom') {
-      setIsCustomService(true)
-      setSelectedServiceId('')
+  const handleCustomerSelect = (customerId: string) => {
+    if (!customerId) {
       setForm((prev) => ({
         ...prev,
-        serviceType: 'custom',
-        serviceName: '',
-        servicePrice: 0,
+        customerId: undefined,
+        customerName: '',
+        customerEmail: '',
+        customerPhone: '',
       }))
       return
     }
 
-    const plan = selectableServices.find((p) => p.id === value)
-    if (plan) {
-      applyServicePlan(plan)
+    const customer = customerOptions.find((item) => item.id === customerId)
+    if (!customer) {
+      return
     }
+
+    setForm((prev) => ({
+      ...prev,
+      customerId,
+      customerName: customer.name ?? '',
+      customerEmail: customer.email ?? '',
+      customerPhone: customer.phone ?? '',
+    }))
   }
 
-  const loadSlots = async (targetDate: string) => {
+  const handleServiceSelect = (serviceId: string) => {
+    if (!serviceId) {
+      setForm((prev) => ({
+        ...prev,
+        serviceId: undefined,
+        serviceName: '',
+        serviceType: '2D',
+        price: 0,
+        durationMinutes: undefined,
+      }))
+      return
+    }
+
+    const service = serviceOptions.find((item) => item.id === serviceId)
+    if (!service) {
+      return
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      serviceId,
+      serviceName: service.name,
+      serviceType: service.type,
+      price: service.price,
+      durationMinutes: typeof service.duration === 'number' ? service.duration : prev.durationMinutes,
+      totalPrice: service.price,
+    }))
+  }
+
+  const loadSlots = async (date: string) => {
+    if (!date) {
+      setSlotCandidates(emptySlots)
+      return
+    }
+
+    setSlotsLoading(true)
     try {
-      setLoadingSlots(true)
-      const response = await fetch(`/api/reservations/by-date?date=${targetDate}`)
+      const response = await fetch(`/api/reservations/by-date?date=${encodeURIComponent(date)}`)
       if (!response.ok) {
         throw new Error('時間枠の取得に失敗しました')
       }
       const data = await response.json()
-      setTimeSlots(data.timeSlots || [])
-      setIsBlocked(data.blocked || false)
-
-      const firstAvailable = (data.timeSlots || []).find((slot: TimeSlot) => slot.available)
-      setSelectedTime(firstAvailable?.time || '')
-    } catch (error) {
-      console.error(error)
-      setTimeSlots([])
-      setSelectedTime('')
+      const slots: TimeSlot[] = Array.isArray(data.timeSlots) ? data.timeSlots : []
+      setSlotCandidates(slots)
+    } catch (slotError) {
+      console.warn('Failed to fetch time slots', slotError)
+      setSlotCandidates(emptySlots)
     } finally {
-      setLoadingSlots(false)
+      setSlotsLoading(false)
     }
   }
 
-  const handleToggleBlock = async () => {
-    if (!onToggleBlock) return
-    const next = !isBlocked
+  const handleDateChange = (date: string) => {
+    setForm((prev) => ({
+      ...prev,
+      date,
+    }))
+    void loadSlots(date)
+  }
+
+  const handleSubmit = async () => {
+    setError(null)
+    if (!form.customerName.trim()) {
+      setError('顧客名を入力してください')
+      return
+    }
+    if (!form.serviceName.trim()) {
+      setError('サービスを選択してください')
+      return
+    }
+    if (!form.date) {
+      setError('日付を選択してください')
+      return
+    }
+    if (!form.time) {
+      setError('時間を入力してください')
+      return
+    }
+
+    setSaving(true)
     try {
-      setTogglingBlock(true)
-      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-      if (token) headers['Authorization'] = `Bearer ${token}`
-      // サーバーAPI経由で保存（Admin設定に統一）
-      await fetch('/api/admin/settings', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ blockedDate: date, block: next }),
+      await onSubmit({
+        ...form,
+        customerName: form.customerName.trim(),
+        customerEmail: form.customerEmail?.trim() ?? '',
+        customerPhone: form.customerPhone?.trim() ?? '',
+        price: Number(form.price ?? 0),
+        totalPrice:
+          form.totalPrice !== undefined
+            ? Number(form.totalPrice)
+            : Number(form.price ?? 0) +
+              (form.maintenancePrice !== undefined ? Number(form.maintenancePrice) : 0),
       })
-
-      await onToggleBlock(date, next)
-      setIsBlocked(next)
-
-      if (next) {
-        // 受付停止にしたらモーダルを閉じる
-        setTimeSlots([])
-        setSelectedTime('')
-        onClose()
-      } else {
-        // 受付再開したら空き枠を再取得
-        loadSlots(date)
-      }
-    } finally {
-      setTogglingBlock(false)
-    }
-  }
-
-  const handleCreate = async () => {
-    if (!selectedTime) {
-      alert('時間を選択してください')
-      return
-    }
-
-    if (!form.customerName || !form.customerEmail || !form.customerPhone) {
-      alert('お名前・メール・電話を入力してください')
-      return
-    }
-
-    const selectedPlan = servicePlans.find((p) => p.id === selectedServiceId)
-    const fallbackOption = serviceOptions.find((s) => s.value === form.serviceType) || serviceOptions[0]
-    const serviceName = form.serviceName?.trim() || selectedPlan?.name || fallbackOption.name
-    const serviceType = selectedPlan?.type || form.serviceType || fallbackOption.value
-    const price = Number(form.servicePrice || selectedPlan?.price || fallbackOption.price || 0)
-
-    if (!serviceName) {
-      alert('サービス名を入力してください')
-      return
-    }
-    if (!(price > 0)) {
-      alert('料金を入力してください')
-      return
-    }
-
-    const durationMinutes = typeof selectedPlan?.duration === 'number' ? selectedPlan.duration : undefined
-
-    try {
-      setSubmitting(true)
-      const newReservation = await reservationService.createReservation(
-        {
-          customerId: form.customerId || null,
-          customerName: form.customerName,
-          customerEmail: form.customerEmail,
-          customerPhone: form.customerPhone,
-          serviceType,
-          serviceName,
-          price,
-          durationMinutes,
-          date,
-          time: selectedTime,
-          status: 'confirmed',
-          notes: form.notes,
-          maintenanceOptions: [],
-          maintenancePrice: 0,
-          totalPrice: price,
-          finalPrice: price,
-          pointsUsed: 0,
-          updatedAt: new Date(),
-        },
-        adminUserId,
-      )
-
-      onCreated?.(newReservation)
       onClose()
-    } catch (error: any) {
-      console.error('Failed to create reservation:', error)
-      alert(error.message || '予約の作成に失敗しました')
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '予約の作成に失敗しました')
     } finally {
-      setSubmitting(false)
+      setSaving(false)
     }
   }
 
-  const availableTimes = timeSlots.filter((slot) => slot.available)
+  const availableSlotTimes = useMemo(() => {
+    if (!Array.isArray(slotCandidates)) {
+      return []
+    }
+    return slotCandidates
+      .filter((slot) => slot.available || form.allowConflict)
+      .map((slot) => slot.time)
+      .filter((time, index, self) => self.indexOf(time) === index)
+      .sort()
+  }, [slotCandidates, form.allowConflict])
+
+  if (!isOpen) {
+    return null
+  }
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <div className="flex items-start justify-between gap-4 mb-4">
-          <div>
-            <p className="text-sm text-gray-500">新規予約の作成</p>
-            <h2 className="text-2xl font-bold">{formattedDateLabel}</h2>
-          </div>
-          <div className="flex gap-2">
-            {onToggleBlock && (
-              <button
-                onClick={handleToggleBlock}
-                disabled={togglingBlock}
-                className={`px-3 py-2 rounded-lg text-sm font-medium ${
-                  isBlocked ? 'bg-gray-200 text-gray-700' : 'bg-amber-100 text-amber-700'
-                }`}
-              >
-                {togglingBlock
-                  ? '保存中...'
-                  : isBlocked
-                    ? '受付停止を解除'
-                    : 'この日を受付停止'}
-              </button>
-            )}
-            <button onClick={onClose} className="text-gray-500 hover:text-gray-700">
-              ✕
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+      >
+        <motion.div
+          className="flex max-h-[90vh] w-full max-w-3xl flex-col overflow-hidden rounded-lg bg-white shadow-xl"
+          initial={{ scale: 0.95, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.95, opacity: 0 }}
+          onClick={(event) => event.stopPropagation()}
+        >
+          <div className="flex items-center justify-between border-b px-6 py-4">
+            <h2 className="text-lg font-semibold">新規予約の作成</h2>
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-sm text-gray-500 hover:text-gray-700"
+              disabled={saving}
+            >
+              閉じる
             </button>
           </div>
-        </div>
 
-        {isBlocked && (
-          <div className="mb-4 rounded-lg bg-red-50 border border-red-200 px-4 py-3 text-red-700 text-sm">
-            この日は受付停止に設定されています。解除すると空き時間を再取得できます。
-          </div>
-        )}
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="md:col-span-2 relative">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              顧客検索（名前 / メール / 電話）
-            </label>
-            <input
-              type="text"
-              value={customerSearch}
-              onChange={(e) => setCustomerSearch(e.target.value)}
-              onFocus={() => setShowCustomerDropdown(true)}
-              onBlur={() => setTimeout(() => setShowCustomerDropdown(false), 120)}
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="例）山田、080、mail@example.com"
-            />
-            {showCustomerDropdown && filteredCustomers.length > 0 && (
-              <div className="absolute z-50 mt-1 w-full max-h-56 overflow-auto border rounded-lg bg-white shadow-lg">
-                {filteredCustomers.map((c) => (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault()
-                      handleCustomerSelect(c)
-                      setShowCustomerDropdown(false)
-                    }}
-                    className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-primary/10"
-                  >
-                    <span className="font-semibold mr-2">{c.name || '名称未登録'}</span>
-                    <span className="text-gray-500 mr-2">{c.email || 'メールなし'}</span>
-                    <span className="text-gray-500">{c.phone || '電話なし'}</span>
-                  </button>
-                ))}
+          <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+            {loadingOptions && (
+              <div className="rounded-md border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                選択肢を読み込み中です…
               </div>
             )}
+
+            {error && (
+              <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            )}
+
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700">顧客</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="admin-existing-customer-search"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    既存顧客検索
+                  </label>
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        id="admin-existing-customer-search"
+                        type="text"
+                        className="flex-1 rounded-lg border px-3 py-2 text-sm"
+                        placeholder="名前・メール・電話で検索"
+                        value={searchTerm}
+                        onChange={(event) => setSearchTerm(event.target.value)}
+                        disabled={saving || loadingOptions}
+                      />
+                      {onReloadCustomers && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            void onReloadCustomers()
+                          }}
+                          className="rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-600 hover:bg-gray-100 disabled:opacity-60"
+                          disabled={saving || loadingOptions}
+                        >
+                          再読込
+                        </button>
+                        )}
+                    </div>
+                    <label
+                      htmlFor="admin-existing-customer-select"
+                      className="mb-1 block text-xs font-medium text-gray-600"
+                    >
+                      顧客を選択
+                    </label>
+                    <select
+                      id="admin-existing-customer-select"
+                      value={form.customerId ?? ''}
+                      onChange={(event) => handleCustomerSelect(event.target.value)}
+                      className="w-full rounded-lg border px-3 py-2"
+                      disabled={saving}
+                    >
+                      <option value="">選択しない（手入力）</option>
+                      {filteredCustomers.map((customer) => (
+                        <option key={customer.id} value={customer.id}>
+                          {customer.name}（{customer.email}）
+                        </option>
+                      ))}
+                    </select>
+                    {searchTerm && filteredCustomers.length === 0 && (
+                      <p className="text-xs text-red-500">該当する顧客が見つかりませんでした</p>
+                    )}
+                    {hasMoreCustomers && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onLoadMoreCustomers) {
+                            void onLoadMoreCustomers()
+                          }
+                        }}
+                        className="self-start rounded-lg border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-60"
+                        disabled={saving || loadingMoreCustomers}
+                      >
+                        {loadingMoreCustomers ? '読み込み中…' : 'さらに読み込む'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-customer-name"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    お名前 *
+                  </label>
+                  <input
+                    id="admin-customer-name"
+                    type="text"
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.customerName}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, customerName: event.target.value }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-customer-email"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    メールアドレス
+                  </label>
+                  <input
+                    id="admin-customer-email"
+                    type="email"
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.customerEmail ?? ''}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, customerEmail: event.target.value }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-customer-phone"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    電話番号
+                  </label>
+                  <input
+                    id="admin-customer-phone"
+                    type="tel"
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.customerPhone ?? ''}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, customerPhone: event.target.value }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-customer-notes"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    顧客メモ
+                  </label>
+                  <textarea
+                    id="admin-customer-notes"
+                    rows={2}
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.notes ?? ''}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, notes: event.target.value }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700">サービス</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="md:col-span-2 flex flex-col gap-2">
+                  <div className="flex items-center justify-between">
+                    <label
+                      htmlFor="admin-service-select"
+                      className="text-xs font-medium text-gray-600"
+                    >
+                      メニュー
+                    </label>
+                    {onRefreshServices && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          void onRefreshServices()
+                        }}
+                        className="rounded-lg border border-gray-300 px-3 py-1 text-xs text-gray-600 hover:bg-gray-100 disabled:opacity-60"
+                        disabled={saving || refreshingServices}
+                      >
+                        {refreshingServices ? '再取得中…' : '最新のプランを取得'}
+                      </button>
+                    )}
+                  </div>
+                  <select
+                    id="admin-service-select"
+                    value={form.serviceId ?? ''}
+                    onChange={(event) => handleServiceSelect(event.target.value)}
+                    className="w-full rounded-lg border px-3 py-2"
+                    disabled={saving}
+                  >
+                    <option value="">直接入力</option>
+                    {serviceOptions.map((service) => (
+                      <option key={service.id} value={service.id}>
+                        {service.name}（¥{service.price.toLocaleString()}）
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-service-name"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    サービス名 *
+                  </label>
+                  <input
+                    id="admin-service-name"
+                    type="text"
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.serviceName}
+                    onChange={(event) =>
+                      setForm((prev) => ({ ...prev, serviceName: event.target.value }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-service-type"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    サービス種別
+                  </label>
+                  <select
+                    id="admin-service-type"
+                    value={form.serviceType}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        serviceType: event.target.value,
+                      }))
+                    }
+                    className="w-full rounded-lg border px-3 py-2"
+                    disabled={saving}
+                  >
+                    <option value="2D">2D</option>
+                    <option value="3D">3D</option>
+                    <option value="4D">4D</option>
+                    <option value="wax">wax</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-service-price"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    料金 (税込)
+                  </label>
+                  <input
+                    id="admin-service-price"
+                    type="number"
+                    min={0}
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.price}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        price: Number(event.target.value),
+                      }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-service-duration"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    施術時間 (分)
+                  </label>
+                  <input
+                    id="admin-service-duration"
+                    type="number"
+                    min={0}
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.durationMinutes ?? ''}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        durationMinutes: event.target.value
+                          ? Number(event.target.value)
+                          : undefined,
+                      }))
+                    }
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-reservation-status"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    ステータス
+                  </label>
+                  <select
+                    id="admin-reservation-status"
+                    value={form.status ?? 'confirmed'}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        status: event.target.value as AdminCreateReservationPayload['status'],
+                      }))
+                    }
+                    className="w-full rounded-lg border px-3 py-2"
+                    disabled={saving}
+                  >
+                    <option value="pending">承認待ち</option>
+                    <option value="confirmed">確定</option>
+                    <option value="completed">完了</option>
+                    <option value="cancelled">キャンセル</option>
+                  </select>
+                </div>
+              </div>
+            </section>
+
+            <section className="space-y-4">
+              <h3 className="text-sm font-semibold text-gray-700">日時</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label
+                    htmlFor="admin-reservation-date"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    日付 *
+                  </label>
+                  <input
+                    id="admin-reservation-date"
+                    type="date"
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.date}
+                    onChange={(event) => handleDateChange(event.target.value)}
+                    disabled={saving}
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="admin-reservation-time"
+                    className="mb-1 block text-xs font-medium text-gray-600"
+                  >
+                    時間 *
+                  </label>
+                  <input
+                    id="admin-reservation-time"
+                    type="time"
+                    step={1800}
+                    className="w-full rounded-lg border px-3 py-2"
+                    value={form.time}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        time: event.target.value,
+                      }))
+                    }
+                    list="admin-reservation-slot-options"
+                    disabled={saving}
+                  />
+                  <datalist id="admin-reservation-slot-options">
+                    {availableSlotTimes.map((time) => (
+                      <option value={time} key={time} />
+                    ))}
+                  </datalist>
+                  {slotsLoading && (
+                    <p className="mt-1 text-xs text-gray-500">時間枠を確認しています…</p>
+                  )}
+                  {!slotsLoading && !form.allowConflict && form.date && availableSlotTimes.length === 0 && (
+                    <p className="mt-1 text-xs text-red-500">
+                      現在の設定では空き枠が見つかりません。必要なら「空きがなくても作成する」にチェックしてください。
+                    </p>
+                  )}
+                </div>
+                <div className="md:col-span-2 flex items-center gap-2">
+                  <input
+                    id="allow-conflict"
+                    type="checkbox"
+                    className="h-4 w-4"
+                    checked={form.allowConflict ?? false}
+                    onChange={(event) =>
+                      setForm((prev) => ({
+                        ...prev,
+                        allowConflict: event.target.checked,
+                      }))
+                    }
+                    disabled={saving}
+                  />
+                  <label htmlFor="allow-conflict" className="text-xs text-gray-600">
+                    空きがなくても作成する（ダブルブッキングを許容）
+                  </label>
+                </div>
+              </div>
+            </section>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">お名前</label>
-            <input
-              type="text"
-              value={form.customerName}
-              onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="山田 花子"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">電話番号</label>
-            <input
-              type="tel"
-              value={form.customerPhone}
-              onChange={(e) => setForm({ ...form, customerPhone: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="090-1234-5678"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">メールアドレス</label>
-            <input
-              type="email"
-              value={form.customerEmail}
-              onChange={(e) => setForm({ ...form, customerEmail: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="example@mail.com"
-              required
-            />
-          </div>
-
-          <div className="md:col-span-2 space-y-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              サービス（登録一覧から選択 or 手入力）
-            </label>
-            <select
-              value={isCustomService ? 'custom' : selectedServiceId}
-              onChange={(e) => handleServiceSelect(e.target.value)}
-              className="w-full border rounded-lg px-3 py-2"
+          <div className="flex items-center justify-end gap-3 border-t px-6 py-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="rounded-lg px-4 py-2 text-sm text-gray-600 hover:text-gray-800"
+              disabled={saving}
             >
-              {selectableServices.map((plan) => (
-                <option key={plan.id} value={plan.id}>
-                  {plan.name} / {plan.type} / ¥{Number(plan.price || 0).toLocaleString()}
-                </option>
-              ))}
-              <option value="custom">カスタム入力（直書き）</option>
-            </select>
-            <p className="text-xs text-gray-500">選択するとサービス名・金額を自動入力します。上書きも可能です。</p>
+              キャンセル
+            </button>
+            <button
+              type="button"
+              onClick={handleSubmit}
+              className="rounded-lg bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-dark-gold disabled:opacity-60"
+              disabled={saving}
+            >
+              {saving ? '作成中…' : '予約を作成する'}
+            </button>
           </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">サービス名</label>
-            <input
-              type="text"
-              value={form.serviceName}
-              onChange={(e) => setForm({ ...form, serviceName: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="メニュー名"
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">料金（円）</label>
-            <input
-              type="number"
-              value={form.servicePrice}
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  servicePrice: Number(e.target.value) || 0,
-                })
-              }
-              className="w-full border rounded-lg px-3 py-2"
-              min={0}
-              step={500}
-              placeholder="22000"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">時間</label>
-            <div className="relative">
-              <select
-                value={selectedTime}
-                onChange={(e) => setSelectedTime(e.target.value)}
-                className="w-full border rounded-lg px-3 py-2"
-                disabled={loadingSlots || isBlocked || availableTimes.length === 0}
-              >
-                {loadingSlots && <option value="">取得中...</option>}
-                {!loadingSlots && availableTimes.length === 0 && <option value="">空き枠なし</option>}
-                {!loadingSlots &&
-                  availableTimes.map((slot) => (
-                    <option key={slot.time} value={slot.time}>
-                      {slot.time}
-                    </option>
-                  ))}
-              </select>
-              {loadingSlots && (
-                <span className="absolute right-3 top-2.5 text-xs text-gray-500">読み込み中...</span>
-              )}
-            </div>
-          </div>
-          <div className="md:col-span-2">
-            <label className="block text-sm font-medium text-gray-700 mb-1">備考</label>
-            <textarea
-              value={form.notes}
-              onChange={(e) => setForm({ ...form, notes: e.target.value })}
-              className="w-full border rounded-lg px-3 py-2"
-              rows={3}
-              placeholder="確認事項などがあれば入力してください"
-            />
-          </div>
-        </div>
-
-        {availableTimes.length === 0 && !isBlocked && (
-          <p className="text-sm text-gray-600 mb-4">
-            この日は現在空き枠がありません。別の日付を選択するか、既存予約を調整してください。
-          </p>
-        )}
-
-        <div className="flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
-          >
-            キャンセル
-          </button>
-          <button
-            onClick={handleCreate}
-            disabled={submitting || isBlocked || !selectedTime}
-            className="px-5 py-2 rounded-lg bg-primary text-white hover:bg-dark-gold disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {submitting ? '作成中...' : '予約を作成'}
-          </button>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   )
 }
