@@ -97,6 +97,25 @@ export default function AdminSettingsPage() {
   const [warningMessage, setWarningMessage] = useState<string | null>(null)
   const [newOverrideDate, setNewOverrideDate] = useState('')
   const [newOverrideSlots, setNewOverrideSlots] = useState('')
+  const [openSections, setOpenSections] = useState<{
+    basic: boolean
+    cancellation: boolean
+    businessHours: boolean
+    blockedDates: boolean
+    dateOverrides: boolean
+  }>({
+    basic: true,
+    cancellation: false,
+    businessHours: true,
+    blockedDates: false,
+    dateOverrides: false,
+  })
+
+  const toggleSection = (
+    key: 'basic' | 'cancellation' | 'businessHours' | 'blockedDates' | 'dateOverrides',
+  ) => {
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const notify = (type: 'success' | 'error', text: string) => {
     setMessage(text)
@@ -418,149 +437,204 @@ export default function AdminSettingsPage() {
       )}
 
       {message && (
-        <div
-          className={`mt-6 rounded-md border px-4 py-3 ${
-            messageType === 'success'
-              ? 'border-green-300 bg-green-50 text-green-800'
-              : 'border-red-300 bg-red-50 text-red-800'
-          }`}
-        >
-          {message}
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4 pointer-events-none">
+          <div
+            role="status"
+            aria-live={messageType === 'success' ? 'polite' : 'assertive'}
+            className={`pointer-events-auto w-full max-w-lg rounded-lg border px-5 py-4 shadow-xl ${
+              messageType === 'success'
+                ? 'border-green-300 bg-green-50 text-green-900'
+                : 'border-red-300 bg-red-50 text-red-900'
+            }`}
+          >
+            {message}
+          </div>
         </div>
       )}
 
-      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">基本設定</h2>
-
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="mt-6 rounded-lg bg-white shadow-lg">
+        <button
+          type="button"
+          onClick={() => toggleSection('basic')}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-6 py-4 text-left hover:bg-gray-50"
+          aria-expanded={openSections.basic}
+        >
           <div>
-            <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="slotDuration">
-              予約枠の長さ（分）
-            </label>
-            <input
-              id="slotDuration"
-              type="number"
-              value={settings.slotDuration}
-              onChange={(event) =>
-                setSettings({ ...settings, slotDuration: parseInt(event.target.value, 10) || 120 })
-              }
-              className="w-full rounded-lg border px-3 py-2"
-              min="30"
-              step="30"
-            />
+            <h2 className="text-xl font-semibold">基本設定</h2>
+            <p className="mt-1 text-sm text-gray-600">予約枠の長さ、1枠あたりの最大数</p>
           </div>
+          <span className="text-sm font-semibold text-gray-700">
+            {openSections.basic ? '閉じる' : '開く'}
+          </span>
+        </button>
 
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="maxCapacityPerSlot"
-            >
-              1枠あたりの最大予約数
-            </label>
-            <input
-              id="maxCapacityPerSlot"
-              type="number"
-              value={settings.maxCapacityPerSlot}
-              onChange={(event) =>
-                setSettings({
-                  ...settings,
-                  maxCapacityPerSlot: parseInt(event.target.value, 10) || 1,
-                })
-              }
-              className="w-full rounded-lg border px-3 py-2"
-              min="1"
-              max="5"
-            />
-          </div>
-        </div>
-      </div>
+        {openSections.basic && (
+          <div className="px-6 pb-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="slotDuration">
+                  予約枠の長さ（分）
+                </label>
+                <input
+                  id="slotDuration"
+                  type="number"
+                  value={settings.slotDuration}
+                  onChange={(event) =>
+                    setSettings({ ...settings, slotDuration: parseInt(event.target.value, 10) || 120 })
+                  }
+                  className="w-full rounded-lg border px-3 py-2"
+                  min="30"
+                  step="30"
+                />
+              </div>
 
-      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">キャンセルポリシー設定</h2>
-
-        <div className="space-y-4">
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="cancellationDeadlineHours"
-            >
-              キャンセル可能期限（予約日の何時間前まで）
-            </label>
-            <div className="flex items-center gap-2">
-              <input
-                id="cancellationDeadlineHours"
-                type="number"
-                value={settings.cancellationDeadlineHours || 72}
-                onChange={(event) =>
-                  setSettings({
-                    ...settings,
-                    cancellationDeadlineHours: parseInt(event.target.value, 10) || 72,
-                  })
-                }
-                className="w-32 rounded-lg border px-3 py-2"
-                min="1"
-                max="168"
-              />
-              <span className="text-gray-600">時間前まで</span>
+              <div>
+                <label
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                  htmlFor="maxCapacityPerSlot"
+                >
+                  1枠あたりの最大予約数
+                </label>
+                <input
+                  id="maxCapacityPerSlot"
+                  type="number"
+                  value={settings.maxCapacityPerSlot}
+                  onChange={(event) =>
+                    setSettings({
+                      ...settings,
+                      maxCapacityPerSlot: parseInt(event.target.value, 10) || 1,
+                    })
+                  }
+                  className="w-full rounded-lg border px-3 py-2"
+                  min="1"
+                  max="5"
+                />
+              </div>
             </div>
-            <p className="mt-1 text-sm text-gray-500">
-              ※ お客様がオンラインでキャンセルできる期限を設定します（1〜168時間）
-            </p>
           </div>
-
-          <div>
-            <label
-              className="mb-1 block text-sm font-medium text-gray-700"
-              htmlFor="cancellationPolicy"
-            >
-              キャンセルポリシー説明文
-            </label>
-            <textarea
-              id="cancellationPolicy"
-              value={settings.cancellationPolicy || ''}
-              onChange={(event) => setSettings({ ...settings, cancellationPolicy: event.target.value })}
-              className="w-full rounded-lg border px-3 py-2"
-              rows={4}
-              placeholder="予約フォームに表示されるキャンセルポリシーの説明文を入力してください"
-            />
-            <p className="mt-1 text-sm text-gray-500">
-              ※ 予約フォームで表示されるキャンセルポリシーの説明文です
-            </p>
-          </div>
-        </div>
+        )}
       </div>
 
-      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">営業日・営業時間</h2>
-        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-          <p className="font-semibold">最終受付（開始時刻）で運用する場合のおすすめ</p>
-          <ul className="mt-2 list-disc pl-5 space-y-1">
-            <li>
-              <span className="font-semibold">終了時間（close）</span>は「施術が終わる時間」まで含めて設定してください（例: 最終受付19:00・施術180分なら close は22:00）。
-            </li>
-            <li>
-              「開始可能時刻（カンマ区切り）」に <span className="font-semibold">18:00, 19:00</span> のように開始したい時刻だけを入れると、その時刻のみ枠が表示されます。
-            </li>
-          </ul>
-        </div>
+      <div className="mt-6 rounded-lg bg-white shadow-lg">
+        <button
+          type="button"
+          onClick={() => toggleSection('cancellation')}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-6 py-4 text-left hover:bg-gray-50"
+          aria-expanded={openSections.cancellation}
+        >
+          <div>
+            <h2 className="text-xl font-semibold">キャンセルポリシー設定</h2>
+            <p className="mt-1 text-sm text-gray-600">期限（何時間前まで）と表示文言</p>
+          </div>
+          <span className="text-sm font-semibold text-gray-700">
+            {openSections.cancellation ? '閉じる' : '開く'}
+          </span>
+        </button>
 
-        <div className="overflow-x-auto">
-          <table className="admin-table min-w-full divide-y divide-gray-200">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">曜日</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">営業</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">開始時間</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">終了時間</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">最大予約数/日</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">複数枠</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">枠間隔（分）</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">開始可能時刻（カンマ区切り）</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200 bg-white">
-              {settings.businessHours.map((hours, index) => (
-                <tr key={daysOfWeek[index]}>
+        {openSections.cancellation && (
+          <div className="px-6 pb-6">
+            <div className="space-y-4">
+              <div>
+                <label
+                  className="mb-1 block text-sm font-medium text-gray-700"
+                  htmlFor="cancellationDeadlineHours"
+                >
+                  キャンセル可能期限（予約日の何時間前まで）
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    id="cancellationDeadlineHours"
+                    type="number"
+                    value={settings.cancellationDeadlineHours || 72}
+                    onChange={(event) =>
+                      setSettings({
+                        ...settings,
+                        cancellationDeadlineHours: parseInt(event.target.value, 10) || 72,
+                      })
+                    }
+                    className="w-32 rounded-lg border px-3 py-2"
+                    min="1"
+                    max="168"
+                  />
+                  <span className="text-gray-600">時間前まで</span>
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  ※ お客様がオンラインでキャンセルできる期限を設定します（1〜168時間）
+                </p>
+              </div>
+
+              <div>
+                <label className="mb-1 block text-sm font-medium text-gray-700" htmlFor="cancellationPolicy">
+                  キャンセルポリシー説明文
+                </label>
+                <textarea
+                  id="cancellationPolicy"
+                  value={settings.cancellationPolicy || ''}
+                  onChange={(event) => setSettings({ ...settings, cancellationPolicy: event.target.value })}
+                  className="w-full rounded-lg border px-3 py-2"
+                  rows={4}
+                  placeholder="予約フォームに表示されるキャンセルポリシーの説明文を入力してください"
+                />
+                <p className="mt-1 text-sm text-gray-500">
+                  ※ 予約フォームで表示されるキャンセルポリシーの説明文です
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-lg bg-white shadow-lg">
+        <button
+          type="button"
+          onClick={() => toggleSection('businessHours')}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-6 py-4 text-left hover:bg-gray-50"
+          aria-expanded={openSections.businessHours}
+        >
+          <div>
+            <h2 className="text-xl font-semibold">営業日・営業時間</h2>
+            <p className="mt-1 text-sm text-gray-600">営業時間（open/close）と開始可能時刻（最終受付運用）</p>
+          </div>
+          <span className="text-sm font-semibold text-gray-700">
+            {openSections.businessHours ? '閉じる' : '開く'}
+          </span>
+        </button>
+
+        {openSections.businessHours && (
+          <div className="px-6 pb-6">
+            <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+              <p className="font-semibold">最終受付（開始時刻）で運用する場合のおすすめ</p>
+              <ul className="mt-2 list-disc pl-5 space-y-1">
+                <li>
+                  <span className="font-semibold">終了時間（close）</span>は「施術が終わる時間」まで含めて設定してください（例:
+                  最終受付19:00・施術180分なら close は22:00）。
+                </li>
+                <li>
+                  「開始可能時刻（カンマ区切り）」に <span className="font-semibold">18:00, 19:00</span>{' '}
+                  のように開始したい時刻だけを入れると、その時刻のみ枠が表示されます。
+                </li>
+              </ul>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="admin-table min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">曜日</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">営業</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">開始時間</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">終了時間</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">最大予約数/日</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">複数枠</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">枠間隔（分）</th>
+                    <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">
+                      開始可能時刻（カンマ区切り）
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200 bg-white">
+                  {settings.businessHours.map((hours, index) => (
+                    <tr key={daysOfWeek[index]}>
                   <td className="px-4 py-2 text-sm text-gray-700" data-label="曜日">
                     {daysOfWeek[index]}
                   </td>
@@ -781,150 +855,186 @@ export default function AdminSettingsPage() {
                   </td>
                 </tr>
               ))}
-            </tbody>
-          </table>
-        </div>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
 
-      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">ブロック日設定</h2>
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="flex flex-1 items-center gap-2">
-            <input
-              type="date"
-              value={newBlockedDate}
-              onChange={(event) => setNewBlockedDate(event.target.value)}
-              className="flex-1 rounded border px-3 py-2"
-            />
-            <button
-              type="button"
-              onClick={handleAddBlockedDate}
-              className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
-            >
-              追加
-            </button>
+      <div className="mt-6 rounded-lg bg-white shadow-lg">
+        <button
+          type="button"
+          onClick={() => toggleSection('blockedDates')}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-6 py-4 text-left hover:bg-gray-50"
+          aria-expanded={openSections.blockedDates}
+        >
+          <div>
+            <h2 className="text-xl font-semibold">ブロック日設定</h2>
+            <p className="mt-1 text-sm text-gray-600">特定日を予約不可にする</p>
           </div>
-        </div>
+          <span className="text-sm font-semibold text-gray-700">
+            {openSections.blockedDates ? '閉じる' : '開く'}
+          </span>
+        </button>
 
-        <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-gray-600">
-            現在のブロック日: <span className="font-semibold">{settings.blockedDates?.length ?? 0}</span> 件
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleClearBlockedDatesAll}
-              disabled={saving}
-              className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
-            >
-              ブロック日を全クリア
-            </button>
-            <button
-              type="button"
-              onClick={handleResetSettingsToDefault}
-              disabled={saving}
-              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
-            >
-              設定を初期化
-            </button>
-          </div>
-        </div>
-
-        <ul className="mt-4 space-y-2">
-          {(settings.blockedDates || []).map((date) => (
-            <li key={date} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
-              <span>{date}</span>
-              <button
-                type="button"
-                onClick={() => handleRemoveBlockedDate(date)}
-                className="text-red-600 hover:underline"
-              >
-                削除
-              </button>
-            </li>
-          ))}
-
-          {(!settings.blockedDates || settings.blockedDates.length === 0) && (
-            <li className="text-sm text-gray-500">現在、ブロック日は設定されていません。</li>
-          )}
-        </ul>
-      </div>
-
-      <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">日付別の開始可能時刻設定</h2>
-        <p className="text-sm text-gray-600 mb-4">
-          特定の日のみ開始可能時刻を変更したい場合に追加してください。時間はカンマ区切りで入力します。
-        </p>
-
-        <div className="flex flex-col gap-4 md:flex-row md:items-center">
-          <div className="flex flex-1 items-center gap-2">
-            <input
-              type="date"
-              value={newOverrideDate}
-              onChange={(event) => setNewOverrideDate(event.target.value)}
-              className="flex-1 rounded border px-3 py-2"
-            />
-            <input
-              type="text"
-              value={newOverrideSlots}
-              onChange={(event) => setNewOverrideSlots(event.target.value)}
-              className="flex-1 rounded border px-3 py-2"
-              placeholder="例: 09:00,12:00,15:00"
-            />
-            <button
-              type="button"
-              onClick={handleAddDateOverride}
-              className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
-            >
-              追加
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-          <p className="text-sm text-gray-600">
-            現在の設定: <span className="font-semibold">{Object.keys(settings.dateOverrides ?? {}).length}</span> 件
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={handleClearDateOverridesAll}
-              disabled={saving}
-              className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
-            >
-              全クリア
-            </button>
-          </div>
-        </div>
-
-        <ul className="mt-4 space-y-2">
-          {Object.entries(settings.dateOverrides ?? {}).length === 0 && (
-            <li className="text-sm text-gray-500">設定されている日付はありません。</li>
-          )}
-          {Object.entries(settings.dateOverrides ?? {}).map(([date, override]) => (
-            <li
-              key={date}
-              className="flex items-center justify-between rounded border px-3 py-2 text-sm"
-            >
-              <div>
-                <p className="font-medium text-gray-900">{date}</p>
-                <p className="text-gray-600">
-                  {(override.allowedSlots ?? []).length > 0
-                    ? `開始可能時刻: ${(override.allowedSlots ?? []).join(', ')}`
-                    : 'この日の開始可能時刻設定はありません'}
-                </p>
+        {openSections.blockedDates && (
+          <div className="px-6 pb-6">
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  type="date"
+                  value={newBlockedDate}
+                  onChange={(event) => setNewBlockedDate(event.target.value)}
+                  className="flex-1 rounded border px-3 py-2"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddBlockedDate}
+                  className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
+                >
+                  追加
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={() => handleRemoveDateOverride(date)}
-                className="rounded-md bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
-              >
-                削除
-              </button>
-            </li>
-          ))}
-        </ul>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-600">
+                現在のブロック日:{' '}
+                <span className="font-semibold">{settings.blockedDates?.length ?? 0}</span> 件
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleClearBlockedDatesAll}
+                  disabled={saving}
+                  className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                >
+                  ブロック日を全クリア
+                </button>
+                <button
+                  type="button"
+                  onClick={handleResetSettingsToDefault}
+                  disabled={saving}
+                  className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+                >
+                  設定を初期化
+                </button>
+              </div>
+            </div>
+
+            <ul className="mt-4 space-y-2">
+              {(settings.blockedDates || []).map((date) => (
+                <li key={date} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                  <span>{date}</span>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveBlockedDate(date)}
+                    className="text-red-600 hover:underline"
+                  >
+                    削除
+                  </button>
+                </li>
+              ))}
+
+              {(!settings.blockedDates || settings.blockedDates.length === 0) && (
+                <li className="text-sm text-gray-500">現在、ブロック日は設定されていません。</li>
+              )}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-6 rounded-lg bg-white shadow-lg">
+        <button
+          type="button"
+          onClick={() => toggleSection('dateOverrides')}
+          className="flex w-full items-center justify-between gap-4 rounded-lg px-6 py-4 text-left hover:bg-gray-50"
+          aria-expanded={openSections.dateOverrides}
+        >
+          <div>
+            <h2 className="text-xl font-semibold">日付別の開始可能時刻設定</h2>
+            <p className="mt-1 text-sm text-gray-600">特定の日だけ開始可能時刻を上書き</p>
+          </div>
+          <span className="text-sm font-semibold text-gray-700">
+            {openSections.dateOverrides ? '閉じる' : '開く'}
+          </span>
+        </button>
+
+        {openSections.dateOverrides && (
+          <div className="px-6 pb-6">
+            <p className="mb-4 text-sm text-gray-600">
+              特定の日のみ開始可能時刻を変更したい場合に追加してください。時間はカンマ区切りで入力します。
+            </p>
+
+            <div className="flex flex-col gap-4 md:flex-row md:items-center">
+              <div className="flex flex-1 items-center gap-2">
+                <input
+                  type="date"
+                  value={newOverrideDate}
+                  onChange={(event) => setNewOverrideDate(event.target.value)}
+                  className="flex-1 rounded border px-3 py-2"
+                />
+                <input
+                  type="text"
+                  value={newOverrideSlots}
+                  onChange={(event) => setNewOverrideSlots(event.target.value)}
+                  className="flex-1 rounded border px-3 py-2"
+                  placeholder="例: 09:00,12:00,15:00"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddDateOverride}
+                  className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
+                >
+                  追加
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+              <p className="text-sm text-gray-600">
+                現在の設定:{' '}
+                <span className="font-semibold">{Object.keys(settings.dateOverrides ?? {}).length}</span> 件
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleClearDateOverridesAll}
+                  disabled={saving}
+                  className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+                >
+                  全クリア
+                </button>
+              </div>
+            </div>
+
+            <ul className="mt-4 space-y-2">
+              {Object.entries(settings.dateOverrides ?? {}).length === 0 && (
+                <li className="text-sm text-gray-500">設定されている日付はありません。</li>
+              )}
+              {Object.entries(settings.dateOverrides ?? {}).map(([date, override]) => (
+                <li key={date} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                  <div>
+                    <p className="font-medium text-gray-900">{date}</p>
+                    <p className="text-gray-600">
+                      {(override.allowedSlots ?? []).length > 0
+                        ? `開始可能時刻: ${(override.allowedSlots ?? []).join(', ')}`
+                        : 'この日の開始可能時刻設定はありません'}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleRemoveDateOverride(date)}
+                    className="rounded-md bg-red-50 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-100"
+                  >
+                    削除
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       <div className="mt-8 flex justify-end">
