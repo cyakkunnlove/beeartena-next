@@ -185,6 +185,7 @@ export interface LineConversation {
   displayName?: string
   pictureUrl?: string
   statusMessage?: string
+  adminNote?: string
   customerId?: string
   customerName?: string
   customerEmail?: string

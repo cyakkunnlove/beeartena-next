@@ -10,6 +10,7 @@ type RawConversation = {
   displayName?: unknown
   pictureUrl?: unknown
   statusMessage?: unknown
+  adminNote?: unknown
   customerId?: unknown
   customerName?: unknown
   customerEmail?: unknown
@@ -82,6 +83,7 @@ const serializeConversation = (doc: { id: string; data: () => RawConversation | 
     displayName: typeof data.displayName === 'string' ? data.displayName : undefined,
     pictureUrl: typeof data.pictureUrl === 'string' ? data.pictureUrl : undefined,
     statusMessage: typeof data.statusMessage === 'string' ? data.statusMessage : undefined,
+    adminNote: typeof data.adminNote === 'string' ? data.adminNote : undefined,
     customerId: typeof data.customerId === 'string' ? data.customerId : undefined,
     customerName: typeof data.customerName === 'string' ? data.customerName : undefined,
     customerEmail: typeof data.customerEmail === 'string' ? data.customerEmail : undefined,
@@ -230,6 +232,12 @@ export async function PATCH(
 
   if (typeof body.status === 'string' && ['open', 'pending', 'closed'].includes(body.status)) {
     updates.status = body.status
+  }
+
+  const hasAdminNoteField = Object.prototype.hasOwnProperty.call(body, 'adminNote')
+  if (hasAdminNoteField) {
+    const noteValue = typeof body.adminNote === 'string' ? body.adminNote.trim() : ''
+    updates.adminNote = noteValue ? noteValue : FieldValue.delete()
   }
 
   try {

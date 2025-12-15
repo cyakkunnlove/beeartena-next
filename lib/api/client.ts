@@ -1222,6 +1222,20 @@ class ApiClient {
     })
   }
 
+  async getAdminLineConfig() {
+    return this.request<{
+      success: boolean
+      config?: {
+        channelSecretConfigured: boolean
+        accessTokenConfigured: boolean
+        firebaseAdminConfigured: boolean
+        receivingEnabled: boolean
+        sendingEnabled: boolean
+      }
+      webhookUrl?: string
+    }>('/admin/line/config', { cache: 'no-store' })
+  }
+
   // LINE公式アカウント（管理）
   async getAdminLineConversations(options: { limit?: number; cursor?: string } = {}) {
     const params = new URLSearchParams()
@@ -1272,6 +1286,17 @@ class ApiClient {
     return this.request<{ success: boolean }>(`/admin/line/conversations/${encoded}`, {
       method: 'PATCH',
       body: JSON.stringify({ action: 'markRead' }),
+    })
+  }
+
+  async updateAdminLineConversation(
+    userId: string,
+    updates: { status?: LineConversation['status']; adminNote?: string | null },
+  ) {
+    const encoded = encodeURIComponent(userId)
+    return this.request<{ success: boolean }>(`/admin/line/conversations/${encoded}`, {
+      method: 'PATCH',
+      body: JSON.stringify(updates),
     })
   }
 

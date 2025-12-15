@@ -10,6 +10,7 @@ type RawConversation = {
   displayName?: unknown
   pictureUrl?: unknown
   statusMessage?: unknown
+  adminNote?: unknown
   customerId?: unknown
   customerName?: unknown
   customerEmail?: unknown
@@ -74,6 +75,7 @@ const serializeConversation = (doc: QueryDocumentSnapshot<RawConversation>) => {
     displayName: typeof data.displayName === 'string' ? data.displayName : undefined,
     pictureUrl: typeof data.pictureUrl === 'string' ? data.pictureUrl : undefined,
     statusMessage: typeof data.statusMessage === 'string' ? data.statusMessage : undefined,
+    adminNote: typeof data.adminNote === 'string' ? data.adminNote : undefined,
     customerId: typeof data.customerId === 'string' ? data.customerId : undefined,
     customerName: typeof data.customerName === 'string' ? data.customerName : undefined,
     customerEmail: typeof data.customerEmail === 'string' ? data.customerEmail : undefined,

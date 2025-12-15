@@ -8,6 +8,14 @@ import { useAuth } from '@/lib/auth/AuthContext'
 
 import type { Customer, LineConversation, LineMessage } from '@/lib/types'
 
+type LineConfigState = {
+  channelSecretConfigured: boolean
+  accessTokenConfigured: boolean
+  firebaseAdminConfigured: boolean
+  receivingEnabled: boolean
+  sendingEnabled: boolean
+}
+
 const formatDateTime = (iso?: string) => {
   if (!iso) return ''
   const date = new Date(iso)
@@ -26,6 +34,10 @@ export default function AdminLinePage() {
   const router = useRouter()
   const { user, loading: authLoading } = useAuth()
 
+  const [lineConfig, setLineConfig] = useState<LineConfigState | null>(null)
+  const [webhookUrl, setWebhookUrl] = useState<string | null>(null)
+  const [loadingConfig, setLoadingConfig] = useState(false)
+
   const [conversations, setConversations] = useState<LineConversation[]>([])
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null)
   const [selectedConversation, setSelectedConversation] = useState<LineConversation | null>(null)
@@ -42,6 +54,29 @@ export default function AdminLinePage() {
   const [customerCandidates, setCustomerCandidates] = useState<Customer[]>([])
   const [customerSearching, setCustomerSearching] = useState(false)
   const [linking, setLinking] = useState(false)
+
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [noteDraft, setNoteDraft] = useState('')
+  const [noteSaving, setNoteSaving] = useState(false)
+
+  const loadConfig = useCallback(async () => {
+    setLoadingConfig(true)
+    try {
+      const response = await apiClient.getAdminLineConfig()
+      if (response?.success && response.config) {
+        setLineConfig(response.config as LineConfigState)
+        setWebhookUrl(typeof response.webhookUrl === 'string' ? response.webhookUrl : null)
+      } else {
+        setLineConfig(null)
+        setWebhookUrl(null)
+      }
+    } catch {
+      setLineConfig(null)
+      setWebhookUrl(null)
+    } finally {
+      setLoadingConfig(false)
+    }
+  }, [])
 
   const loadConversations = useCallback(async () => {
     setLoadingList(true)
@@ -95,8 +130,9 @@ export default function AdminLinePage() {
       router.replace('/login')
       return
     }
+    void loadConfig()
     void loadConversations()
-  }, [authLoading, user, router, loadConversations])
+  }, [authLoading, user, router, loadConfig, loadConversations])
 
   const filteredConversations = useMemo(() => {
     const q = search.trim().toLowerCase()
@@ -123,6 +159,10 @@ export default function AdminLinePage() {
     void loadConversation(userId)
   }
 
+  useEffect(() => {
+    setNoteDraft(selectedConversation?.adminNote ?? '')
+  }, [selectedConversation?.userId])
+
   const handleSend = async (e: FormEvent) => {
     e.preventDefault()
     if (!selectedUserId) return
@@ -141,6 +181,73 @@ export default function AdminLinePage() {
       setErrorMessage(error instanceof Error ? error.message : 'LINE送信に失敗しました')
     } finally {
       setSending(false)
+    }
+  }
+
+  const handleUpdateStatus = async (status: LineConversation['status']) => {
+    if (!selectedUserId) return
+    setStatusUpdating(true)
+    setErrorMessage(null)
+    try {
+      await apiClient.updateAdminLineConversation(selectedUserId, { status })
+      setSelectedConversation((prev) => (prev ? { ...prev, status } : prev))
+      setConversations((prev) => prev.map((c) => (c.userId === selectedUserId ? { ...c, status } : c)))
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'ステータス更新に失敗しました')
+    } finally {
+      setStatusUpdating(false)
+    }
+  }
+
+  const handleSaveNote = async () => {
+    if (!selectedUserId) return
+    setNoteSaving(true)
+    setErrorMessage(null)
+    try {
+      await apiClient.updateAdminLineConversation(selectedUserId, { adminNote: noteDraft })
+      const normalized = noteDraft.trim()
+      setSelectedConversation((prev) => (prev ? { ...prev, adminNote: normalized || undefined } : prev))
+      setConversations((prev) =>
+        prev.map((c) => (c.userId === selectedUserId ? { ...c, adminNote: normalized || undefined } : c)),
+      )
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'メモ保存に失敗しました')
+    } finally {
+      setNoteSaving(false)
+    }
+  }
+
+  const downloadConversationCsv = () => {
+    if (!selectedUserId) return
+    const escapeCsv = (value: string) => `"${value.replaceAll('"', '""')}"`
+    const header = ['timestamp', 'direction', 'type', 'text'].join(',')
+    const lines = messages.map((m) => {
+      const row = [
+        escapeCsv(m.timestamp ?? ''),
+        escapeCsv(m.direction ?? ''),
+        escapeCsv(m.type ?? ''),
+        escapeCsv(m.text ?? ''),
+      ]
+      return row.join(',')
+    })
+    const csv = [header, ...lines].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = url
+    anchor.download = `line_conversation_${selectedUserId}.csv`
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+  }
+
+  const copyWebhookUrl = async () => {
+    if (!webhookUrl) return
+    try {
+      await navigator.clipboard.writeText(webhookUrl)
+    } catch {
+      // ignore
     }
   }
 
@@ -291,6 +398,7 @@ export default function AdminLinePage() {
                                 <p className="font-medium truncate">
                                   {c.displayName?.trim() ? c.displayName : c.userId}
                                   {c.customerId ? <span className="ml-1 text-xs text-gray-400">🔗</span> : null}
+                                  {c.adminNote ? <span className="ml-1 text-xs text-gray-400">📝</span> : null}
                                 </p>
                                 {unread > 0 && (
                                   <span className="bg-red-500 text-white text-xs rounded-full px-2 py-0.5">
@@ -324,15 +432,132 @@ export default function AdminLinePage() {
                     <p className="text-xs text-gray-500 mt-1 truncate">userId: {selectedConversation.userId}</p>
                   )}
                 </div>
-                {selectedConversation?.statusMessage && (
-                  <p className="text-xs text-gray-500 max-w-[50%] line-clamp-2">{selectedConversation.statusMessage}</p>
-                )}
-              </div>
+              {selectedConversation?.statusMessage && (
+                <p className="text-xs text-gray-500 max-w-[50%] line-clamp-2">{selectedConversation.statusMessage}</p>
+              )}
+            </div>
 
-              {selectedUserId && (
-                <div className="mt-4 rounded-lg border bg-gray-50 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium text-gray-900">顧客紐付け</p>
+            <div className="mt-3 rounded-lg border bg-gray-50 p-3">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-sm font-medium text-gray-900">LINE連携ステータス</p>
+                <button
+                  type="button"
+                  onClick={() => void loadConfig()}
+                  className="text-xs text-primary hover:text-dark-gold disabled:opacity-60"
+                  disabled={loadingConfig}
+                >
+                  {loadingConfig ? '確認中…' : '再確認'}
+                </button>
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-[11px] text-gray-700">
+                <span
+                  className={`px-2 py-0.5 rounded-full border ${
+                    !lineConfig
+                      ? 'bg-gray-50 border-gray-200'
+                      : lineConfig.receivingEnabled
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                  }`}
+                >
+                  受信(保存): {lineConfig ? (lineConfig.receivingEnabled ? 'ON' : 'OFF') : '未確認'}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full border ${
+                    !lineConfig
+                      ? 'bg-gray-50 border-gray-200'
+                      : lineConfig.sendingEnabled
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-yellow-50 border-yellow-200'
+                  }`}
+                >
+                  送信: {lineConfig ? (lineConfig.sendingEnabled ? 'ON' : 'OFF') : '未確認'}
+                </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full border ${
+                    !lineConfig
+                      ? 'bg-gray-50 border-gray-200'
+                      : lineConfig.firebaseAdminConfigured
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                  }`}
+                >
+                  Firebase(Admin): {lineConfig ? (lineConfig.firebaseAdminConfigured ? 'OK' : 'NG') : '未確認'}
+                </span>
+              </div>
+              {webhookUrl && (
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[11px] text-gray-500">Webhook URL:</span>
+                  <code className="text-[11px] bg-white border rounded px-2 py-0.5 break-all">{webhookUrl}</code>
+                  <button type="button" onClick={() => void copyWebhookUrl()} className="text-[11px] text-primary hover:text-dark-gold">
+                    コピー
+                  </button>
+                </div>
+              )}
+              {lineConfig && !lineConfig.channelSecretConfigured && (
+                <p className="mt-2 text-[11px] text-gray-500">
+                  `LINE_CHANNEL_SECRET` が未設定のため、新規メッセージの取り込み（Webhook保存）ができません。
+                </p>
+              )}
+              {lineConfig && !lineConfig.accessTokenConfigured && (
+                <p className="mt-1 text-[11px] text-gray-500">
+                  `LINE_CHANNEL_ACCESS_TOKEN` が未設定のため、送信とプロフィール取得ができません（閲覧/紐付けは可能）。
+                </p>
+              )}
+            </div>
+
+            {selectedUserId && (
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <label className="text-xs text-gray-600">対応ステータス</label>
+                <select
+                  value={selectedConversation?.status ?? 'open'}
+                  onChange={(e) => void handleUpdateStatus(e.target.value as LineConversation['status'])}
+                  disabled={statusUpdating}
+                  className="border border-gray-300 rounded-md px-2 py-1 text-xs bg-white disabled:bg-gray-100"
+                >
+                  <option value="open">未対応</option>
+                  <option value="pending">対応中</option>
+                  <option value="closed">対応済</option>
+                </select>
+                <button
+                  type="button"
+                  onClick={downloadConversationCsv}
+                  disabled={messages.length === 0}
+                  className="ml-auto text-xs text-primary hover:text-dark-gold disabled:opacity-50"
+                >
+                  CSV出力
+                </button>
+              </div>
+            )}
+
+            {selectedUserId && (
+              <div className="mt-3 rounded-lg border bg-gray-50 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-gray-900">メモ</p>
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveNote()}
+                    disabled={noteSaving}
+                    className="text-xs text-primary hover:text-dark-gold disabled:opacity-60"
+                  >
+                    {noteSaving ? '保存中…' : '保存'}
+                  </button>
+                </div>
+                <textarea
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  className="mt-2 w-full min-h-[64px] border border-gray-300 rounded-lg px-3 py-2 text-sm bg-white"
+                  placeholder="対応メモ、注意点、次回アクションなど…"
+                />
+                <p className="text-[11px] text-gray-500 mt-2">
+                  メモは会話（lineConversations）に保存され、他の管理者にも共有されます。
+                </p>
+              </div>
+            )}
+
+            {selectedUserId && (
+              <div className="mt-4 rounded-lg border bg-gray-50 p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm font-medium text-gray-900">顧客紐付け</p>
                     {selectedConversation?.customerId && (
                       <div className="flex items-center gap-2">
                         <button
@@ -448,13 +673,18 @@ export default function AdminLinePage() {
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  disabled={!selectedUserId || sending}
+                  disabled={!selectedUserId || sending || (lineConfig ? !lineConfig.sendingEnabled : false)}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-50"
                   placeholder={selectedUserId ? 'メッセージを入力（送信は任意機能）' : '会話を選択してください'}
                 />
                 <button
                   type="submit"
-                  disabled={!selectedUserId || sending || draft.trim().length === 0}
+                  disabled={
+                    !selectedUserId ||
+                    sending ||
+                    draft.trim().length === 0 ||
+                    (lineConfig ? !lineConfig.sendingEnabled : false)
+                  }
                   className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-dark-gold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {sending ? '送信中…' : '送信'}
