@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
@@ -12,6 +13,7 @@ export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router = useRouter()
 
   // Close menu on route change
   useEffect(() => {
@@ -21,10 +23,10 @@ export default function Header() {
   const handleLogout = async () => {
     try {
       await logout()
-      window.location.href = '/'
+      router.push('/')
     } catch (error) {
       // Still redirect even if logout fails
-      window.location.href = '/'
+      router.push('/')
     }
   }
 
