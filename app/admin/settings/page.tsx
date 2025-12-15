@@ -19,6 +19,40 @@ const parseSlotsInput = (value: string): string[] =>
     .map((slot) => slot.trim())
     .filter((slot) => timePattern.test(slot))
 
+const toMinutes = (time: string): number | null => {
+  if (!timePattern.test(time)) return null
+  const [h, m] = time.split(':').map(Number)
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+  return h * 60 + m
+}
+
+const toTime = (minutes: number): string => {
+  const normalized = ((minutes % (24 * 60)) + 24 * 60) % (24 * 60)
+  const h = Math.floor(normalized / 60)
+  const m = normalized % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+const buildStartSlots = (
+  open: string,
+  close: string,
+  slotDuration: number,
+  interval: number,
+): string[] => {
+  const openMin = toMinutes(open)
+  const closeMin = toMinutes(close)
+  if (openMin === null || closeMin === null) return []
+  if (!Number.isFinite(slotDuration) || slotDuration <= 0) return []
+  const lastStart = closeMin - slotDuration
+  if (lastStart < openMin) return []
+  const step = Number.isFinite(interval) && interval > 0 ? interval : 30
+  const slots: string[] = []
+  for (let t = openMin; t <= lastStart; t += step) {
+    slots.push(toTime(t))
+  }
+  return slots
+}
+
 const loadFromLocalStorage = (): ReservationSettings => {
   if (typeof window === 'undefined') {
     return cloneDefaultSettings()
@@ -465,6 +499,17 @@ export default function AdminSettingsPage() {
 
       <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
         <h2 className="text-xl font-semibold mb-4">営業日・営業時間</h2>
+        <div className="mb-4 rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+          <p className="font-semibold">最終受付（開始時刻）で運用する場合のおすすめ</p>
+          <ul className="mt-2 list-disc pl-5 space-y-1">
+            <li>
+              <span className="font-semibold">終了時間（close）</span>は「施術が終わる時間」まで含めて設定してください（例: 最終受付19:00・施術180分なら close は22:00）。
+            </li>
+            <li>
+              「開始可能時刻（カンマ区切り）」に <span className="font-semibold">18:00, 19:00</span> のように開始したい時刻だけを入れると、その時刻のみ枠が表示されます。
+            </li>
+          </ul>
+        </div>
 
         <div className="overflow-x-auto">
           <table className="admin-table min-w-full divide-y divide-gray-200">
@@ -477,7 +522,7 @@ export default function AdminSettingsPage() {
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">最大予約数/日</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">複数枠</th>
                 <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">枠間隔（分）</th>
-                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">固定枠（カンマ区切り）</th>
+                <th className="px-4 py-2 text-left text-sm font-medium text-gray-500">開始可能時刻（カンマ区切り）</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200 bg-white">
@@ -580,7 +625,7 @@ export default function AdminSettingsPage() {
                       初期値 30 分。複数枠が有効のときのみ適用されます。
                     </p>
                   </td>
-                  <td className="px-4 py-2 text-sm" data-label="固定枠（カンマ区切り）">
+                  <td className="px-4 py-2 text-sm" data-label="開始可能時刻（カンマ区切り）">
                     <input
                       type="text"
                       value={(hours.allowedSlots ?? []).join(', ')}
@@ -592,11 +637,51 @@ export default function AdminSettingsPage() {
                         )
                       }
                       className="w-full rounded border px-2 py-1"
-                      placeholder="例: 09:00,12:00,15:00"
+                      placeholder="例: 18:00,19:00"
                       disabled={!hours.isOpen}
                     />
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={!hours.isOpen}
+                        onClick={() => {
+                          const intervalMinutes = hours.allowMultipleSlots
+                            ? (hours.slotInterval ?? 30)
+                            : settings.slotDuration
+                          const slots = buildStartSlots(
+                            hours.open,
+                            hours.close,
+                            settings.slotDuration,
+                            intervalMinutes,
+                          )
+                          handleBusinessHoursChange(index, 'allowedSlots', slots)
+                        }}
+                        className="rounded-md bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-800 hover:bg-gray-200 disabled:opacity-60"
+                      >
+                        枠を自動生成
+                      </button>
+                      <button
+                        type="button"
+                        disabled={!hours.isOpen}
+                        onClick={() => handleBusinessHoursChange(index, 'allowedSlots', [])}
+                        className="rounded-md bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-800 hover:bg-gray-200 disabled:opacity-60"
+                      >
+                        クリア
+                      </button>
+                      <span className="text-xs text-gray-600">
+                        最終受付（自動）:{' '}
+                        {(() => {
+                          const openMin = toMinutes(hours.open)
+                          const closeMin = toMinutes(hours.close)
+                          if (openMin === null || closeMin === null) return '-'
+                          const lastStart = closeMin - settings.slotDuration
+                          if (lastStart < openMin) return '（設定不整合）'
+                          return toTime(lastStart)
+                        })()}
+                      </span>
+                    </div>
                     <p className="mt-1 text-xs text-gray-500">
-                      指定するとこの時間のみ予約可能になります（未入力なら従来通り）
+                      入力するとその開始時刻のみ枠が表示されます。未入力なら open〜close をもとに自動生成します。
                     </p>
                   </td>
                 </tr>
@@ -672,9 +757,9 @@ export default function AdminSettingsPage() {
       </div>
 
       <div className="mt-6 rounded-lg bg-white p-6 shadow-lg">
-        <h2 className="text-xl font-semibold mb-4">日付別の固定枠設定</h2>
+        <h2 className="text-xl font-semibold mb-4">日付別の開始可能時刻設定</h2>
         <p className="text-sm text-gray-600 mb-4">
-          特定の日のみ開始時間を変更したい場合に追加してください。時間はカンマ区切りで入力します。
+          特定の日のみ開始可能時刻を変更したい場合に追加してください。時間はカンマ区切りで入力します。
         </p>
 
         <div className="flex flex-col gap-4 md:flex-row md:items-center">
@@ -704,7 +789,7 @@ export default function AdminSettingsPage() {
 
         <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
           <p className="text-sm text-gray-600">
-            現在の固定枠: <span className="font-semibold">{Object.keys(settings.dateOverrides ?? {}).length}</span> 件
+            現在の設定: <span className="font-semibold">{Object.keys(settings.dateOverrides ?? {}).length}</span> 件
           </p>
           <div className="flex flex-wrap gap-2">
             <button
@@ -713,7 +798,7 @@ export default function AdminSettingsPage() {
               disabled={saving}
               className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
             >
-              固定枠を全クリア
+              全クリア
             </button>
           </div>
         </div>
@@ -731,8 +816,8 @@ export default function AdminSettingsPage() {
                 <p className="font-medium text-gray-900">{date}</p>
                 <p className="text-gray-600">
                   {(override.allowedSlots ?? []).length > 0
-                    ? `固定枠: ${(override.allowedSlots ?? []).join(', ')}`
-                    : 'この日の固定枠設定はありません'}
+                    ? `開始可能時刻: ${(override.allowedSlots ?? []).join(', ')}`
+                    : 'この日の開始可能時刻設定はありません'}
                 </p>
               </div>
               <button

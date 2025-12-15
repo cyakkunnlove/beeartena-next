@@ -786,6 +786,15 @@ class ReservationService {
     const effectiveDurationMinutes = requiredDurationMinutes
     let interval = baseDuration
 
+    const parseTimeToMinutes = (time: string): number | null => {
+      const [hourStr, minuteStr] = time.split(':')
+      const hour = Number(hourStr)
+      const minute = Number(minuteStr)
+      if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+      if (hour < 0 || hour > 23 || minute < 0 || minute > 59) return null
+      return hour * 60 + minute
+    }
+
     if (businessHours.allowMultipleSlots) {
       interval = businessHours.slotInterval || 30
     } else {
@@ -802,6 +811,31 @@ class ReservationService {
     const slots: TimeSlot[] = []
     const maxCapacity = this.settings.maxCapacityPerSlot || 1
 
+    const overrideAllowedSlots = this.settings.dateOverrides?.[date]?.allowedSlots
+    const baseAllowedSlots = businessHours.allowedSlots
+    const allowedSlotsSource =
+      Array.isArray(overrideAllowedSlots) && overrideAllowedSlots.length > 0
+        ? overrideAllowedSlots
+        : Array.isArray(baseAllowedSlots) && baseAllowedSlots.length > 0
+          ? baseAllowedSlots
+          : null
+
+    const explicitStartMinutes = allowedSlotsSource
+      ? Array.from(
+          new Set(
+            allowedSlotsSource
+              .map((slot) => parseTimeToMinutes(slot))
+              .filter((value): value is number => typeof value === 'number'),
+          ),
+        )
+          .sort((a, b) => a - b)
+          .filter(
+            (startMinutes) =>
+              startMinutes >= openTimeInMinutes &&
+              startMinutes + effectiveDurationMinutes <= closeTimeInMinutes,
+          )
+      : null
+
     const reservationsWithDuration = reservations
       .filter((reservation) => reservation.status !== 'cancelled')
       .map((reservation) => {
@@ -817,21 +851,31 @@ class ReservationService {
         }
       })
 
-    for (
-      let currentMinutes = openTimeInMinutes;
-      currentMinutes + effectiveDurationMinutes <= closeTimeInMinutes;
-      currentMinutes += interval
-    ) {
-      const hour = Math.floor(currentMinutes / 60)
-      const minute = currentMinutes % 60
+    const startCandidates =
+      explicitStartMinutes ??
+      (() => {
+        const generated: number[] = []
+        for (
+          let currentMinutes = openTimeInMinutes;
+          currentMinutes + effectiveDurationMinutes <= closeTimeInMinutes;
+          currentMinutes += interval
+        ) {
+          generated.push(currentMinutes)
+        }
+        return generated
+      })()
+
+    for (const startMinutes of startCandidates) {
+      const hour = Math.floor(startMinutes / 60)
+      const minute = startMinutes % 60
       const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
-      const candidateEndMinutes = currentMinutes + effectiveDurationMinutes
+      const candidateEndMinutes = startMinutes + effectiveDurationMinutes
 
       const overlappingCount = reservationsWithDuration.filter(({ startMinutes, endMinutes }) => {
         if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
           return false
         }
-        return currentMinutes < endMinutes && candidateEndMinutes > startMinutes
+        return startMinutes < endMinutes && candidateEndMinutes > startMinutes
       }).length
 
       const currentBookings = overlappingCount
