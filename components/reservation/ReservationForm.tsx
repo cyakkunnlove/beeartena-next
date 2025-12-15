@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 
 import IntakeQuestionnaire from '@/components/reservation/IntakeQuestionnaire'
-import { useAuth } from '@/lib/auth/AuthContext'
 import type { ReservationIntakeForm } from '@/lib/types'
 
 interface ReservationFormProps {
@@ -19,7 +18,6 @@ interface ReservationFormProps {
   onSubmit: (form: ReservationFormProps['formData']) => void
   isLoggedIn: boolean
   servicePrice: number
-  onPointsUsed: (points: number) => void
   monitorPrice?: number
   maintenancePrice?: number
   onRequestLogin?: (currentForm: ReservationFormProps['formData']) => void
@@ -32,29 +30,14 @@ export default function ReservationForm({
   onSubmit,
   isLoggedIn,
   servicePrice,
-  onPointsUsed,
   monitorPrice,
   maintenancePrice = 0,
   onRequestLogin,
   onIntakeChange,
 }: ReservationFormProps) {
-  const { user } = useAuth()
-  const [usePoints, setUsePoints] = useState(false)
-  const [pointsToUse, setPointsToUse] = useState('')
   const [cancellationPolicy, setCancellationPolicy] = useState<string>('')
   const monitorSelected = formData.isMonitorSelected ?? false
-  const availablePoints = user?.points || 0
   const basePrice = monitorSelected && monitorPrice ? monitorPrice : servicePrice
-  const totalPrice = basePrice + maintenancePrice
-  const maxPoints = Math.min(availablePoints, totalPrice)
-
-  useEffect(() => {
-    // ポイント使用をリセット
-    if (!usePoints) {
-      setPointsToUse('')
-      onPointsUsed(0)
-    }
-  }, [usePoints, onPointsUsed])
 
   useEffect(() => {
     // キャンセルポリシーを取得
@@ -74,14 +57,6 @@ export default function ReservationForm({
     fetchSettings()
   }, [])
 
-  const handlePointsChange = (value: string) => {
-    const points = parseInt(value) || 0
-    if (points >= 0 && points <= maxPoints) {
-      setPointsToUse(value)
-      onPointsUsed(points)
-    }
-  }
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     onSubmit(formData)
@@ -100,7 +75,7 @@ export default function ReservationForm({
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-blue-800">ログインすると入力が自動保存されます</h3>
           <p className="text-xs text-blue-700 mt-1">
-            会員登録済みの方はログインするとお名前や連絡先が自動入力され、ポイントもご利用いただけます。
+            会員登録済みの方はログインするとお名前や連絡先が自動入力されます。
           </p>
           {onRequestLogin && (
             <button
@@ -239,62 +214,6 @@ export default function ReservationForm({
         </div>
       )}
 
-      {/* ポイント使用 */}
-      {isLoggedIn && availablePoints > 0 && (
-        <div className="border rounded-lg p-4 bg-gray-50">
-          <div className="flex items-center justify-between mb-3">
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={usePoints}
-                onChange={(e) => setUsePoints(e.target.checked)}
-                className="rounded"
-              />
-              <span className="font-medium">ポイントを使用する</span>
-            </label>
-            <span className="text-sm text-gray-600">
-              利用可能: {availablePoints.toLocaleString()}pt
-            </span>
-          </div>
-
-          {usePoints && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <input
-                  type="number"
-                  value={pointsToUse}
-                  onChange={(e) => handlePointsChange(e.target.value)}
-                  min="0"
-                  max={maxPoints}
-                  className="w-32 px-3 py-2 border border-gray-300 rounded-md text-right"
-                  placeholder="0"
-                />
-                <span className="text-sm">pt</span>
-                <button
-                  type="button"
-                  onClick={() => handlePointsChange(maxPoints.toString())}
-                  className="text-sm text-primary hover:text-dark-gold"
-                >
-                  全て使用
-                </button>
-              </div>
-
-              <div className="text-sm text-gray-600">
-                <p>サービス料金: ¥{basePrice.toLocaleString()}</p>
-                {maintenancePrice > 0 && (
-                  <p>メンテナンス料金: ¥{maintenancePrice.toLocaleString()}</p>
-                )}
-                <p>小計: ¥{totalPrice.toLocaleString()}</p>
-                <p>ポイント利用: -{parseInt(pointsToUse) || 0}pt</p>
-                <p className="font-medium text-gray-900">
-                  お支払い金額: ¥{(totalPrice - (parseInt(pointsToUse) || 0)).toLocaleString()}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="border-t pt-6">
         <h3 className="font-semibold mb-4">注意事項</h3>
         <ul className="space-y-2 text-sm text-gray-600">
@@ -335,7 +254,7 @@ export default function ReservationForm({
 
       {!isLoggedIn && (
         <div className="text-center p-4 bg-gray-50 rounded-lg">
-          <p className="text-sm text-gray-600 mb-2">会員登録でポイントが貯まります</p>
+          <p className="text-sm text-gray-600 mb-2">会員登録すると予約がよりスムーズになります</p>
           <a href="/register" className="text-primary hover:text-dark-gold text-sm font-medium">
             会員登録はこちら →
           </a>

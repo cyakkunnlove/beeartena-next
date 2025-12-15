@@ -51,7 +51,6 @@ function ReservationContent() {
   const [selectedMaintenanceOptions, setSelectedMaintenanceOptions] = useState<string[]>([])
   const [maintenancePrice, setMaintenancePrice] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [pointsToUse, setPointsToUse] = useState(0)
   const [formData, setFormData] = useState<ReservationFormData>(createInitialFormData)
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
@@ -95,7 +94,6 @@ function ReservationContent() {
         intakeForm: saved.formData?.intakeForm ?? createDefaultIntakeForm(),
         isMonitorSelected: saved.formData?.isMonitorSelected ?? saved.isMonitor ?? false,
       })
-      setPointsToUse(saved.pointsToUse || 0)
       setStep(saved.step || 5)
     },
     [],
@@ -193,7 +191,7 @@ function ReservationContent() {
       try {
         const basePrice = baseServicePrice
         const totalPrice = basePrice + maintenancePrice
-        const finalPrice = totalPrice - pointsToUse
+        const finalPrice = totalPrice
 
         const reservationData = {
           serviceType: selectedPlan.type,
@@ -213,7 +211,6 @@ function ReservationContent() {
           status: 'pending' as const,
           isMonitor: isMonitorPrice,
           finalPrice,
-          pointsUsed: pointsToUse,
           intakeForm: data.intakeForm,
         }
 
@@ -245,7 +242,6 @@ function ReservationContent() {
       baseServicePrice,
       isMonitorPrice,
       maintenancePrice,
-      pointsToUse,
       router,
       selectedDate,
       selectedMaintenanceOptions,
@@ -340,7 +336,6 @@ function ReservationContent() {
           isMonitorSelected: form.isMonitorSelected ?? isMonitorPrice,
         },
         step,
-        pointsToUse,
         isMonitor: isMonitorPrice,
         isReadyToSubmit: options?.isReadyToSubmit ?? false,
       })
@@ -348,7 +343,6 @@ function ReservationContent() {
     [
       isMonitorPrice,
       maintenancePrice,
-      pointsToUse,
       selectedDate,
       selectedMaintenanceOptions,
       selectedPlan,
@@ -432,7 +426,7 @@ function ReservationContent() {
 
   return (
     <>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-light-accent">
         <div className="container mx-auto px-4 py-8">
           <div className="max-w-4xl mx-auto">
             {/* Progress Bar */}
@@ -551,7 +545,6 @@ function ReservationContent() {
                     servicePrice={selectedPlan ? selectedPlan.price : 0}
                     monitorPrice={selectedPlan?.monitorPrice}
                     maintenancePrice={maintenancePrice}
-                    onPointsUsed={setPointsToUse}
                     onRequestLogin={handlePromptLogin}
                     onIntakeChange={handleIntakeChange}
                   />
@@ -580,7 +573,6 @@ function ReservationContent() {
                     maintenanceOptions={selectedMaintenanceOptions}
                     maintenancePrice={maintenancePrice}
                     baseServicePrice={baseServicePrice}
-                    pointsToUse={pointsToUse}
                     onBack={() => setStep(5)}
                     onConfirm={() => {
                       void executeReservation(formData)

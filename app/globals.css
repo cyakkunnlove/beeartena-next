@@ -37,7 +37,11 @@ html {
 
 body {
   color: var(--text-dark);
-  background-color: white;
+  background-color: var(--light-bg);
+  background-image:
+    radial-gradient(900px circle at 15% 10%, rgba(212, 175, 55, 0.12) 0%, rgba(212, 175, 55, 0) 55%),
+    radial-gradient(700px circle at 85% 0%, rgba(230, 210, 133, 0.18) 0%, rgba(230, 210, 133, 0) 50%),
+    linear-gradient(180deg, var(--light-accent) 0%, var(--light-bg) 65%);
 }
 
 /* Custom scrollbar */

@@ -6,12 +6,10 @@ import { useEffect, useState, useCallback } from 'react'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { apiClient } from '@/lib/api/client'
 import { storageService } from '@/lib/storage/storageService'
-import { buildPointsSnapshot } from '@/lib/utils/points'
-import { Points, Reservation } from '@/lib/types'
+import { Reservation } from '@/lib/types'
 
 export default function MypageDashboard() {
   const { user } = useAuth()
-  const [points, setPoints] = useState<Points | null>(null)
   const [reservations, setReservations] = useState<Reservation[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -19,21 +17,6 @@ export default function MypageDashboard() {
     if (!user) return
 
     setLoading(true)
-
-    try {
-      const pointsResponse = await apiClient.getPoints()
-      if (pointsResponse?.warning) {
-        console.warn('[mypage] points API warning:', pointsResponse.warning)
-      }
-      const historyValue = (pointsResponse as Record<string, unknown> | undefined)?.history
-      const history = Array.isArray(historyValue) ? historyValue : undefined
-      const snapshot = buildPointsSnapshot(user.id, pointsResponse?.balance, history)
-      setPoints(snapshot)
-    } catch (error) {
-      console.error('Failed to fetch points from API:', error)
-      const fallbackPoints = storageService.getPoints(user.id)
-      setPoints(fallbackPoints ?? null)
-    }
 
     try {
       const reservationsResponse = await apiClient.getReservations()
@@ -67,19 +50,6 @@ export default function MypageDashboard() {
     .filter((r) => r.status === 'confirmed' && new Date(r.date) >= new Date())
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
 
-  const getTierColor = (tier: string) => {
-    switch (tier) {
-      case 'platinum':
-        return 'text-purple-600 bg-purple-100'
-      case 'gold':
-        return 'text-yellow-600 bg-yellow-100'
-      case 'silver':
-        return 'text-gray-600 bg-gray-200'
-      default:
-        return 'text-orange-600 bg-orange-100'
-    }
-  }
-
   if (loading) {
     return (
       <div className="bg-white rounded-xl shadow-md p-8 text-center">
@@ -93,48 +63,8 @@ export default function MypageDashboard() {
       <div className="bg-white rounded-xl shadow-md p-6">
         <h1 className="text-2xl font-bold mb-4">ようこそ、{user?.name}さん</h1>
         <p className="text-gray-600">
-          マイページへようこそ。ここから予約の確認やポイントの管理ができます。
+          マイページへようこそ。ここから予約の確認やプロフィールの管理ができます。
         </p>
-      </div>
-
-      {/* ポイント情報 */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-semibold mb-4">保有ポイント</h2>
-          <div className="text-3xl font-bold text-primary mb-2">
-            {points?.currentPoints || 0} pt
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-gray-600">会員ランク:</span>
-            <span
-              className={`px-3 py-1 rounded-full text-sm font-semibold ${getTierColor(points?.tier || 'bronze')}`}
-            >
-              {points?.tier?.toUpperCase() || 'BRONZE'}
-            </span>
-          </div>
-          <Link
-            href="/mypage/points"
-            className="text-primary hover:text-dark-gold text-sm mt-4 inline-block"
-          >
-            ポイント履歴を見る →
-          </Link>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-md p-6">
-          <h2 className="text-lg font-semibold mb-4">累計獲得ポイント</h2>
-          <div className="text-3xl font-bold text-secondary mb-2">
-            {points?.lifetimePoints || 0} pt
-          </div>
-          <p className="text-sm text-gray-600">
-            次のランクまで: {getNextTierPoints(points?.lifetimePoints || 0)} pt
-          </p>
-          <div className="w-full bg-gray-200 rounded-full h-2 mt-4">
-            <div
-              className="bg-primary h-2 rounded-full"
-              style={{ width: `${getTierProgress(points?.lifetimePoints || 0)}%` }}
-            />
-          </div>
-        </div>
       </div>
 
       {/* 次回予約 */}
@@ -282,18 +212,4 @@ function normalizeReservation(input: unknown): Reservation {
     finalPrice: record.finalPrice !== undefined ? ensureNumber(record.finalPrice) : undefined,
     pointsUsed: record.pointsUsed !== undefined ? ensureNumber(record.pointsUsed) : undefined,
   }
-}
-
-function getNextTierPoints(lifetimePoints: number): number {
-  if (lifetimePoints < 20000) return 20000 - lifetimePoints
-  if (lifetimePoints < 50000) return 50000 - lifetimePoints
-  if (lifetimePoints < 100000) return 100000 - lifetimePoints
-  return 0
-}
-
-function getTierProgress(lifetimePoints: number): number {
-  if (lifetimePoints < 20000) return (lifetimePoints / 20000) * 100
-  if (lifetimePoints < 50000) return ((lifetimePoints - 20000) / 30000) * 100
-  if (lifetimePoints < 100000) return ((lifetimePoints - 50000) / 50000) * 100
-  return 100
 }

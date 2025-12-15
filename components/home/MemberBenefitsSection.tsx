@@ -3,25 +3,25 @@ import Link from 'next/link'
 export default function MemberBenefitsSection() {
   const benefits = [
     {
-      icon: '🎁',
-      title: '5%ポイント還元',
-      description: '施術料金の5%をポイント還元。次回の施術でご利用いただけます。',
+      icon: '📱',
+      title: '予約をスムーズに',
+      description: 'ログインするとお名前・連絡先の入力がスムーズになります。',
       highlight: true,
     },
     {
-      icon: '📱',
-      title: '予約履歴管理',
-      description: '過去の施術履歴をいつでも確認。次回予約の参考に。',
-    },
-    {
       icon: '🎂',
-      title: '誕生日特典',
-      description: 'お誕生日月に特別クーポンをプレゼント。',
+      title: '予約履歴の確認',
+      description: '過去の予約をいつでも確認できます。',
     },
     {
-      icon: '⭐',
-      title: '会員ランク制度',
-      description: '利用回数に応じてランクアップ。上位ランクほどお得な特典が。',
+      icon: '📝',
+      title: 'プロフィール管理',
+      description: '会員情報の更新や、必要情報の確認ができます。',
+    },
+    {
+      icon: '💬',
+      title: 'LINEで相談',
+      description: '不安なことは公式LINEから気軽にご相談できます。',
     },
   ]
 
@@ -30,22 +30,8 @@ export default function MemberBenefitsSection() {
       <div className="container mx-auto px-4">
         <h2 className="section-title">会員特典</h2>
         <p className="section-subtitle">
-          <span className="text-2xl font-bold text-primary">無料会員登録</span>で、お得な特典が盛りだくさん
+          <span className="text-2xl font-bold text-primary">会員登録</span>で、予約がより便利になります
         </p>
-
-        {/* ポイント還元の強調バナー */}
-        <div className="max-w-3xl mx-auto mb-12 bg-gradient-to-r from-primary to-dark-gold text-white rounded-2xl p-8 shadow-xl">
-          <div className="text-center">
-            <div className="text-5xl mb-4">🎁</div>
-            <h3 className="text-3xl font-bold mb-4">会員登録で5%ポイント還元</h3>
-            <p className="text-lg mb-2">
-              施術料金の<span className="text-2xl font-bold mx-1">5%</span>が必ずポイントバック！
-            </p>
-            <p className="text-sm opacity-90">
-              例：¥22,000の施術で1,100ポイント獲得 → 次回¥1,100割引
-            </p>
-          </div>
-        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
           {benefits.map((benefit, index) => (

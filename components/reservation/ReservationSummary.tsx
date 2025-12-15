@@ -17,7 +17,6 @@ interface ReservationSummaryProps {
   maintenanceOptions: string[]
   maintenancePrice: number
   baseServicePrice: number
-  pointsToUse: number
   onBack: () => void
   onConfirm: () => void
   isSubmitting?: boolean
@@ -49,7 +48,6 @@ export default function ReservationSummary({
   maintenanceOptions,
   maintenancePrice,
   baseServicePrice,
-  pointsToUse,
   onBack,
   onConfirm,
   isSubmitting,
@@ -60,7 +58,7 @@ export default function ReservationSummary({
 
   const monitorNotes = isMonitorSelected ? 'モニター適用（写真撮影にご協力をお願いします）' : '通常価格'
   const totalPrice = baseServicePrice + maintenancePrice
-  const finalPrice = Math.max(totalPrice - (pointsToUse || 0), 0)
+  const finalPrice = totalPrice
   const isFullMaintenance = maintenanceOptions.length === MAINTENANCE_OPTIONS.length && maintenancePrice === FULL_SET_PRICE
 
   return (
@@ -123,12 +121,6 @@ export default function ReservationSummary({
                 <div className="flex justify-between">
                   <span>メンテナンスメニュー</span>
                   <span>追加なし</span>
-                </div>
-              )}
-              {pointsToUse > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>ポイント利用</span>
-                  <span>-{formatYen(pointsToUse)}</span>
                 </div>
               )}
               <div className="flex justify-between pt-2 mt-2 border-t border-dashed font-semibold text-base text-gray-900">

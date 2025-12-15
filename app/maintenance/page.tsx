@@ -33,7 +33,7 @@ export default function MaintenancePage() {
   const savings = regularTotal - fullSetPrice
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-light-accent">
       <div className="container mx-auto px-4 py-12">
         <motion.div
           initial={{ opacity: 0, y: 20 }}

@@ -113,7 +113,7 @@ function CompleteProfileContent() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-light-accent flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
           プロフィールを完成させましょう
@@ -206,9 +206,7 @@ function CompleteProfileContent() {
                 onChange={handleDateChange}
                 required={false}
               />
-              <p className="mt-1 text-xs text-gray-500">
-                誕生日月にポイントプレゼントがあります
-              </p>
+              <p className="mt-1 text-xs text-gray-500">（任意）ご本人確認に使用する場合があります</p>
             </div>
 
             {/* ボタン */}

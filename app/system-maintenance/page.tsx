@@ -1,6 +1,6 @@
 export default function SystemMaintenancePage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-light-accent px-4">
       <div className="max-w-lg rounded-lg bg-white p-8 text-center shadow-lg">
         <div className="mb-6">
           <svg

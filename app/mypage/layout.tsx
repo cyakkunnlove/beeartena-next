@@ -32,12 +32,11 @@ export default function MypageLayout({ children }: { children: React.ReactNode }
   const menuItems = [
     { href: '/mypage', label: 'ダッシュボード', icon: '🏠' },
     { href: '/mypage/reservations', label: '予約履歴', icon: '📅' },
-    { href: '/mypage/points', label: 'ポイント', icon: '⭐' },
     { href: '/mypage/profile', label: 'プロフィール', icon: '👤' },
   ]
 
   return (
-    <div className="min-h-[80vh] bg-gray-50 py-8">
+    <div className="min-h-[80vh] bg-light-accent py-8">
       <div className="container mx-auto px-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* サイドバー */}

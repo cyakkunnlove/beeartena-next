@@ -94,7 +94,7 @@ const additionalServices = [
 export default function PricingPage() {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-light-accent">
         {/* ヒーローセクション */}
         <section className="bg-gradient-to-br from-primary/10 to-white py-16">
           <div className="container mx-auto px-4">
@@ -231,7 +231,7 @@ export default function PricingPage() {
         </section>
 
         {/* モニター条件 */}
-        <section className="py-16 bg-gray-50">
+        <section className="py-16 bg-light-accent">
           <div className="container mx-auto px-4">
             <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
               <h2 className="text-2xl font-bold mb-6">モニター価格について</h2>

@@ -252,14 +252,6 @@ export default function ReservationsPage() {
                   </div>
                 )}
 
-                {reservation.status === 'completed' && (
-                  <div className="mt-3 pt-3 border-t">
-                    <p className="text-sm text-green-600">
-                      ✨ この施術で {Math.floor(reservation.price * 0.05)} ポイント獲得しました
-                    </p>
-                  </div>
-                )}
-
                 {reservation.status === 'confirmed' && new Date(reservation.date) > new Date() && (
                   <div className="mt-3 pt-3 border-t">
                     <p className="text-xs text-gray-500">

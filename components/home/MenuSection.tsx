@@ -37,7 +37,7 @@ const menuItems = [
 
 export default function MenuSection() {
   return (
-    <section id="menu" className="py-20 bg-gray-50">
+    <section id="menu" className="py-20 bg-light-accent">
       <div className="container mx-auto px-4">
         <h2 className="section-title">メニュー & 料金</h2>
         <p className="section-subtitle">2025年1月1日〜 新料金</p>

@@ -6,7 +6,7 @@ import PageTransition from '@/components/layout/PageTransition'
 export default function PrivacyPage() {
   return (
     <PageTransition>
-      <div className="min-h-screen bg-gray-50 py-12">
+      <div className="min-h-screen bg-light-accent py-12">
         <div className="container mx-auto px-4">
           <div className="max-w-4xl mx-auto bg-white rounded-lg shadow-md p-8">
             <h1 className="text-3xl font-bold mb-8 text-center">プライバシーポリシー</h1>
@@ -45,7 +45,6 @@ export default function PrivacyPage() {
                 <li className="mb-2">施術サービスの提供のため</li>
                 <li className="mb-2">施術の安全管理および衛生管理のため</li>
                 <li className="mb-2">お客様への連絡・通知のため</li>
-                <li className="mb-2">ポイントサービスの管理のため</li>
                 <li className="mb-2">施術記録の管理・保管のため</li>
                 <li className="mb-2">アフターケアのご案内のため</li>
                 <li className="mb-2">サービスの品質向上・新サービス開発のため</li>
@@ -115,7 +114,7 @@ export default function PrivacyPage() {
               <div className="mt-12 pt-8 border-t border-gray-300">
                 <p className="text-right text-gray-600">
                   制定日：2024年1月1日<br />
-                  最終改定日：2025年10月6日
+                  最終改定日：2025年12月15日
                 </p>
               </div>
             </div>

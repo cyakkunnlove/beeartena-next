@@ -75,7 +75,7 @@ export default function HeroSection() {
                   className="btn btn-outline w-full sm:w-auto text-center text-lg px-8 py-4 shadow-lg border-white text-white hover:bg-white hover:text-primary"
                   aria-label="会員登録ページへ移動"
                 >
-                  会員登録（5%ポイント還元）
+                  会員登録 / ログイン
                 </Link>
               </motion.div>
             </div>

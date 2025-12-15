@@ -53,7 +53,6 @@ export default function AccountDeleteModal({
           </p>
           <ul className="list-disc list-inside text-sm text-red-800 mt-2">
             <li>予約履歴</li>
-            <li>ポイント残高</li>
             <li>プロフィール情報</li>
           </ul>
         </div>

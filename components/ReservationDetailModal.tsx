@@ -64,7 +64,6 @@ export default function ReservationDetailModal({
     }
   }
 
-  // 最終価格を計算（ポイント使用がある場合）
   const finalPrice = reservation.finalPrice || reservation.price
 
   return (
@@ -168,13 +167,6 @@ export default function ReservationDetailModal({
                 </div>
               )}
 
-              {reservation.pointsUsed && reservation.pointsUsed > 0 && (
-                <div className="flex justify-between text-red-600">
-                  <span>ポイント利用</span>
-                  <span>-¥{reservation.pointsUsed.toLocaleString()}</span>
-                </div>
-              )}
-
               <div className="border-t pt-2 flex justify-between text-lg font-bold">
                 <span>お支払い金額</span>
                 <span className="text-primary">¥{finalPrice.toLocaleString()}</span>
@@ -212,15 +204,6 @@ export default function ReservationDetailModal({
             <div className="bg-yellow-50 rounded-lg p-4">
               <h3 className="font-semibold text-lg mb-2">備考・ご要望</h3>
               <p className="text-gray-700 whitespace-pre-wrap">{reservation.notes}</p>
-            </div>
-          )}
-
-          {/* ポイント獲得情報 */}
-          {reservation.status === 'completed' && (
-            <div className="bg-green-50 rounded-lg p-4 text-center">
-              <p className="text-green-700">
-                ✨ この施術で <span className="font-bold text-lg">{Math.floor(reservation.price * 0.05)}</span> ポイント獲得しました
-              </p>
             </div>
           )}
 
