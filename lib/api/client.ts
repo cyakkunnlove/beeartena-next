@@ -1318,6 +1318,9 @@ class ApiClient {
         channelSecretConfigured: boolean
         accessTokenConfigured: boolean
         firebaseAdminConfigured: boolean
+        storageBucketConfigured?: boolean
+        storageBucket?: string
+        storageBucketError?: string | null
         receivingEnabled: boolean
         sendingEnabled: boolean
       }

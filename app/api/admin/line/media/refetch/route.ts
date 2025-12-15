@@ -43,10 +43,21 @@ const inferExtension = (contentType: string, messageType: string): string => {
   return 'bin'
 }
 
+const getErrorCode = (error: unknown): string | null => {
+  if (!error || typeof error !== 'object') return null
+  const maybe = error as { code?: unknown; status?: unknown }
+  if (typeof maybe.code === 'string' && maybe.code) return maybe.code
+  if (typeof maybe.status === 'number') return String(maybe.status)
+  return null
+}
+
 const fetchLineMessageContent = async (
   messageId: string,
   accessToken: string,
-): Promise<{ buffer: Buffer; contentType: string } | null> => {
+): Promise<
+  | { ok: true; buffer: Buffer; contentType: string }
+  | { ok: false; status: number; body?: string }
+> => {
   try {
     const response = await fetch(
       `https://api-data.line.me/v2/bot/message/${encodeURIComponent(messageId)}/content`,
@@ -58,16 +69,17 @@ const fetchLineMessageContent = async (
     )
 
     if (!response.ok) {
-      logger.warn('LINE message content fetch failed (refetch)', { messageId, status: response.status })
-      return null
+      const text = await response.text().catch(() => '')
+      logger.warn('LINE message content fetch failed (refetch)', { messageId, status: response.status, body: text })
+      return { ok: false, status: response.status, body: text }
     }
 
     const contentType = (response.headers.get('content-type') ?? 'application/octet-stream').trim()
     const arrayBuffer = await response.arrayBuffer()
-    return { buffer: Buffer.from(arrayBuffer), contentType }
+    return { ok: true, buffer: Buffer.from(arrayBuffer), contentType }
   } catch (error) {
     logger.warn('LINE message content fetch error (refetch)', { messageId, error: getErrorMessage(error) })
-    return null
+    return { ok: false, status: 0, body: getErrorMessage(error) }
   }
 }
 
@@ -142,9 +154,17 @@ export async function POST(request: NextRequest) {
   }
 
   const content = await fetchLineMessageContent(messageId, accessToken)
-  if (!content) {
+  if (!content.ok) {
+    const suffix = content.status ? ` (status=${content.status})` : ''
     return setCorsHeaders(
-      NextResponse.json({ success: false, error: 'Failed to fetch media content from LINE.' }, { status: 502 }),
+      NextResponse.json(
+        {
+          success: false,
+          error: `Failed to fetch media content from LINE.${suffix}`,
+          details: typeof content.body === 'string' && content.body.trim().length > 0 ? content.body.slice(0, 300) : undefined,
+        },
+        { status: 502 },
+      ),
     )
   }
 
@@ -180,12 +200,18 @@ export async function POST(request: NextRequest) {
 
     return setCorsHeaders(NextResponse.json({ success: true }))
   } catch (error) {
+    const code = getErrorCode(error)
     return setCorsHeaders(
       NextResponse.json(
         {
           success: false,
-          error: `Failed to upload media: ${getErrorMessage(error)}`,
+          error: `Failed to upload media: ${getErrorMessage(error)}${code ? ` (code=${code})` : ''}`,
           details: getErrorMessage(error),
+          errorCode: code,
+          context: {
+            storageBucket,
+            mediaPath,
+          },
         },
         { status: 500 },
       ),

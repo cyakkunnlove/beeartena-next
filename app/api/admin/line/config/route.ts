@@ -26,14 +26,17 @@ export async function GET(request: NextRequest) {
   const storageBucketRaw = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
   const storageBucket = normalizeBucketName(storageBucketRaw)
   let storageBucketConfigured = false
+  let storageBucketError: string | null = null
   try {
     const storage = getAdminStorage()
     if (storage && storageBucket) {
-      storage.bucket(storageBucket)
+      const bucket = storage.bucket(storageBucket)
+      await bucket.getMetadata()
       storageBucketConfigured = true
     }
-  } catch {
+  } catch (error) {
     storageBucketConfigured = false
+    storageBucketError = error instanceof Error ? error.message : 'Storage bucket check failed'
   }
 
   const url = new URL(request.url)
@@ -52,6 +55,7 @@ export async function GET(request: NextRequest) {
         firebaseAdminConfigured,
         storageBucketConfigured,
         storageBucket,
+        storageBucketError,
         receivingEnabled: channelSecretConfigured && firebaseAdminConfigured,
         sendingEnabled: accessTokenConfigured && firebaseAdminConfigured,
       },

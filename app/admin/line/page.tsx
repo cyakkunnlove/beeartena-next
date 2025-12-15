@@ -14,6 +14,7 @@ type LineConfigState = {
   firebaseAdminConfigured: boolean
   storageBucketConfigured?: boolean
   storageBucket?: string
+  storageBucketError?: string | null
   receivingEnabled: boolean
   sendingEnabled: boolean
 }
@@ -674,6 +675,11 @@ export default function AdminLinePage() {
                 <div className="mt-2 text-[11px] text-gray-500">
                   Storage Bucket: <code className="bg-white border rounded px-1 py-0.5">{lineConfig.storageBucket}</code>
                 </div>
+              )}
+              {lineConfig?.storageBucketError && (
+                <p className="mt-2 text-[11px] text-red-600">
+                  Storage確認エラー: {lineConfig.storageBucketError}
+                </p>
               )}
               {webhookUrl && (
                 <div className="mt-2 flex items-center gap-2">
