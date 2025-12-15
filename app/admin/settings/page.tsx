@@ -164,6 +164,39 @@ export default function AdminSettingsPage() {
     })
   }
 
+  const handleExtendCloseToFitDuration = (dayIndex: number) => {
+    const hours = settings.businessHours[dayIndex]
+    if (!hours) {
+      notify('error', '営業時間データが見つかりません。')
+      return
+    }
+
+    const closeMin = toMinutes(hours.close)
+    if (closeMin === null) {
+      notify('error', '終了時間（close）の形式が正しくありません。')
+      return
+    }
+
+    const slotDuration = settings.slotDuration
+    if (!Number.isFinite(slotDuration) || slotDuration <= 0) {
+      notify('error', '予約枠（所要時間）が不正です。')
+      return
+    }
+
+    const extendedCloseMin = closeMin + slotDuration
+    if (extendedCloseMin >= 24 * 60) {
+      notify(
+        'error',
+        `所要時間（${slotDuration}分）を足すと日付をまたぐため、自動補正できません。終了時間を手動で調整してください。`,
+      )
+      return
+    }
+
+    const fixedClose = toTime(extendedCloseMin)
+    handleBusinessHoursChange(dayIndex, 'close', fixedClose)
+    notify('success', `終了時間を ${fixedClose} に補正しました（close=最終受付+${slotDuration}分）。`)
+  }
+
   const handleAddDateOverride = () => {
     if (!newOverrideDate) {
       return
@@ -559,6 +592,29 @@ export default function AdminSettingsPage() {
                       className="rounded border px-2 py-1"
                       disabled={!hours.isOpen}
                     />
+                    {(() => {
+                      if (!hours.isOpen) return null
+                      const openMin = toMinutes(hours.open)
+                      const closeMin = toMinutes(hours.close)
+                      if (openMin === null || closeMin === null) return null
+                      const lastStart = closeMin - settings.slotDuration
+                      if (lastStart >= openMin) return null
+                      return (
+                        <div className="mt-2 space-y-1">
+                          <p className="text-xs text-red-600">
+                            所要時間（{settings.slotDuration}分）に対して終了時間が短い可能性があります（最終受付運用なら
+                            close を「施術終了」まで延長してください）。
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => handleExtendCloseToFitDuration(index)}
+                            className="rounded-md bg-red-50 px-3 py-1 text-xs font-semibold text-red-700 hover:bg-red-100"
+                          >
+                            施術終了に補正（close=最終受付+所要時間）
+                          </button>
+                        </div>
+                      )
+                    })()}
                   </td>
                   <td className="px-4 py-2 text-sm" data-label="最大予約数/日">
                     <input
@@ -648,13 +704,52 @@ export default function AdminSettingsPage() {
                           const intervalMinutes = hours.allowMultipleSlots
                             ? (hours.slotInterval ?? 30)
                             : settings.slotDuration
+                          const openMin = toMinutes(hours.open)
+                          const closeMin = toMinutes(hours.close)
+                          if (openMin === null || closeMin === null) {
+                            notify('error', '開始/終了時間の形式が正しくありません。')
+                            return
+                          }
+
+                          const slotDuration = settings.slotDuration
+                          const lastStart = closeMin - slotDuration
+                          let effectiveClose = hours.close
+
+                          if (lastStart < openMin) {
+                            const ok = window.confirm(
+                              `終了時間（close）が所要時間（${slotDuration}分）より短いため枠を生成できません。\n` +
+                                `最終受付運用の場合は、close を「施術終了」まで自動補正（close=最終受付+${slotDuration}分）してから枠を生成します。\n` +
+                                `このまま補正して続行しますか？`,
+                            )
+                            if (!ok) return
+
+                            const extendedCloseMin = closeMin + slotDuration
+                            if (extendedCloseMin >= 24 * 60) {
+                              notify(
+                                'error',
+                                `所要時間（${slotDuration}分）を足すと日付をまたぐため、自動補正できません。終了時間を手動で調整してください。`,
+                              )
+                              return
+                            }
+                            effectiveClose = toTime(extendedCloseMin)
+                            handleBusinessHoursChange(index, 'close', effectiveClose)
+                          }
+
                           const slots = buildStartSlots(
                             hours.open,
-                            hours.close,
+                            effectiveClose,
                             settings.slotDuration,
                             intervalMinutes,
                           )
+                          if (slots.length === 0) {
+                            notify(
+                              'error',
+                              '開始可能時刻を自動生成できませんでした。終了時間（close）と所要時間、枠間隔を見直してください。',
+                            )
+                            return
+                          }
                           handleBusinessHoursChange(index, 'allowedSlots', slots)
+                          notify('success', `開始可能時刻を ${slots.length} 件生成しました。`)
                         }}
                         className="rounded-md bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-800 hover:bg-gray-200 disabled:opacity-60"
                       >
