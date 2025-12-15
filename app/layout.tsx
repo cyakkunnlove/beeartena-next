@@ -59,7 +59,7 @@ const disableServiceWorkerScript = `(() => {
 })();`
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://beeartena.vercel.app'),
+  metadataBase: new URL('https://www.beeartena.com'),
   title: 'BEE ART ENA - 理容師による安心のタトゥーメイクサロン',
   description:
     '理容師が行う1日1名限定のプレミアムタトゥーメイク。半年以内リタッチ15,000円の安心プラン。眉・頭皮の悩みを解決します。',
@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     title: 'BEE ART ENA - 理容師による安心のタトゥーメイクサロン',
     description: '理容師が行う1日1名限定のプレミアムタトゥーメイク',
     images: ['/images/topimageafter.png'],
-    url: 'https://beeartena.vercel.app',
+    url: 'https://www.beeartena.com',
     siteName: 'BEE ART ENA',
     locale: 'ja_JP',
     type: 'website',

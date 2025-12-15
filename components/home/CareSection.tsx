@@ -23,7 +23,7 @@ export default function CareSection() {
   ]
 
   return (
-    <section id="care" className="py-20 bg-white">
+    <section id="care" className="scroll-mt-24 py-20 bg-white">
       <div className="container mx-auto px-4">
         <h2 className="section-title">施術後ケアガイド</h2>
 

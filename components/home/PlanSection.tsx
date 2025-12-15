@@ -1,6 +1,6 @@
 export default function PlanSection() {
   return (
-    <section id="plan" className="py-20 bg-gradient-to-br from-light-accent to-white">
+    <section id="plan" className="scroll-mt-24 py-20 bg-gradient-to-br from-light-accent to-white">
       <div className="container mx-auto px-4">
         <h2 className="section-title">安心プラン</h2>
 

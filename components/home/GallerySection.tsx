@@ -57,7 +57,7 @@ export default function GallerySection() {
   if (!mounted) return null
 
   return (
-    <section id="gallery" className="py-20 bg-white">
+    <section id="gallery" className="scroll-mt-24 py-20 bg-white">
       <div className="container mx-auto px-4">
         <SlideTransition direction="up">
           <h2 className="section-title">症例ギャラリー</h2>

@@ -2,7 +2,7 @@ import Image from 'next/image'
 
 export default function ProfileSection() {
   return (
-    <section id="profile" className="py-20 bg-gray-50">
+    <section id="profile" className="scroll-mt-24 py-20 bg-gray-50">
       <div className="container mx-auto px-4">
         <h2 className="section-title">プロフィール</h2>
 
