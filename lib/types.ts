@@ -73,7 +73,6 @@ export interface Customer extends User {
   points?: number
   lifetimePoints?: number
   totalSpent?: number
-  lifetimePoints?: number
 }
 
 // Points types
