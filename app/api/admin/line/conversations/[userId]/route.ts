@@ -34,6 +34,7 @@ type RawMessage = {
   mediaContentType?: unknown
   mediaSize?: unknown
   mediaFileName?: unknown
+  mediaToken?: unknown
   timestamp?: unknown
   createdAt?: unknown
 }
@@ -115,6 +116,7 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
   const mediaContentType = typeof data.mediaContentType === 'string' ? data.mediaContentType : undefined
   const mediaSize = toNumber(data.mediaSize) ?? undefined
   const mediaFileName = typeof data.mediaFileName === 'string' ? data.mediaFileName : undefined
+  const mediaToken = typeof data.mediaToken === 'string' ? data.mediaToken : undefined
 
   return {
     id: doc.id,
@@ -126,6 +128,7 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
     ...(mediaContentType ? { mediaContentType } : {}),
     ...(typeof mediaSize === 'number' ? { mediaSize } : {}),
     ...(mediaFileName ? { mediaFileName } : {}),
+    ...(mediaToken ? { mediaToken } : {}),
     timestamp: new Date(timestamp).toISOString(),
   }
 }
@@ -186,13 +189,26 @@ export async function GET(
     const nextCursor = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1].id : null
     const storage = getAdminStorage()
     const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
-    const bucket = storage ? (storageBucket ? storage.bucket(storageBucket) : storage.bucket()) : null
+    const normalizedBucket = storageBucket
+      .replace(/^gs:\/\//, '')
+      .replace(/^https?:\/\/storage\.googleapis\.com\//, '')
+      .split('/')[0]
+      ?.trim()
+    const bucket = storage ? (normalizedBucket ? storage.bucket(normalizedBucket) : storage.bucket()) : null
+
+    const makeDownloadUrl = (bucketName: string, objectPath: string, token: string) => {
+      const encodedPath = encodeURIComponent(objectPath)
+      return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${token}`
+    }
 
     const messages = await Promise.all(
       rawMessages.map(async (m) => {
-        const { mediaPath, ...rest } = m as typeof m & { mediaPath?: string }
+        const { mediaPath, mediaToken, ...rest } = m as typeof m & { mediaPath?: string; mediaToken?: string }
         if (!mediaPath || !bucket) {
           return rest
+        }
+        if (mediaToken && normalizedBucket) {
+          return { ...rest, mediaUrl: makeDownloadUrl(normalizedBucket, mediaPath, mediaToken) }
         }
         try {
           const [signedUrl] = await bucket.file(mediaPath).getSignedUrl({

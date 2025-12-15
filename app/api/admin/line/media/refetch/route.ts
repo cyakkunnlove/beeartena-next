@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 
 import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
 import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin'
@@ -13,6 +14,17 @@ type Payload = {
 }
 
 const toSafeString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
+
+const normalizeBucketName = (raw: string) => {
+  let value = raw.trim()
+  if (!value) return ''
+  value = value.replace(/^gs:\/\//, '')
+  value = value.replace(/^https?:\/\/storage\.googleapis\.com\//, '')
+  if (value.includes('/')) {
+    value = value.split('/')[0] ?? ''
+  }
+  return value.trim()
+}
 
 const inferExtension = (contentType: string, messageType: string): string => {
   const normalized = contentType.toLowerCase()
@@ -78,7 +90,9 @@ export async function POST(request: NextRequest) {
   }
 
   const storage = getAdminStorage()
-  const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
+  const storageBucket = normalizeBucketName(
+    (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim(),
+  )
   const bucket = storage ? (storageBucket ? storage.bucket(storageBucket) : storage.bucket()) : null
   if (!bucket) {
     return setCorsHeaders(
@@ -138,12 +152,16 @@ export async function POST(request: NextRequest) {
   const mediaFileName = `${messageId}.${ext}`
   const safeUser = userId.replaceAll(/[^a-zA-Z0-9_-]/g, '_')
   const mediaPath = `line-media/${safeUser}/${mediaFileName}`
+  const mediaToken = randomUUID()
 
   try {
     await bucket.file(mediaPath).save(content.buffer, {
       resumable: false,
       contentType: content.contentType,
       metadata: {
+        metadata: {
+          firebaseStorageDownloadTokens: mediaToken,
+        },
         cacheControl: 'private, max-age=3600',
       },
     })
@@ -154,6 +172,7 @@ export async function POST(request: NextRequest) {
         mediaContentType: content.contentType,
         mediaSize: content.buffer.length,
         mediaFileName,
+        mediaToken,
         mediaUpdatedAt: Date.now(),
       },
       { merge: true },
@@ -162,8 +181,14 @@ export async function POST(request: NextRequest) {
     return setCorsHeaders(NextResponse.json({ success: true }))
   } catch (error) {
     return setCorsHeaders(
-      NextResponse.json({ success: false, error: 'Failed to upload media.', details: getErrorMessage(error) }, { status: 500 }),
+      NextResponse.json(
+        {
+          success: false,
+          error: `Failed to upload media: ${getErrorMessage(error)}`,
+          details: getErrorMessage(error),
+        },
+        { status: 500 },
+      ),
     )
   }
 }
-

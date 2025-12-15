@@ -10,11 +10,24 @@ export const runtime = 'nodejs'
 
 const toSafeString = (value: unknown): string => (typeof value === 'string' ? value.trim() : '')
 
+const normalizeBucketName = (raw: string) => {
+  let value = raw.trim()
+  if (!value) return ''
+  value = value.replace(/^gs:\/\//, '')
+  value = value.replace(/^https?:\/\/storage\.googleapis\.com\//, '')
+  if (value.includes('/')) {
+    value = value.split('/')[0] ?? ''
+  }
+  return value.trim()
+}
+
 const getStorageBucket = () => {
   const storage = getAdminStorage()
   if (!storage) return null
 
-  const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
+  const storageBucket = normalizeBucketName(
+    (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim(),
+  )
   try {
     return storageBucket ? storage.bucket(storageBucket) : storage.bucket()
   } catch {
@@ -69,7 +82,9 @@ export async function POST(request: NextRequest) {
   }
 
   const bucket = getStorageBucket()
-  const bucketName = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
+  const bucketName = normalizeBucketName(
+    (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim(),
+  )
   if (!bucket || !bucketName) {
     return setCorsHeaders(
       NextResponse.json(

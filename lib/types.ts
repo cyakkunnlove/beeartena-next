@@ -215,6 +215,7 @@ export interface LineMessage {
   mediaContentType?: string
   mediaSize?: number
   mediaFileName?: string
+  mediaToken?: string
   timestamp: string
   raw?: Record<string, unknown>
 }

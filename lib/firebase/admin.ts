@@ -7,6 +7,17 @@ type ServiceAccount = admin.ServiceAccount & { project_id?: string }
 let adminApp: admin.app.App | null = admin.apps.length ? admin.app() : null
 
 if (!adminApp) {
+  const normalizeBucketName = (raw: string) => {
+    let value = raw.trim()
+    if (!value) return ''
+    value = value.replace(/^gs:\/\//, '')
+    value = value.replace(/^https?:\/\/storage\.googleapis\.com\//, '')
+    if (value.includes('/')) {
+      value = value.split('/')[0] ?? ''
+    }
+    return value.trim()
+  }
+
   const envProjectId = (process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '').trim()
   const envClientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.trim()
   const envPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n').trim()
@@ -14,7 +25,8 @@ if (!adminApp) {
     process.env.FIREBASE_ADMIN_STORAGE_BUCKET ||
     process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
     ''
-  ).trim()
+  )
+  const normalizedStorageBucket = normalizeBucketName(envStorageBucket)
 
   let serviceAccount: ServiceAccount | null = null
 
@@ -41,7 +53,7 @@ if (!adminApp) {
       adminApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: serviceAccount.projectId,
-        ...(envStorageBucket ? { storageBucket: envStorageBucket } : {}),
+        ...(normalizedStorageBucket ? { storageBucket: normalizedStorageBucket } : {}),
       })
     } else if (envProjectId && envClientEmail && envPrivateKey) {
       adminApp = admin.initializeApp({
@@ -51,10 +63,13 @@ if (!adminApp) {
           privateKey: envPrivateKey,
         }),
         projectId: envProjectId,
-        ...(envStorageBucket ? { storageBucket: envStorageBucket } : {}),
+        ...(normalizedStorageBucket ? { storageBucket: normalizedStorageBucket } : {}),
       })
     } else if (envProjectId) {
-      adminApp = admin.initializeApp({ projectId: envProjectId, ...(envStorageBucket ? { storageBucket: envStorageBucket } : {}) })
+      adminApp = admin.initializeApp({
+        projectId: envProjectId,
+        ...(normalizedStorageBucket ? { storageBucket: normalizedStorageBucket } : {}),
+      })
       logger.warn('Firebase admin initialised without explicit credentials; ensure ADC is configured for production use')
     } else {
       logger.warn('Firebase admin credentials not provided; admin features will be disabled')

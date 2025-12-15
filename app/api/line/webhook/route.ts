@@ -1,4 +1,4 @@
-import { createHmac } from 'crypto'
+import { createHmac, randomUUID } from 'crypto'
 
 import { NextRequest, NextResponse } from 'next/server'
 
@@ -106,28 +106,45 @@ const inferExtension = (contentType: string, messageType: string): string => {
   return 'bin'
 }
 
+const normalizeBucketName = (raw: string) => {
+  let value = raw.trim()
+  if (!value) return ''
+  value = value.replace(/^gs:\/\//, '')
+  value = value.replace(/^https?:\/\/storage\.googleapis\.com\//, '')
+  if (value.includes('/')) {
+    value = value.split('/')[0] ?? ''
+  }
+  return value.trim()
+}
+
 const uploadLineMedia = async (params: {
   userId: string
   messageId: string
   messageType: string
   buffer: Buffer
   contentType: string
-}): Promise<{ mediaPath: string; mediaContentType: string; mediaSize: number; mediaFileName: string } | null> => {
+}): Promise<{ mediaPath: string; mediaContentType: string; mediaSize: number; mediaFileName: string; mediaToken: string } | null> => {
   const storage = getAdminStorage()
   if (!storage) return null
 
-  const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
+  const storageBucket = normalizeBucketName(
+    (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim(),
+  )
   const bucket = storageBucket ? storage.bucket(storageBucket) : storage.bucket()
 
   const ext = inferExtension(params.contentType, params.messageType)
   const mediaFileName = `${params.messageId}.${ext}`
   const mediaPath = `line-media/${params.userId}/${mediaFileName}`
+  const mediaToken = randomUUID()
 
   try {
     await bucket.file(mediaPath).save(params.buffer, {
       resumable: false,
       contentType: params.contentType,
       metadata: {
+        metadata: {
+          firebaseStorageDownloadTokens: mediaToken,
+        },
         cacheControl: 'private, max-age=3600',
       },
     })
@@ -137,6 +154,7 @@ const uploadLineMedia = async (params: {
       mediaContentType: params.contentType,
       mediaSize: params.buffer.length,
       mediaFileName,
+      mediaToken,
     }
   } catch (error) {
     logger.error('LINE media upload failed', { mediaPath, error: getErrorMessage(error) })
