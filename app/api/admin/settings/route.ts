@@ -61,18 +61,21 @@ async function saveSettings(request: NextRequest) {
     }
 
     const body = (await request.json()) as Record<string, unknown>
+    const resetToDefault = body.resetToDefault === true
 
     const docRef = db.collection(SETTINGS_COLLECTION).doc(SETTINGS_DOC_ID)
     const snap = await docRef.get()
     const current = snap.exists ? snap.data() ?? {} : {}
 
-    let nextSettings = {
-      ...current,
-      ...body,
-    }
+    let nextSettings = resetToDefault
+      ? normalizeSettings(null)
+      : {
+          ...current,
+          ...body,
+        }
 
     // blockedDate + block フラグでの追加/削除（部分更新）に対応
-    if (typeof body.blockedDate === 'string' && typeof body.block === 'boolean') {
+    if (!resetToDefault && typeof body.blockedDate === 'string' && typeof body.block === 'boolean') {
       const blockedDates: string[] = Array.isArray(current.blockedDates)
         ? [...current.blockedDates]
         : []
@@ -92,6 +95,19 @@ async function saveSettings(request: NextRequest) {
       // 元の一時フィールドは保存しない
       delete (nextSettings as any).blockedDate
       delete (nextSettings as any).block
+    }
+
+    // 管理用アクション（保存はしない）
+    if (body.clearBlockedDates === true) {
+      nextSettings.blockedDates = []
+      delete (nextSettings as any).clearBlockedDates
+    }
+    if (body.clearDateOverrides === true) {
+      nextSettings.dateOverrides = {}
+      delete (nextSettings as any).clearDateOverrides
+    }
+    if (body.resetToDefault === true) {
+      delete (nextSettings as any).resetToDefault
     }
 
     const beforeNormalized = normalizeSettings(current as any)
@@ -119,7 +135,7 @@ async function saveSettings(request: NextRequest) {
         actorRole: authUser.role,
         method: request.method,
         path: request.nextUrl.pathname,
-        action: 'settings.update',
+        action: resetToDefault ? 'settings.reset' : 'settings.update',
         resourceType: SETTINGS_COLLECTION,
         resourceId: SETTINGS_DOC_ID,
         changes,

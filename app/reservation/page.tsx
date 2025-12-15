@@ -496,7 +496,11 @@ function ReservationContent() {
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -20 }}
                   >
-                    <Calendar onSelect={handleDateSelect} selected={selectedDate} />
+                    <Calendar
+                      onSelect={handleDateSelect}
+                      selected={selectedDate}
+                      durationMinutes={selectedPlan?.duration}
+                    />
                   </motion.div>
                 )}
 
@@ -512,6 +516,7 @@ function ReservationContent() {
                       date={selectedDate}
                       onSelect={handleTimeSelect}
                       selected={selectedTime}
+                      durationMinutes={selectedPlan?.duration}
                     />
                   </motion.div>
                 )}

@@ -8,9 +8,10 @@ interface TimeSlotsProps {
   date: string
   onSelect: (time: string) => void
   selected: string
+  durationMinutes?: number
 }
 
-export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) {
+export default function TimeSlots({ date, onSelect, selected, durationMinutes }: TimeSlotsProps) {
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -40,7 +41,15 @@ export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) 
       setError(null)
 
       try {
-        const response = await fetch(`/api/reservations/by-date?date=${date}&reload=${reloadCount}`, {
+        const params = new URLSearchParams({
+          date,
+          reload: String(reloadCount),
+        })
+        if (typeof durationMinutes === 'number' && Number.isFinite(durationMinutes) && durationMinutes > 0) {
+          params.set('durationMinutes', String(durationMinutes))
+        }
+
+        const response = await fetch(`/api/reservations/by-date?${params.toString()}`, {
           cache: 'no-store',
           signal: controller.signal,
         })
@@ -85,7 +94,7 @@ export default function TimeSlots({ date, onSelect, selected }: TimeSlotsProps) 
       controller.abort()
       setLoading(false)
     }
-  }, [date, reloadCount])
+  }, [date, reloadCount, durationMinutes])
 
   const handleRetry = () => {
     setReloadCount((count) => count + 1)

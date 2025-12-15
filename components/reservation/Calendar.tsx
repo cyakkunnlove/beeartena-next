@@ -5,12 +5,14 @@ import { useState, useEffect } from 'react'
 interface CalendarProps {
   onSelect: (date: string) => void
   selected: string
+  durationMinutes?: number
 }
 
-export default function Calendar({ onSelect, selected }: CalendarProps) {
+export default function Calendar({ onSelect, selected, durationMinutes }: CalendarProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [monthAvailability, setMonthAvailability] = useState<Map<string, boolean>>(new Map())
   const [isLoading, setIsLoading] = useState(true)
+  const [availabilityWarning, setAvailabilityWarning] = useState<string | null>(null)
 
   useEffect(() => {
     // Get actual availability for the current month
@@ -19,13 +21,26 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
       try {
         const year = currentMonth.getFullYear()
         const month = currentMonth.getMonth() + 1 // APIは1-based monthを期待
-        const response = await fetch(`/api/reservations/availability?year=${year}&month=${month}`)
+        const params = new URLSearchParams({
+          year: String(year),
+          month: String(month),
+          mode: 'fast',
+        })
+        if (
+          typeof durationMinutes === 'number' &&
+          Number.isFinite(durationMinutes) &&
+          durationMinutes > 0
+        ) {
+          params.set('durationMinutes', String(durationMinutes))
+        }
+        const response = await fetch(`/api/reservations/availability?${params.toString()}`)
 
         if (!response.ok) {
           throw new Error('Failed to fetch availability')
         }
 
         const data = await response.json()
+        setAvailabilityWarning(typeof data?.warning === 'string' ? data.warning : null)
         // data.availabilityが存在しない場合のフォールバック
         const availabilityData = data.availability || {}
         const availability = new Map<string, boolean>(Object.entries(availabilityData))
@@ -34,12 +49,13 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
         console.error('Failed to fetch availability:', error)
         // エラー時は空のMapを設定
         setMonthAvailability(new Map())
+        setAvailabilityWarning(null)
       } finally {
         setIsLoading(false)
       }
     }
     fetchAvailability()
-  }, [currentMonth])
+  }, [currentMonth, durationMinutes])
 
   const getDaysInMonth = (date: Date) => {
     const year = date.getFullYear()
@@ -146,6 +162,12 @@ export default function Calendar({ onSelect, selected }: CalendarProps) {
           </svg>
         </button>
       </div>
+
+      {availabilityWarning && (
+        <div className="mb-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+          {availabilityWarning}
+        </div>
+      )}
 
       <div className="grid grid-cols-7 gap-1 mb-2">
         {['日', '月', '火', '水', '木', '金', '土'].map((day) => (

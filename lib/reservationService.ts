@@ -698,12 +698,12 @@ class ReservationService {
   // 特定の日付の予約可能な時間枠を取得
   async getTimeSlotsForDate(
     date: string,
-    options?: { durationMinutes?: number },
+    options?: { durationMinutes?: number; bypassCache?: boolean },
   ): Promise<TimeSlot[]> {
     // 設定が読み込まれるまで待つ
     await this.waitForSettings()
 
-    const bypassCache = Boolean((options as any)?.bypassCache)
+    const bypassCache = Boolean(options?.bypassCache)
     const defaultDuration = this.settings.slotDuration || 60
     const requiredDurationMinutesRaw = Number(options?.durationMinutes)
     const requiredDurationMinutes =
@@ -779,7 +779,11 @@ class ReservationService {
       return []
     }
 
-    const effectiveDurationMinutes = Math.min(requiredDurationMinutes, totalMinutes)
+    if (requiredDurationMinutes > totalMinutes) {
+      return []
+    }
+
+    const effectiveDurationMinutes = requiredDurationMinutes
     let interval = baseDuration
 
     if (businessHours.allowMultipleSlots) {
@@ -964,7 +968,7 @@ class ReservationService {
       }
 
       try {
-        const slots = await this.getTimeSlotsForDate(dateStr, { bypassCache: true } as any)
+        const slots = await this.getTimeSlotsForDate(dateStr, { bypassCache: true })
         availability.set(dateStr, slots.some((slot) => slot.available))
       } catch (error) {
         logger.error('Month availability computation failed', {

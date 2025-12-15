@@ -223,6 +223,93 @@ export default function AdminSettingsPage() {
     void loadSettings({ silent: true })
   }
 
+  const applySettingsResponse = (next: ReservationSettings) => {
+    const normalizedSettings = {
+      ...next,
+      dateOverrides: next.dateOverrides ?? {},
+    }
+    setSettings(normalizedSettings)
+    persistToLocalStorage(normalizedSettings)
+    setIsFallbackData(false)
+  }
+
+  const handleClearBlockedDatesAll = async () => {
+    const count = settings.blockedDates?.length ?? 0
+    if (count === 0) {
+      notify('success', 'ブロック日はすでに空です。')
+      return
+    }
+
+    const ok = window.confirm(`ブロック日を全て削除します（${count}件）。よろしいですか？`)
+    if (!ok) return
+
+    setSaving(true)
+    try {
+      const response = await apiClient.updateAdminSettingsPartial({ clearBlockedDates: true })
+      if (!response.success) {
+        notify('error', response.message ?? 'ブロック日の全削除に失敗しました。')
+        return
+      }
+      applySettingsResponse(response.settings)
+      notify('success', 'ブロック日を全て削除しました。')
+    } catch (error) {
+      console.error('Failed to clear blocked dates:', error)
+      notify('error', 'ブロック日の全削除に失敗しました。')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleClearDateOverridesAll = async () => {
+    const count = Object.keys(settings.dateOverrides ?? {}).length
+    if (count === 0) {
+      notify('success', '日付別固定枠はすでに空です。')
+      return
+    }
+
+    const ok = window.confirm(`日付別固定枠を全て削除します（${count}件）。よろしいですか？`)
+    if (!ok) return
+
+    setSaving(true)
+    try {
+      const response = await apiClient.updateAdminSettingsPartial({ clearDateOverrides: true })
+      if (!response.success) {
+        notify('error', response.message ?? '日付別固定枠の全削除に失敗しました。')
+        return
+      }
+      applySettingsResponse(response.settings)
+      notify('success', '日付別固定枠を全て削除しました。')
+    } catch (error) {
+      console.error('Failed to clear date overrides:', error)
+      notify('error', '日付別固定枠の全削除に失敗しました。')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleResetSettingsToDefault = async () => {
+    const ok = window.confirm(
+      '予約設定を初期状態（デフォルト）に戻します。よろしいですか？\n※ ブロック日/日付別固定枠/営業時間等も全て初期化されます。',
+    )
+    if (!ok) return
+
+    setSaving(true)
+    try {
+      const response = await apiClient.updateAdminSettingsPartial({ resetToDefault: true })
+      if (!response.success) {
+        notify('error', response.message ?? '設定の初期化に失敗しました。')
+        return
+      }
+      applySettingsResponse(response.settings)
+      notify('success', '予約設定を初期状態に戻しました。')
+    } catch (error) {
+      console.error('Failed to reset settings:', error)
+      notify('error', '設定の初期化に失敗しました。')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   if (authLoading || loading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -540,6 +627,30 @@ export default function AdminSettingsPage() {
           </div>
         </div>
 
+        <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm text-gray-600">
+            現在のブロック日: <span className="font-semibold">{settings.blockedDates?.length ?? 0}</span> 件
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleClearBlockedDatesAll}
+              disabled={saving}
+              className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+            >
+              ブロック日を全クリア
+            </button>
+            <button
+              type="button"
+              onClick={handleResetSettingsToDefault}
+              disabled={saving}
+              className="rounded-md bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-60"
+            >
+              設定を初期化
+            </button>
+          </div>
+        </div>
+
         <ul className="mt-4 space-y-2">
           {(settings.blockedDates || []).map((date) => (
             <li key={date} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
@@ -587,6 +698,22 @@ export default function AdminSettingsPage() {
               className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
             >
               追加
+            </button>
+          </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+          <p className="text-sm text-gray-600">
+            現在の固定枠: <span className="font-semibold">{Object.keys(settings.dateOverrides ?? {}).length}</span> 件
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={handleClearDateOverridesAll}
+              disabled={saving}
+              className="rounded-md bg-red-50 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-100 disabled:opacity-60"
+            >
+              固定枠を全クリア
             </button>
           </div>
         </div>

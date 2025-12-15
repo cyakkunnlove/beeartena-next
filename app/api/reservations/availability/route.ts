@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const year = parseInt(searchParams.get('year') || '')
     const month = parseInt(searchParams.get('month') || '')
     const mode = (searchParams.get('mode') || 'fast').toLowerCase()
+    const durationMinutesRaw = searchParams.get('durationMinutes')
 
     if (!year || !month) {
       return NextResponse.json({ error: 'Year and month are required' }, { status: 400 })
@@ -42,6 +43,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
+    const durationMinutesValue = durationMinutesRaw ? Number(durationMinutesRaw) : undefined
+    const durationMinutes =
+      typeof durationMinutesValue === 'number' &&
+      Number.isFinite(durationMinutesValue) &&
+      durationMinutesValue > 0
+        ? durationMinutesValue
+        : undefined
+
+    const parseTimeToMinutes = (time: string): number | null => {
+      const [h, m] = time.split(':').map(Number)
+      if (!Number.isFinite(h) || !Number.isFinite(m)) return null
+      return h * 60 + m
+    }
+
     const fallbackAvailability: Record<string, boolean> = {}
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -62,7 +77,42 @@ export async function GET(request: NextRequest) {
       }
 
       const hours = settings.businessHours.find((h) => h.dayOfWeek === dateObj.getDay())
-      fallbackAvailability[dateStr] = Boolean(hours?.isOpen && hours.open && hours.close)
+      const baseOpen = hours?.open
+      const baseClose = hours?.close
+      if (!hours?.isOpen || !baseOpen || !baseClose) {
+        fallbackAvailability[dateStr] = false
+        continue
+      }
+
+      const openMinutes = parseTimeToMinutes(baseOpen)
+      const closeMinutes = parseTimeToMinutes(baseClose)
+      if (openMinutes === null || closeMinutes === null) {
+        fallbackAvailability[dateStr] = false
+        continue
+      }
+      const totalMinutes = closeMinutes - openMinutes
+
+      const requiredDurationMinutes = durationMinutes ?? settings.slotDuration ?? 0
+      if (totalMinutes <= 0 || requiredDurationMinutes <= 0 || totalMinutes < requiredDurationMinutes) {
+        fallbackAvailability[dateStr] = false
+        continue
+      }
+
+      const overrideSlots = settings.dateOverrides?.[dateStr]?.allowedSlots
+      const allowedSlots = (Array.isArray(overrideSlots) && overrideSlots.length > 0
+        ? overrideSlots
+        : hours.allowedSlots) ?? []
+
+      if (Array.isArray(allowedSlots) && allowedSlots.length > 0) {
+        fallbackAvailability[dateStr] = allowedSlots.some((slot) => {
+          const start = parseTimeToMinutes(slot)
+          if (start === null) return false
+          return start >= openMinutes && start + requiredDurationMinutes <= closeMinutes
+        })
+        continue
+      }
+
+      fallbackAvailability[dateStr] = true
     }
 
     let availability = fallbackAvailability

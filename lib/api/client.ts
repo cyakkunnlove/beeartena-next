@@ -769,6 +769,16 @@ class ApiClient {
     )
   }
 
+  async updateAdminSettingsPartial(payload: Record<string, unknown>) {
+    return this.request<{ success: boolean; settings: ReservationSettings; message?: string }>(
+      '/admin/settings',
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+    )
+  }
+
   async getAdminAnnouncements() {
     const response = await this.request<{
       success: boolean
