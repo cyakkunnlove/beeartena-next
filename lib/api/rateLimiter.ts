@@ -4,7 +4,9 @@ import { NextRequest } from 'next/server'
 import { verifyJWT } from '@/lib/api/jwt'
 import { logger } from '@/lib/utils/logger'
 
-const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
+const isRedisDisabled =
+  process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test' || isBuildPhase
 const KEY_PREFIX = process.env.REDIS_KEY_PREFIX || 'beeartena'
 
 let redis: Redis | null = null
@@ -26,15 +28,6 @@ if (!isRedisDisabled) {
         lazyConnect: true,
       })
     }
-
-    redis
-      .connect()
-      .catch((err) => {
-        logger.warn('Redis connection failed for rate limiter, falling back to memory store', {
-          error: err?.message,
-        })
-        redis = null
-      })
 
     redis?.on('error', (err: any) => {
       if (err?.code === 'ENOTFOUND') {

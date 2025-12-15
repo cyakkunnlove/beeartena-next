@@ -155,6 +155,21 @@ export const isAdminPerformanceError = (
   entry: AdminPerformanceEntry,
 ): entry is AdminPerformanceEntryError => 'error' in entry
 
+export type AdminAuditLog = {
+  id: string
+  createdAt?: unknown
+  actorUserId?: string
+  actorEmail?: string
+  actorRole?: string
+  method?: string
+  path?: string
+  query?: Record<string, string>
+  ip?: string
+  userAgent?: string
+  requestId?: string
+  vercelEnv?: string
+}
+
 export interface AdminReservationProcessResult {
   success: boolean
   processedCount: number
@@ -774,6 +789,27 @@ class ApiClient {
       warning: response.warning ?? null,
       fallback: Boolean(response.fallback),
     }
+  }
+
+  async getAdminAuditLogs(options: { limit?: number } = {}) {
+    const params = new URLSearchParams()
+    if (options.limit) {
+      params.set('limit', String(options.limit))
+    }
+
+    const endpoint = params.toString() ? `/admin/audit?${params.toString()}` : '/admin/audit'
+    const response = await this.request<{ success: boolean; logs?: AdminAuditLog[]; error?: string }>(
+      endpoint,
+      {
+        cache: 'no-store',
+      },
+    )
+
+    if (!response?.success || !Array.isArray(response.logs)) {
+      throw new Error(response?.error ?? '監査ログの取得に失敗しました')
+    }
+
+    return { logs: response.logs }
   }
 
   async createAdminAnnouncement(payload: Partial<Announcement>) {

@@ -1,6 +1,8 @@
 import { jwtVerify } from 'jose'
 import { NextRequest, NextResponse } from 'next/server'
 
+import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
+
 // JWTシークレット（環境変数から取得）
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET
@@ -31,7 +33,7 @@ export function setCorsHeaders(response: Response | NextResponse): NextResponse 
 // 認証ミドルウェア
 export async function verifyAuth(
   request: NextRequest,
-): Promise<{ userId: string; role: string } | null> {
+): Promise<{ userId: string; role: string; email?: string } | null> {
   try {
     const authHeader = request.headers.get('authorization')
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
@@ -44,6 +46,7 @@ export async function verifyAuth(
     return {
       userId: payload.userId as string,
       role: payload.role as string,
+      email: typeof payload.email === 'string' ? payload.email : undefined,
     }
   } catch (error) {
     return null
@@ -60,6 +63,27 @@ export async function requireAdmin(request: NextRequest): Promise<NextResponse |
 
   if (user.role !== 'admin') {
     return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 })
+  }
+
+  // 監査ログ（最小構成）：管理者がどのAPIを叩いたか
+  if (request.method !== 'GET' && request.method !== 'OPTIONS') {
+    void recordAdminAuditEvent({
+      actorUserId: user.userId,
+      actorEmail: user.email,
+      actorRole: user.role,
+      method: request.method,
+      path: request.nextUrl.pathname,
+      query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+      ip:
+        request.headers.get('x-forwarded-for') ??
+        request.headers.get('x-real-ip') ??
+        undefined,
+      userAgent: request.headers.get('user-agent') ?? undefined,
+      requestId:
+        request.headers.get('x-vercel-id') ??
+        request.headers.get('x-request-id') ??
+        undefined,
+    })
   }
 
   return null // 権限OK

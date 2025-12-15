@@ -5,7 +5,9 @@ import { logger } from '@/lib/utils/logger'
 
 import { QueueKeys } from './queue-keys'
 
-const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
+const isRedisDisabled =
+  process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test' || isBuildPhase
 
 let redis: Redis | null = null
 
@@ -24,15 +26,6 @@ if (!isRedisDisabled) {
         lazyConnect: true,
       })
     }
-
-    redis
-      .connect()
-      .catch((err) => {
-        logger.warn('Redis connection failed for queue, disabling queue persistence', {
-          error: err?.message,
-        })
-        redis = null
-      })
 
     redis?.on('error', (err: any) => {
       if (err?.code === 'ENOTFOUND') {

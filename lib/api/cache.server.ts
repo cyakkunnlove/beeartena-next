@@ -5,7 +5,9 @@ import { getErrorMessage } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
 
 // Check if Redis should be disabled (for testing/CI environments)
-const isRedisDisabled = process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test'
+const isBuildPhase = process.env.NEXT_PHASE === 'phase-production-build'
+const isRedisDisabled =
+  process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test' || isBuildPhase
 
 // Redis client for caching
 let redis: Redis | null = null
@@ -57,14 +59,6 @@ if (!isRedisDisabled) {
         lazyConnect: true, // Don't connect immediately
       })
     }
-
-    // Attempt to connect
-    redis.connect().catch((error: unknown) => {
-      logger.warn('Redis connection failed, falling back to memory cache', {
-        error: getErrorMessage(error),
-      })
-      redis = null
-    })
 
     // Handle connection errors
     redis.on('error', (error: unknown) => {

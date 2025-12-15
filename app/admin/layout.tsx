@@ -34,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     { name: 'サービスプラン', href: '/admin/service-plans', icon: '💼' },
     { name: 'お知らせ管理', href: '/admin/announcements', icon: '📰' },
     { name: '設定', href: '/admin/settings', icon: '⚙️' },
+    { name: '監査ログ', href: '/admin/audit', icon: '🛡️' },
   ]
 
   useEffect(() => {
