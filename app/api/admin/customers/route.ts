@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { getAdminDb } from '@/lib/firebase/admin'
-import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
+import { requireAdmin, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
+import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
+import { buildAuditDiff } from '@/lib/utils/auditDiff'
 
 import type { Customer } from '@/lib/types'
 
@@ -92,6 +94,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
+    const authUser = await verifyAuth(request)
     const db = getAdminDb()
 
     if (!db) {
@@ -115,12 +118,41 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json()
+    const beforeSnap = await db.collection('users').doc(customerId).get()
+    const beforeData = beforeSnap.exists ? beforeSnap.data() ?? {} : {}
     const updates = {
       ...body,
       updatedAt: new Date(),
     }
 
     await db.collection('users').doc(customerId).update(updates)
+
+    if (authUser) {
+      const afterData = { ...beforeData, ...updates }
+      const changes = buildAuditDiff(beforeData, afterData)
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'customer.update',
+        resourceType: 'users',
+        resourceId: customerId,
+        changes,
+        status: 'success',
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
 
     return setCorsHeaders(
       NextResponse.json({

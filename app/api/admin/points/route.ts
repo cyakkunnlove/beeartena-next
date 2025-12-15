@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { POINTS_PROGRAM_ENABLED } from '@/lib/constants/featureFlags'
-import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
+import { requireAdmin, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 import admin, { getAdminDb } from '@/lib/firebase/admin'
+import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
 
 import type { PointTransaction, Points } from '@/lib/types'
 
@@ -220,6 +221,8 @@ export async function POST(request: NextRequest) {
     return setCorsHeaders(adminError)
   }
 
+  const authUser = await verifyAuth(request)
+
   try {
     const db = getAdminDb()
 
@@ -379,6 +382,39 @@ export async function POST(request: NextRequest) {
         return { summary, transaction }
       })
 
+      if (authUser) {
+        void recordAdminAuditEvent({
+          actorUserId: authUser.userId,
+          actorEmail: authUser.email,
+          actorRole: authUser.role,
+          method: request.method,
+          path: request.nextUrl.pathname,
+          action: 'points.adjust',
+          resourceType: 'users',
+          resourceId: userId,
+          changes: [
+            { path: 'mode', after: mode },
+            { path: 'amount', after: amount },
+            { path: 'adjustment', after: adjustment },
+            { path: 'description', after: description ? `len:${description.length}` : '' },
+            { path: 'newBalance', after: result.summary.currentPoints },
+            { path: 'newLifetimePoints', after: result.summary.lifetimePoints },
+            { path: 'transactionId', after: result.transaction.id },
+          ],
+          status: 'success',
+          query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+          ip:
+            request.headers.get('x-forwarded-for') ??
+            request.headers.get('x-real-ip') ??
+            undefined,
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          requestId:
+            request.headers.get('x-vercel-id') ??
+            request.headers.get('x-request-id') ??
+            undefined,
+        })
+      }
+
       return setCorsHeaders(
         NextResponse.json({
           success: true,
@@ -394,6 +430,31 @@ export async function POST(request: NextRequest) {
     console.error('Admin points action error:', error)
     const message = error instanceof Error ? error.message : 'Failed to process points request.'
     const status = message.includes('不足') ? 400 : 500
+
+    if (authUser) {
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'points.adjust',
+        resourceType: 'users',
+        resourceId: typeof (error as any)?.userId === 'string' ? (error as any).userId : undefined,
+        status: 'error',
+        errorMessage: message,
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
 
     return setCorsHeaders(
       NextResponse.json(

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
+import { requireAdmin, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
+import { buildAuditDiff } from '@/lib/utils/auditDiff'
 
 import { FieldPath, FieldValue } from 'firebase-admin/firestore'
 
@@ -209,6 +211,8 @@ export async function PATCH(
     )
   }
 
+  const authUser = await verifyAuth(request)
+
   const resolvedParams = await params
   const userId = decodeURIComponent(resolvedParams.userId ?? '').trim()
   if (!userId) {
@@ -242,6 +246,8 @@ export async function PATCH(
 
   try {
     const conversationRef = db.collection('lineConversations').doc(userId)
+    const beforeSnap = await conversationRef.get()
+    const beforeData = beforeSnap.exists ? beforeSnap.data() ?? {} : {}
 
     const hasCustomerIdField = Object.prototype.hasOwnProperty.call(body, 'customerId')
     if (hasCustomerIdField) {
@@ -351,8 +357,71 @@ export async function PATCH(
       await conversationRef.set(updates, { merge: true })
     }
 
+    const afterSnap = await conversationRef.get()
+    const afterData = afterSnap.exists ? afterSnap.data() ?? {} : {}
+
+    if (authUser) {
+      const hasCustomerField = Object.prototype.hasOwnProperty.call(body, 'customerId')
+      const action =
+        hasCustomerField
+          ? typeof body.customerId === 'string' && body.customerId.trim().length > 0
+            ? 'line.linkCustomer'
+            : 'line.unlinkCustomer'
+          : body.action === 'markRead'
+            ? 'line.markRead'
+            : 'line.updateConversation'
+
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action,
+        resourceType: 'lineConversations',
+        resourceId: userId,
+        changes: buildAuditDiff(beforeData, afterData),
+        status: 'success',
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
+
     return setCorsHeaders(NextResponse.json({ success: true }))
   } catch (error) {
+    if (authUser) {
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'line.updateConversation',
+        resourceType: 'lineConversations',
+        resourceId: userId,
+        status: 'error',
+        errorMessage: error instanceof Error ? error.message : String(error),
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
+
     return setCorsHeaders(
       NextResponse.json(
         {

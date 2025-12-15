@@ -12,6 +12,12 @@ type AuditLogRow = {
   actorRole?: string
   method?: string
   path?: string
+  action?: string
+  resourceType?: string
+  resourceId?: string
+  status?: string
+  errorMessage?: string
+  changes?: Array<{ path: string; before?: unknown; after?: unknown }>
   ip?: string
   userAgent?: string
   requestId?: string
@@ -64,7 +70,7 @@ export default function AdminAuditPage() {
         <div>
           <h1 className="text-3xl font-bold">監査ログ</h1>
           <p className="mt-2 text-sm text-gray-600">
-            管理者APIへのアクセス履歴（最小監査）です。
+            管理者操作の履歴（差分/対象IDを含む）です。
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -98,8 +104,9 @@ export default function AdminAuditPage() {
             <tr>
               <th className="px-4 py-3 text-left font-medium text-gray-700">日時</th>
               <th className="px-4 py-3 text-left font-medium text-gray-700">管理者</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700">メソッド</th>
-              <th className="px-4 py-3 text-left font-medium text-gray-700">パス</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700">操作</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700">対象</th>
+              <th className="px-4 py-3 text-left font-medium text-gray-700">差分</th>
               <th className="px-4 py-3 text-left font-medium text-gray-700">IP</th>
               <th className="px-4 py-3 text-left font-medium text-gray-700">環境</th>
             </tr>
@@ -107,13 +114,13 @@ export default function AdminAuditPage() {
           <tbody className="divide-y divide-gray-200">
             {loading ? (
               <tr>
-                <td className="px-4 py-6 text-gray-500" colSpan={6}>
+                <td className="px-4 py-6 text-gray-500" colSpan={7}>
                   読み込み中…
                 </td>
               </tr>
             ) : rows.length === 0 ? (
               <tr>
-                <td className="px-4 py-6 text-gray-500" colSpan={6}>
+                <td className="px-4 py-6 text-gray-500" colSpan={7}>
                   ログがありません。
                 </td>
               </tr>
@@ -127,12 +134,26 @@ export default function AdminAuditPage() {
                     </div>
                     <div className="text-xs text-gray-500">{row.actorRole || ''}</div>
                   </td>
-                  <td className="px-4 py-3 whitespace-nowrap">{row.method || '-'}</td>
                   <td className="px-4 py-3">
-                    <div className="font-mono text-xs text-gray-800">{row.path || '-'}</div>
+                    <div className="text-xs font-medium text-gray-900">{row.action || '-'}</div>
+                    <div className="mt-1 font-mono text-xs text-gray-600">
+                      {row.method || '-'} {row.path || '-'}
+                    </div>
                     {row.requestId && (
                       <div className="mt-1 text-xs text-gray-500">req: {row.requestId}</div>
                     )}
+                    {row.status === 'error' && row.errorMessage && (
+                      <div className="mt-1 text-xs text-red-600">{row.errorMessage}</div>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="text-xs text-gray-800">
+                      {row.resourceType || '-'}
+                      {row.resourceId ? `/${row.resourceId}` : ''}
+                    </div>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {Array.isArray(row.changes) ? row.changes.length : 0}
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">{row.ip || '-'}</td>
                   <td className="px-4 py-3 whitespace-nowrap">{row.vercelEnv || '-'}</td>
@@ -145,4 +166,3 @@ export default function AdminAuditPage() {
     </div>
   )
 }
-

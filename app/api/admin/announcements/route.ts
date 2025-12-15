@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
+import { requireAdmin, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
+import { buildAuditDiff } from '@/lib/utils/auditDiff'
 
 import type { Announcement } from '@/lib/types'
 import type { Firestore, QueryDocumentSnapshot } from 'firebase-admin/firestore'
@@ -180,6 +182,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const authUser = await verifyAuth(request)
     const db = getAdminDb()
     if (!db) {
       return setCorsHeaders(
@@ -222,13 +225,39 @@ export async function POST(request: NextRequest) {
     })
 
     const snapshot = await docRef.get()
+    const created = normalizeAnnouncement(
+      snapshot as QueryDocumentSnapshot<RawAnnouncementRecord>,
+    )
+
+    if (authUser) {
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'announcement.create',
+        resourceType: COLLECTION,
+        resourceId: docRef.id,
+        changes: buildAuditDiff({}, created),
+        status: 'success',
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
 
     return setCorsHeaders(
       NextResponse.json({
         success: true,
-        announcement: normalizeAnnouncement(
-          snapshot as QueryDocumentSnapshot<RawAnnouncementRecord>,
-        ),
+        announcement: created,
       }),
     )
   } catch (error) {
@@ -265,6 +294,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   try {
+    const authUser = await verifyAuth(request)
     const db = getAdminDb()
     if (!db) {
       return setCorsHeaders(
@@ -280,6 +310,9 @@ export async function PATCH(request: NextRequest) {
 
     const payload = (await request.json()) as Partial<Announcement>
     const sanitized = sanitizePayload(payload)
+
+    const beforeSnap = await db.collection(COLLECTION).doc(id).get()
+    const beforeData = beforeSnap.exists ? beforeSnap.data() ?? {} : {}
 
     await db.collection(COLLECTION).doc(id).set(
       {
@@ -302,12 +335,37 @@ export async function PATCH(request: NextRequest) {
       )
     }
 
+    const updated = normalizeAnnouncement(snapshot as QueryDocumentSnapshot<RawAnnouncementRecord>)
+    if (authUser) {
+      const changes = buildAuditDiff(beforeData, updated)
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'announcement.update',
+        resourceType: COLLECTION,
+        resourceId: id,
+        changes,
+        status: 'success',
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
+
     return setCorsHeaders(
       NextResponse.json({
         success: true,
-        announcement: normalizeAnnouncement(
-          snapshot as QueryDocumentSnapshot<RawAnnouncementRecord>,
-        ),
+        announcement: updated,
       }),
     )
   } catch (error) {
@@ -344,6 +402,7 @@ export async function DELETE(request: NextRequest) {
   }
 
   try {
+    const authUser = await verifyAuth(request)
     const db = getAdminDb()
     if (!db) {
       return setCorsHeaders(
@@ -357,7 +416,35 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
+    const beforeSnap = await db.collection(COLLECTION).doc(id).get()
+    const beforeData = beforeSnap.exists ? beforeSnap.data() ?? {} : {}
+
     await db.collection(COLLECTION).doc(id).delete()
+
+    if (authUser) {
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'announcement.delete',
+        resourceType: COLLECTION,
+        resourceId: id,
+        changes: buildAuditDiff(beforeData, {}),
+        status: 'success',
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
 
     return setCorsHeaders(
       NextResponse.json({

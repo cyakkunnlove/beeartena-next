@@ -2,8 +2,9 @@ import { randomUUID } from 'crypto'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-import { requireAdmin, setCorsHeaders, validateRequestBody } from '@/lib/api/middleware'
+import { requireAdmin, setCorsHeaders, validateRequestBody, verifyAuth } from '@/lib/api/middleware'
 import { getAdminDb } from '@/lib/firebase/admin'
+import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
 import { getErrorMessage } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
 
@@ -17,6 +18,8 @@ export async function POST(request: NextRequest) {
   if (adminError) {
     return setCorsHeaders(adminError)
   }
+
+  const authUser = await verifyAuth(request)
 
   const { data, error } = await validateRequestBody<SendPayload>(request, ['userId', 'text'])
   if (error) {
@@ -99,6 +102,35 @@ export async function POST(request: NextRequest) {
       { merge: true },
     )
 
+    if (authUser) {
+      void recordAdminAuditEvent({
+        actorUserId: authUser.userId,
+        actorEmail: authUser.email,
+        actorRole: authUser.role,
+        method: request.method,
+        path: request.nextUrl.pathname,
+        action: 'line.send',
+        resourceType: 'lineConversations',
+        resourceId: userId,
+        changes: [
+          { path: 'messageId', after: messageId },
+          { path: 'type', after: 'text' },
+          { path: 'text', after: `len:${text.length}` },
+        ],
+        status: 'success',
+        query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+        ip:
+          request.headers.get('x-forwarded-for') ??
+          request.headers.get('x-real-ip') ??
+          undefined,
+        userAgent: request.headers.get('user-agent') ?? undefined,
+        requestId:
+          request.headers.get('x-vercel-id') ??
+          request.headers.get('x-request-id') ??
+          undefined,
+      })
+    }
+
     return setCorsHeaders(NextResponse.json({ success: true }))
   } catch (error) {
     logger.error('Admin LINE send failed', { userId, error: getErrorMessage(error) })
@@ -110,4 +142,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-

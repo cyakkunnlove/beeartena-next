@@ -2,12 +2,20 @@ import { getAdminDb } from '@/lib/firebase/admin'
 import { getErrorMessage } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
 
+import type { AuditChange } from '@/lib/utils/auditDiff'
+
 export type AdminAuditEventInput = {
   actorUserId: string
   actorEmail?: string
   actorRole: string
   method: string
   path: string
+  action?: string
+  resourceType?: string
+  resourceId?: string
+  changes?: AuditChange[]
+  status?: 'success' | 'error'
+  errorMessage?: string
   query?: Record<string, string>
   ip?: string
   userAgent?: string
@@ -39,4 +47,3 @@ export async function recordAdminAuditEvent(input: AdminAuditEventInput): Promis
     logger.warn('Failed to write admin audit log', { error: getErrorMessage(error) })
   }
 }
-
