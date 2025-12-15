@@ -231,7 +231,7 @@ export function validateReservationData(data: Record<string, unknown>): {
 
 class ReservationService {
   private settings: ReservationSettings = {
-    slotDuration: 120,
+    slotDuration: 60,
     maxCapacityPerSlot: 1,
     businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
     blockedDates: [],
@@ -333,7 +333,7 @@ class ReservationService {
         this.settings = {
           ...normalizedSettings,
           businessHours,
-          slotDuration: normalizedSettings.slotDuration || 120,
+          slotDuration: normalizedSettings.slotDuration || 60,
           maxCapacityPerSlot: normalizedSettings.maxCapacityPerSlot || 1,
           cancellationDeadlineHours: normalizedSettings.cancellationDeadlineHours ?? 24,
           cancellationPolicy:
@@ -617,9 +617,28 @@ class ReservationService {
     const [year, month, day] = date.split('-').map(Number)
     const dateObj = new Date(year, month - 1, day)
     const dayOfWeek = dateObj.getDay()
-    const businessHours = this.settings.businessHours[dayOfWeek]
+    const configuredHours = this.settings.businessHours.find(
+      (h) => h.dayOfWeek === dayOfWeek,
+    )
+    const defaultHours = DEFAULT_BUSINESS_HOURS.find((h) => h.dayOfWeek === dayOfWeek)
 
-    if (!businessHours.isOpen || this.settings.blockedDates?.includes(date)) {
+    // open/close が空の場合はデフォルト時間にフォールバック（isOpen=falseは尊重）
+    const businessHours =
+      configuredHours && configuredHours.isOpen &&
+      isNonEmptyString(configuredHours.open) &&
+      isNonEmptyString(configuredHours.close)
+        ? configuredHours
+        : configuredHours && !configuredHours.isOpen
+          ? configuredHours
+          : defaultHours
+
+    if (
+      !businessHours ||
+      !businessHours.isOpen ||
+      !isNonEmptyString(businessHours.open) ||
+      !isNonEmptyString(businessHours.close) ||
+      this.settings.blockedDates?.includes(date)
+    ) {
       return []
     }
 
@@ -639,6 +658,12 @@ class ReservationService {
     const closeTimeInMinutes = closeHour * 60 + closeMinute
 
     const baseDuration = defaultDuration
+    const totalMinutes = closeTimeInMinutes - openTimeInMinutes
+    if (totalMinutes <= 0) {
+      return []
+    }
+
+    const effectiveDurationMinutes = Math.min(requiredDurationMinutes, totalMinutes)
     let interval = baseDuration
 
     if (businessHours.allowMultipleSlots) {
@@ -674,13 +699,13 @@ class ReservationService {
 
     for (
       let currentMinutes = openTimeInMinutes;
-      currentMinutes + requiredDurationMinutes <= closeTimeInMinutes;
+      currentMinutes + effectiveDurationMinutes <= closeTimeInMinutes;
       currentMinutes += interval
     ) {
       const hour = Math.floor(currentMinutes / 60)
       const minute = currentMinutes % 60
       const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
-      const candidateEndMinutes = currentMinutes + requiredDurationMinutes
+      const candidateEndMinutes = currentMinutes + effectiveDurationMinutes
 
       const overlappingCount = reservationsWithDuration.filter(({ startMinutes, endMinutes }) => {
         if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
@@ -698,7 +723,7 @@ class ReservationService {
         date,
         maxCapacity,
         currentBookings,
-        requiredDurationMinutes,
+        requiredDurationMinutes: effectiveDurationMinutes,
       })
     }
 
@@ -743,30 +768,15 @@ class ReservationService {
       }
     }
 
-    let monthlyReservations: Reservation[] = []
+    let reservationsByDate = new Map<string, Reservation[]>()
     try {
-      const reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
-      monthlyReservations = Array.from(reservationsByDate.values()).flat()
+      reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
     } catch (error) {
       logger.error('Failed to preload monthly reservations', {
         year,
         month,
         error: getErrorMessage(error),
       })
-    }
-
-    const reservationsByDate = new Map<string, Reservation[]>()
-    for (const reservation of monthlyReservations) {
-      const rawDate = reservation.date
-      const dateKey =
-        typeof rawDate === 'string'
-          ? rawDate
-          : new Date(rawDate).toISOString().split('T')[0]
-
-      if (!reservationsByDate.has(dateKey)) {
-        reservationsByDate.set(dateKey, [])
-      }
-      reservationsByDate.get(dateKey)!.push(reservation)
     }
 
     const monthPrefetch = new Map<string, Reservation[]>()

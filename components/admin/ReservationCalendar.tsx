@@ -6,7 +6,7 @@ import { useState, useCallback, useMemo } from 'react'
 import { Calendar, momentLocalizer, View, SlotInfo } from 'react-big-calendar'
 
 import 'moment/locale/ja'
-import { Reservation, CalendarEvent, CalendarEventProps, CalendarToolbarProps } from '@/lib/types'
+import { Reservation, CalendarEvent, CalendarEventProps } from '@/lib/types'
 
 moment.locale('ja')
 const localizer = momentLocalizer(moment)
@@ -15,12 +15,14 @@ interface ReservationCalendarProps {
   reservations: Reservation[]
   onEventClick: (reservation: Reservation) => void
   onDateClick?: (date: Date) => void
+  blockedDates?: string[]
 }
 
 export default function ReservationCalendar({
   reservations,
   onEventClick,
   onDateClick,
+  blockedDates = [],
 }: ReservationCalendarProps) {
   const [view, setView] = useState<View>('month')
   const [date, setDate] = useState(new Date())
@@ -124,6 +126,15 @@ export default function ReservationCalendar({
       const dateStr = moment(date).format('YYYY-MM-DD')
       const dayOfWeek = date.getDay()
 
+      if (blockedDates.includes(dateStr)) {
+        return {
+          style: {
+            backgroundColor: '#fef2f2',
+            color: '#991b1b',
+          },
+        }
+      }
+
       // 日曜日は休業日
       if (dayOfWeek === 0) {
         return {
@@ -151,7 +162,7 @@ export default function ReservationCalendar({
 
       return {}
     },
-    [reservations],
+    [reservations, blockedDates],
   )
 
   // イベントのスタイリング

@@ -52,6 +52,10 @@ export interface User {
   lastBirthdayPointsYear?: number
   createdAt: Date
   updatedAt: Date
+  // Search optimization fields
+  nameLower?: string // lowercase name for case-insensitive search
+  emailLower?: string // lowercase email for case-insensitive search
+  phoneDigits?: string // digits-only phone for normalized search
 }
 
 export interface Customer extends User {
@@ -69,6 +73,7 @@ export interface Customer extends User {
   points?: number
   lifetimePoints?: number
   totalSpent?: number
+  lifetimePoints?: number
 }
 
 // Points types
@@ -132,8 +137,7 @@ export interface Reservation {
   totalPrice?: number // サービス料金 + メンテナンス料金
   date: string
   time: string
-  durationMinutes?: number // 施術に必要な合計時間（分）
-  endTime?: string // 終了予定時刻（HH:mm）
+  durationMinutes?: number // 施術時間（分）
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled'
   notes?: string
   createdAt: Date

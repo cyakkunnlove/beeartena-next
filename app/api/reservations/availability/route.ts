@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAdminDb } from '@/lib/firebase/admin'
 import { cache as cacheService } from '@/lib/api/cache'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
+import { reservationService } from '@/lib/reservationService'
+import { getAdminDb } from '@/lib/firebase/admin'
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,47 +46,12 @@ export async function GET(request: NextRequest) {
     const startDateStr = `${year}-${String(month).padStart(2, '0')}-01`
     const endDateStr = `${year}-${String(month).padStart(2, '0')}-${endDate.getDate()}`
 
-    const reservedSlots = new Map<string, Set<string>>()
-    let totalReservations = 0
-
-    if (db) {
-      const reservationsSnapshot = await db
-        .collection('reservations')
-        .where('date', '>=', startDateStr)
-        .where('date', '<=', endDateStr)
-        .where('status', 'in', ['pending', 'confirmed'])
-        .select('date', 'time')
-        .get()
-
-      reservationsSnapshot.docs.forEach((doc) => {
-        const data = doc.data()
-        const date = data.date
-        const time = data.time
-
-        if (!reservedSlots.has(date)) {
-          reservedSlots.set(date, new Set())
-        }
-        reservedSlots.get(date)!.add(time)
-      })
-
-      totalReservations = reservationsSnapshot.docs.length
-    } else {
-      console.warn('Firebase admin not configured; using empty reserved slots for availability response.')
-    }
-
-    // 各日の利用可能状況を判定
+    // 各日の利用可能状況を判定（予約サービスのロジックと整合させるため、日ごとに実計算）
     const availability: { [key: string]: boolean } = {}
     const daysInMonth = endDate.getDate()
 
-    console.log(`Calculating availability for ${year}-${month}:`, {
-      daysInMonth,
-      totalReservations,
-      reservedSlots: Array.from(reservedSlots.entries()).map(([date, times]) => ({
-        date,
-        count: times.size,
-        times: Array.from(times),
-      })),
-    })
+    // 診断用ログ（必要に応じてコメントアウト可）
+    console.log(`Calculating availability for ${year}-${month}`)
 
     for (let day = 1; day <= daysInMonth; day++) {
       const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
@@ -112,43 +78,9 @@ export async function GET(request: NextRequest) {
         continue
       }
 
-      // 日曜日は定休日
-      if (date.getDay() === 0) {
-        availability[dateStr] = false
-        continue
-      }
-
-      // 曜日に応じた営業時間枠数を設定
-      let maxSlotsPerDay: number
-      const dayOfWeek = date.getDay()
-
-      if (dayOfWeek === 0) {
-        // 日曜日は定休日なので0枠
-        maxSlotsPerDay = 0
-      } else if (dayOfWeek === 3) {
-        // 水曜日は日中営業（9:00-17:00、30分刻みで16枠）
-        maxSlotsPerDay = 16
-      } else if (dayOfWeek === 6) {
-        // 土曜日は複数枠可能（夜間営業で4枠）
-        maxSlotsPerDay = 4
-      } else {
-        // 平日（月、火、木、金）は1日1枠のみ
-        // IMPORTANT: 平日は1件でも予約が入ったら、その日は他の予約不可
-        maxSlotsPerDay = 1
-      }
-
-      // 予約済みスロット数を確認
-      const reservedCount = reservedSlots.get(dateStr)?.size || 0
-
-      // 平日の場合: 1件でも予約があれば利用不可
-      // それ以外の曜日: 空きスロットがあれば利用可能
-      if (dayOfWeek >= 1 && dayOfWeek <= 5 && dayOfWeek !== 3) {
-        // 月、火、木、金の平日は1件でも予約があれば不可
-        availability[dateStr] = reservedCount === 0
-      } else {
-        // 水曜、土曜は通常通り空きスロットで判定
-        availability[dateStr] = reservedCount < maxSlotsPerDay
-      }
+      // 予約サービスの実ロジックに合わせ、日次でスロット算出
+      const slots = await reservationService.getTimeSlotsForDate(dateStr)
+      availability[dateStr] = slots.some((slot) => slot.available)
     }
 
     // キャッシュに保存（極短TTL: 5秒）

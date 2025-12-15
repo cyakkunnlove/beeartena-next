@@ -200,7 +200,8 @@ export const reservationService = {
         }
 
         const data = await response.json()
-        return data.reservations.map((reservation: any) => ({
+        const reservationsData = data.reservations || []
+        return reservationsData.map((reservation: any) => ({
           ...reservation,
           createdAt: reservation.createdAt ? new Date(reservation.createdAt) : new Date()
         }))
