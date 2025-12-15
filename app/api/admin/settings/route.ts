@@ -67,6 +67,97 @@ async function saveSettings(request: NextRequest) {
     const snap = await docRef.get()
     const current = snap.exists ? snap.data() ?? {} : {}
 
+    // 管理用アクションのみ（blockedDates/dateOverridesの一括更新など）は、
+    // 現在の設定が不整合でも“復旧のために”実行できるようバリデーションをスキップする。
+    // （例: slotDuration が営業時間より長い状態だと通常保存ができず、ブロック日も解除できなくなる）
+    const actionKeys = Object.keys(body)
+    const allowedActionKeys = new Set([
+      'blockedDate',
+      'block',
+      'clearBlockedDates',
+      'clearDateOverrides',
+    ])
+    const isActionOnlyRequest =
+      !resetToDefault &&
+      actionKeys.length > 0 &&
+      actionKeys.every((key) => allowedActionKeys.has(key))
+
+    if (isActionOnlyRequest) {
+      const beforeNormalized = normalizeSettings(current as any)
+
+      let updatedBlockedDates: string[] | undefined
+      let updatedDateOverrides: Record<string, unknown> | undefined
+
+      // 操作を順に適用して最終状態を作る（競合時は後勝ち）
+      if (body.clearBlockedDates === true) {
+        updatedBlockedDates = []
+      }
+      if (body.clearDateOverrides === true) {
+        updatedDateOverrides = {}
+      }
+
+      if (typeof body.blockedDate === 'string' && typeof body.block === 'boolean') {
+        const base = Array.isArray(current.blockedDates)
+          ? [...current.blockedDates]
+          : []
+        const target = body.blockedDate
+        const exists = base.includes(target)
+        if (body.block && !exists) base.push(target)
+        if (!body.block && exists) base.splice(base.indexOf(target), 1)
+        updatedBlockedDates = base
+      }
+
+      const partialUpdate: Record<string, unknown> = {
+        updatedAt: new Date(),
+      }
+      const afterSource: Record<string, unknown> = { ...(current as any) }
+      if (updatedBlockedDates) {
+        partialUpdate.blockedDates = updatedBlockedDates
+        afterSource.blockedDates = updatedBlockedDates
+      }
+      if (updatedDateOverrides) {
+        partialUpdate.dateOverrides = updatedDateOverrides
+        afterSource.dateOverrides = updatedDateOverrides
+      }
+
+      const afterNormalized = normalizeSettings(afterSource as any)
+      const changes = buildAuditDiff(beforeNormalized, afterNormalized)
+
+      await docRef.set(partialUpdate, { merge: true })
+
+      if (authUser) {
+        void recordAdminAuditEvent({
+          actorUserId: authUser.userId,
+          actorEmail: authUser.email,
+          actorRole: authUser.role,
+          method: request.method,
+          path: request.nextUrl.pathname,
+          action: 'settings.update',
+          resourceType: SETTINGS_COLLECTION,
+          resourceId: SETTINGS_DOC_ID,
+          changes,
+          status: 'success',
+          query: Object.fromEntries(request.nextUrl.searchParams.entries()),
+          ip:
+            request.headers.get('x-forwarded-for') ??
+            request.headers.get('x-real-ip') ??
+            undefined,
+          userAgent: request.headers.get('user-agent') ?? undefined,
+          requestId:
+            request.headers.get('x-vercel-id') ??
+            request.headers.get('x-request-id') ??
+            undefined,
+        })
+      }
+
+      return setCorsHeaders(
+        NextResponse.json({
+          success: true,
+          settings: afterNormalized,
+        }),
+      )
+    }
+
     let nextSettings = resetToDefault
       ? normalizeSettings(null)
       : {
