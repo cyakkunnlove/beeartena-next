@@ -24,6 +24,16 @@ Messaging API のWebhook URLを以下に設定します。
 
 署名検証を行うため、`LINE_CHANNEL_SECRET` は必須です。
 
+## 設定状況の確認（管理者）
+
+管理者API `GET /api/admin/line/config` で、以下の状態を返します。
+
+- `receivingEnabled`: 受信（Webhook保存）が可能か
+- `sendingEnabled`: 送信が可能か
+- `webhookUrl`: 現在アクセスしているドメインから推奨Webhook URL
+
+管理画面 `/admin/line` にも同じ情報を表示します。
+
 ## Firestoreに保存される主な構造
 
 - `lineConversations/{userId}`
@@ -43,3 +53,6 @@ Messaging API のWebhook URLを以下に設定します。
 - タイムライン表示
 - 任意: 送信（`LINE_CHANNEL_ACCESS_TOKEN` 設定時）
 - 顧客紐付け（顧客検索→リンク/解除）
+- 対応ステータス（未対応/対応中/対応済）
+- メモ（会話ドキュメントに保存して共有）
+- CSV出力（会話単位でローカルにダウンロード）
