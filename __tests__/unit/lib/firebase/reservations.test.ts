@@ -18,6 +18,10 @@ import { v4 as uuidv4 } from 'uuid'
 // Mock Firebase
 jest.mock('@/lib/firebase/config', () => ({
   db: {},
+  isFirebaseConfigured: () => {
+    const apiKey = (process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '').trim()
+    return Boolean(apiKey && apiKey !== 'test-api-key')
+  },
 }))
 
 jest.mock('firebase/firestore')

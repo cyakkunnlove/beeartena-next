@@ -1,23 +1,19 @@
 import React from 'react'
-import { render, fireEvent, waitFor, screen, act } from '@testing-library/react'
-import TimeSlots from '@/components/reservation/TimeSlots'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import '@testing-library/jest-dom'
 
-// Mock the reservationService
-jest.mock('@/lib/reservationService', () => ({
-  reservationService: {
-    getTimeSlotsForDate: jest.fn().mockResolvedValue([
-      { time: '10:00', available: true },
-      { time: '11:00', available: true },
-      { time: '12:00', available: false },
-      { time: '13:00', available: true },
-      { time: '14:00', available: true },
-      { time: '15:00', available: false },
-      { time: '16:00', available: true },
-      { time: '17:00', available: true },
-    ]),
-  },
-}))
+import TimeSlots from '@/components/reservation/TimeSlots'
+
+const mockTimeSlots = [
+  { time: '10:00', available: true },
+  { time: '11:00', available: true },
+  { time: '12:00', available: false },
+  { time: '13:00', available: true },
+  { time: '14:00', available: true },
+  { time: '15:00', available: false },
+  { time: '16:00', available: true },
+  { time: '17:00', available: true },
+]
 
 describe('TimeSlots Component', () => {
   const mockOnSelect = jest.fn()
@@ -26,15 +22,17 @@ describe('TimeSlots Component', () => {
 
   beforeEach(() => {
     jest.clearAllMocks()
+    mockOnSelect.mockReset()
+    ;(global as any).fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ timeSlots: mockTimeSlots }),
+    })
   })
 
   it('should display loading state initially', () => {
     render(<TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />)
-
-    // Find the spinner by its class
     const spinner = document.querySelector('.animate-spin')
     expect(spinner).toBeInTheDocument()
-    expect(spinner).toHaveClass('animate-spin')
   })
 
   it('should render all time slots after loading', async () => {
@@ -89,58 +87,59 @@ describe('TimeSlots Component', () => {
   it('should call onSelect when an available slot is clicked', async () => {
     render(<TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />)
 
-    await waitFor(() => {
-      const availableSlot = screen.getByText('11:00')
-      act(() => {
-        fireEvent.click(availableSlot)
-      })
-      expect(mockOnSelect).toHaveBeenCalledWith('11:00')
+    await waitFor(() => expect(screen.getByText('11:00')).toBeInTheDocument())
+    const availableSlot = screen.getByText('11:00')
+    act(() => {
+      fireEvent.click(availableSlot)
     })
+    expect(mockOnSelect).toHaveBeenCalledWith('11:00')
   })
 
   it('should not call onSelect when an unavailable slot is clicked', async () => {
     render(<TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />)
 
-    await waitFor(() => {
-      const unavailableSlot = screen.getByText('12:00')
-      act(() => {
-        fireEvent.click(unavailableSlot)
-      })
-      expect(mockOnSelect).not.toHaveBeenCalled()
+    await waitFor(() => expect(screen.getByText('12:00')).toBeInTheDocument())
+    const unavailableSlot = screen.getByText('12:00')
+    act(() => {
+      fireEvent.click(unavailableSlot)
     })
+    expect(mockOnSelect).not.toHaveBeenCalled()
   })
 
   it('should fetch new time slots when date changes', async () => {
-    const { reservationService } = require('@/lib/reservationService')
     const { rerender } = render(
       <TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />,
     )
 
     await waitFor(() => {
-      expect(reservationService.getTimeSlotsForDate).toHaveBeenCalledWith(mockDate)
+      expect((global as any).fetch).toHaveBeenCalled()
     })
 
-    // Change the date
     const newDate = '2025-08-02'
     rerender(<TimeSlots date={newDate} onSelect={mockOnSelect} selected={mockSelected} />)
 
     await waitFor(() => {
-      expect(reservationService.getTimeSlotsForDate).toHaveBeenCalledWith(newDate)
+      const calls = ((global as any).fetch as jest.Mock).mock.calls as Array<[string]>
+      const urls = calls.map((c) => c[0])
+      expect(urls.some((url) => url.includes(`date=${newDate}`))).toBe(true)
     })
   })
 
   it('should handle error when fetching time slots fails', async () => {
-    const { reservationService } = require('@/lib/reservationService')
-    reservationService.getTimeSlotsForDate.mockRejectedValueOnce(new Error('Network error'))
+    ;(global as any).fetch = jest.fn().mockResolvedValue({
+      ok: false,
+      json: async () => ({ error: 'Failed' }),
+    })
 
     const consoleError = jest.spyOn(console, 'error').mockImplementation()
 
     render(<TimeSlots date={mockDate} onSelect={mockOnSelect} selected={mockSelected} />)
 
     await waitFor(() => {
-      expect(consoleError).toHaveBeenCalledWith('時間枠の取得に失敗しました:', expect.any(Error))
+      expect(screen.getByText('時間枠の取得に失敗しました。もう一度お試しください。')).toBeInTheDocument()
     })
 
     consoleError.mockRestore()
   })
 })
+

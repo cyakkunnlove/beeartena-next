@@ -9,7 +9,7 @@ import {
 } from '@/lib/api/middleware'
 import { reservationService } from '@/lib/reservationService'
 import { getAdminDb } from '@/lib/firebase/admin'
-import { cache as cacheService } from '@/lib/api/cache'
+import { cache as cacheService } from '@/lib/api/cache.server'
 import { CACHE_STRATEGY, setCacheHeaders, addFreshnessHeaders } from '@/lib/api/cache-strategy'
 
 export async function OPTIONS(_request: NextRequest) {

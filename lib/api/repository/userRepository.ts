@@ -111,9 +111,15 @@ export class UserRepository extends BaseRepository<User> {
     activeToday: number
   }> {
     const cacheKey = 'users:statistics'
+    type UserStats = {
+      total: number
+      byRole: Record<string, number>
+      newThisMonth: number
+      activeToday: number
+    }
 
     // Check cache
-    const cached = await cache.get(cacheKey)
+    const cached = await cache.get<UserStats>(cacheKey)
     if (cached) return cached
 
     const [total, customers, admins] = await Promise.all([

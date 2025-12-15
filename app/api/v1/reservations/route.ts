@@ -99,7 +99,8 @@ const handler = createApiHandler(
       }
 
       // Get service details from cache or database
-      const serviceDetails = (await cache.get(`service:${body.serviceId}`)) || {
+      const serviceDetails =
+        (await cache.get<{ name: string; price: number }>(`service:${body.serviceId}`)) ?? {
         name: `${serviceType}まつ毛エクステ`,
         price: serviceType === '2D' ? 6000 : serviceType === '3D' ? 8000 : 10000,
       }
