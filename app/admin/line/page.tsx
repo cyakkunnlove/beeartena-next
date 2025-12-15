@@ -48,6 +48,9 @@ export default function AdminLinePage() {
   const [loadingDetail, setLoadingDetail] = useState(false)
   const [sending, setSending] = useState(false)
   const [draft, setDraft] = useState('')
+  const [attachment, setAttachment] = useState<File | null>(null)
+  const [attachmentPreview, setAttachmentPreview] = useState<File | null>(null)
+  const [sendingMedia, setSendingMedia] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
 
   const [customerQuery, setCustomerQuery] = useState('')
@@ -154,6 +157,8 @@ export default function AdminLinePage() {
     return selectedUserId ? `ユーザー: ${selectedUserId}` : '会話を選択してください'
   })()
 
+  const sendingEnabled = Boolean(lineConfig?.sendingEnabled)
+
   const renderMessageBody = (m: LineMessage, outbound: boolean) => {
     const fallback = m.text ?? (m.type ? `[${m.type}]` : '')
     const linkClass = outbound ? 'text-white underline underline-offset-2' : 'text-primary underline underline-offset-2'
@@ -180,6 +185,17 @@ export default function AdminLinePage() {
             {m.mediaFileName ?? '動画を開く'}
           </a>
           {m.text ? <div className="whitespace-pre-wrap break-words">{m.text}</div> : null}
+        </div>
+      )
+    }
+
+    if ((m.type === 'image' || m.type === 'video') && !m.mediaUrl) {
+      return (
+        <div className="space-y-1">
+          <div className="whitespace-pre-wrap break-words">{fallback}</div>
+          <div className={`text-[11px] ${outbound ? 'text-white/80' : 'text-gray-400'}`}>
+            メディアの保存/表示には `LINE_CHANNEL_ACCESS_TOKEN` と Storage 設定が必要です
+          </div>
         </div>
       )
     }
@@ -216,6 +232,64 @@ export default function AdminLinePage() {
       setErrorMessage(error instanceof Error ? error.message : 'LINE送信に失敗しました')
     } finally {
       setSending(false)
+    }
+  }
+
+  const resetAttachment = () => {
+    setAttachment(null)
+    setAttachmentPreview(null)
+  }
+
+  const handlePickAttachment = (file: File | null) => {
+    resetAttachment()
+    if (!file) return
+    setAttachment(file)
+    if (!file.type.startsWith('video/')) {
+      setAttachmentPreview(null)
+    }
+  }
+
+  const handleSendAttachment = async () => {
+    if (!selectedUserId || !attachment) return
+    if (!sendingEnabled) {
+      setErrorMessage('送信機能が未設定です（LINE_CHANNEL_ACCESS_TOKEN を設定してください）')
+      return
+    }
+
+    const isVideo = attachment.type.startsWith('video/')
+    if (isVideo && !attachmentPreview) {
+      setErrorMessage('動画送信にはプレビュー画像が必要です（画像を選択してください）')
+      return
+    }
+
+    setSendingMedia(true)
+    setErrorMessage(null)
+    try {
+      const form = new FormData()
+      form.set('userId', selectedUserId)
+      form.set('kind', isVideo ? 'video' : 'image')
+      form.set('file', attachment)
+      if (isVideo && attachmentPreview) {
+        form.set('preview', attachmentPreview)
+      }
+      if (draft.trim()) {
+        form.set('caption', draft.trim())
+      }
+
+      const res = await fetch('/api/admin/line/send-media', { method: 'POST', body: form })
+      const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null
+      if (!res.ok || !json?.success) {
+        throw new Error(json?.error || '添付の送信に失敗しました')
+      }
+
+      setDraft('')
+      resetAttachment()
+      await loadConversation(selectedUserId)
+      await loadConversations()
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : '添付の送信に失敗しました')
+    } finally {
+      setSendingMedia(false)
     }
   }
 
@@ -739,23 +813,97 @@ export default function AdminLinePage() {
                 <input
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
-                  disabled={!selectedUserId || sending || (lineConfig ? !lineConfig.sendingEnabled : false)}
+                  disabled={!selectedUserId || sending || sendingMedia || !sendingEnabled}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm disabled:bg-gray-50"
-                  placeholder={selectedUserId ? 'メッセージを入力（送信は任意機能）' : '会話を選択してください'}
+                  placeholder={
+                    !selectedUserId
+                      ? '会話を選択してください'
+                      : sendingEnabled
+                        ? 'メッセージを入力（送信は任意機能）'
+                        : '送信は未設定（LINE_CHANNEL_ACCESS_TOKEN が必要です）'
+                  }
                 />
+                <label className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 cursor-pointer">
+                  添付
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    className="hidden"
+                    disabled={!selectedUserId || sendingMedia || !sendingEnabled}
+                    onChange={(e) => handlePickAttachment(e.target.files?.[0] ?? null)}
+                  />
+                </label>
                 <button
                   type="submit"
                   disabled={
                     !selectedUserId ||
                     sending ||
+                    sendingMedia ||
                     draft.trim().length === 0 ||
-                    (lineConfig ? !lineConfig.sendingEnabled : false)
+                    !sendingEnabled
                   }
                   className="px-4 py-2 rounded-lg bg-primary text-white hover:bg-dark-gold disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {sending ? '送信中…' : '送信'}
                 </button>
               </div>
+              {attachment && (
+                <div className="mt-2 rounded-lg border border-gray-200 bg-gray-50 p-3 text-xs text-gray-700">
+                  <div className="flex flex-wrap items-center gap-2 justify-between">
+                    <div className="min-w-0">
+                      <span className="font-medium">添付:</span>{' '}
+                      <span className="truncate">{attachment.name}</span>
+                      {attachment.type.startsWith('video/') ? (
+                        <span className="ml-2 text-[11px] text-gray-500">（動画はプレビュー画像が必要）</span>
+                      ) : null}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        className="text-[11px] text-gray-600 hover:text-gray-900 disabled:opacity-60"
+                        onClick={resetAttachment}
+                        disabled={sendingMedia}
+                      >
+                        取消
+                      </button>
+                      <button
+                        type="button"
+                        className="px-3 py-1.5 rounded-lg bg-primary text-white text-xs hover:bg-dark-gold disabled:opacity-50"
+                        onClick={() => void handleSendAttachment()}
+                        disabled={sendingMedia || (attachment.type.startsWith('video/') && !attachmentPreview)}
+                        title={
+                          attachment.type.startsWith('video/') && !attachmentPreview
+                            ? '動画送信にはプレビュー画像が必要です'
+                            : undefined
+                        }
+                      >
+                        {sendingMedia ? '送信中…' : '添付を送信'}
+                      </button>
+                    </div>
+                  </div>
+                  {attachment.type.startsWith('video/') && (
+                    <div className="mt-2">
+                      <div className="flex items-center gap-2">
+                        <label className="px-3 py-1.5 border border-gray-300 rounded-lg text-xs text-gray-700 hover:bg-white cursor-pointer">
+                          プレビュー画像を選択
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            disabled={sendingMedia}
+                            onChange={(e) => setAttachmentPreview(e.target.files?.[0] ?? null)}
+                          />
+                        </label>
+                        {attachmentPreview ? (
+                          <span className="text-[11px] text-gray-500 truncate">{attachmentPreview.name}</span>
+                        ) : (
+                          <span className="text-[11px] text-amber-700">未選択</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               <p className="text-[11px] text-gray-500 mt-2">
                 送信機能は `LINE_CHANNEL_ACCESS_TOKEN` 設定時のみ動作します。
               </p>
