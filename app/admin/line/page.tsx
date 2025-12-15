@@ -221,14 +221,9 @@ export default function AdminLinePage() {
                 setRefetchingMessageId(m.id)
                 setErrorMessage(null)
                 try {
-                  const res = await fetch('/api/admin/line/media/refetch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: selectedUserId, messageId: m.id }),
-                  })
-                  const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null
-                  if (!res.ok || !json?.success) {
-                    throw new Error(json?.error || '再取得に失敗しました')
+                  const response = await apiClient.refetchAdminLineMedia(selectedUserId, m.id)
+                  if (!response.success) {
+                    throw new Error(response.error || '再取得に失敗しました')
                   }
                   await loadConversation(selectedUserId)
                 } catch (error) {
@@ -310,21 +305,15 @@ export default function AdminLinePage() {
     setSendingMedia(true)
     setErrorMessage(null)
     try {
-      const form = new FormData()
-      form.set('userId', selectedUserId)
-      form.set('kind', isVideo ? 'video' : 'image')
-      form.set('file', attachment)
-      if (isVideo && attachmentPreview) {
-        form.set('preview', attachmentPreview)
-      }
-      if (draft.trim()) {
-        form.set('caption', draft.trim())
-      }
-
-      const res = await fetch('/api/admin/line/send-media', { method: 'POST', body: form })
-      const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null
-      if (!res.ok || !json?.success) {
-        throw new Error(json?.error || '添付の送信に失敗しました')
+      const response = await apiClient.sendAdminLineMedia({
+        userId: selectedUserId,
+        kind: isVideo ? 'video' : 'image',
+        file: attachment,
+        preview: isVideo ? (attachmentPreview ?? undefined) : undefined,
+        caption: draft.trim() ? draft.trim() : undefined,
+      })
+      if (!response.success) {
+        throw new Error(response.error || '添付の送信に失敗しました')
       }
 
       setDraft('')

@@ -624,6 +624,49 @@ class ApiClient {
     return data as T
   }
 
+  private async requestForm<T>(
+    endpoint: string,
+    formData: FormData,
+    options: RequestInit = {},
+    requireAuth = true,
+  ): Promise<T> {
+    const url = this.resolveUrl(endpoint)
+    const headers: Record<string, string> = {
+      ...(options.headers as Record<string, string>),
+    }
+
+    if (this.token) {
+      headers['Authorization'] = `Bearer ${this.token}`
+    }
+
+    const response = await fetch(url, {
+      ...options,
+      method: options.method ?? 'POST',
+      headers,
+      body: formData,
+    })
+
+    if (response.status === 401 && requireAuth) {
+      this.clearToken()
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login'
+      }
+      throw new Error('認証が必要です')
+    }
+
+    if (response.status === 204) {
+      return {} as T
+    }
+
+    const data = await response.json()
+
+    if (!response.ok) {
+      throw new Error(data.error || 'リクエストに失敗しました')
+    }
+
+    return data as T
+  }
+
   // 認証関連
   async login(email: string, password: string) {
     const response = await this.request<{ user: unknown; token: string }>('/auth/login', {
@@ -1366,6 +1409,34 @@ class ApiClient {
     return this.request<{ success: boolean }>(`/admin/line/send`, {
       method: 'POST',
       body: JSON.stringify({ userId, text }),
+    })
+  }
+
+  async sendAdminLineMedia(payload: {
+    userId: string
+    kind: 'image' | 'video'
+    file: File
+    preview?: File
+    caption?: string
+  }) {
+    const form = new FormData()
+    form.set('userId', payload.userId)
+    form.set('kind', payload.kind)
+    form.set('file', payload.file)
+    if (payload.kind === 'video' && payload.preview) {
+      form.set('preview', payload.preview)
+    }
+    if (typeof payload.caption === 'string' && payload.caption.trim().length > 0) {
+      form.set('caption', payload.caption.trim())
+    }
+
+    return this.requestForm<{ success: boolean; error?: string }>(`/admin/line/send-media`, form)
+  }
+
+  async refetchAdminLineMedia(userId: string, messageId: string) {
+    return this.request<{ success: boolean; already?: boolean; error?: string }>(`/admin/line/media/refetch`, {
+      method: 'POST',
+      body: JSON.stringify({ userId, messageId }),
     })
   }
 }
