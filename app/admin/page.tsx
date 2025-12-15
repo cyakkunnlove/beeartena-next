@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
@@ -11,6 +11,9 @@ export default function AdminDashboard() {
   const router = useRouter()
   const { user } = useAuth()
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null)
   const [stats, setStats] = useState({
     totalCustomers: 0,
     totalReservations: 0,
@@ -22,29 +25,44 @@ export default function AdminDashboard() {
     activeCustomers: 0,
   })
 
+  const fetchStats = useCallback(
+    async (options: { silent?: boolean } = {}) => {
+      if (!user || user.role !== 'admin') return
+
+      try {
+        if (options.silent) {
+          setRefreshing(true)
+        } else {
+          setLoading(true)
+        }
+        setErrorMessage(null)
+
+        const data = await apiClient.getAdminStats({ forceRefresh: true })
+        if (data?.stats) {
+          setStats(data.stats)
+          setLastUpdatedAt(new Date().toISOString())
+        } else {
+          throw new Error('Invalid stats payload')
+        }
+      } catch (error) {
+        console.error('Error fetching admin stats:', error)
+        setErrorMessage('管理画面の集計データ取得に失敗しました。時間をおいて再度お試しください。')
+      } finally {
+        setLoading(false)
+        setRefreshing(false)
+      }
+    },
+    [user],
+  )
+
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       router.push('/')
       return
     }
 
-    const fetchStats = async () => {
-      try {
-        const data = await apiClient.getAdminStats()
-        if (data?.stats) {
-          setStats(data.stats)
-        } else {
-          throw new Error('Invalid stats payload')
-        }
-      } catch (error) {
-        console.error('Error fetching admin stats:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     fetchStats()
-  }, [user, router])
+  }, [user, router, fetchStats])
 
   if (!user || user.role !== 'admin') {
     return null
@@ -154,10 +172,33 @@ export default function AdminDashboard() {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="container mx-auto px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">管理画面</h1>
-          <p className="text-gray-600 mt-2">BEE ART ENAの予約・顧客管理システム</p>
+        <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">管理画面</h1>
+            <p className="text-gray-600 mt-2">BEE ART ENAの予約・顧客管理システム</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {lastUpdatedAt && (
+              <span className="text-xs text-gray-500">
+                最終更新: {new Date(lastUpdatedAt).toLocaleString('ja-JP')}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => fetchStats({ silent: true })}
+              disabled={refreshing}
+              className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-60"
+            >
+              {refreshing ? '更新中…' : '再読み込み'}
+            </button>
+          </div>
         </div>
+
+        {errorMessage && (
+          <div className="mb-6 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800">
+            {errorMessage}
+          </div>
+        )}
 
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
