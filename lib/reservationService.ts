@@ -6,12 +6,14 @@ import {
   TimeSlot,
   getErrorMessage,
 } from '@/lib/types'
+import admin, { getAdminDb } from '@/lib/firebase/admin'
 import { reservationService as firebaseReservationService } from '@/lib/firebase/reservations'
 import { settingsService } from '@/lib/firebase/settings'
 import { POINTS_PROGRAM_ENABLED } from '@/lib/constants/featureFlags'
 import { pointService } from '@/lib/firebase/points'
 import { logger } from '@/lib/utils/logger'
 import { exportReservationsToICal } from '@/lib/utils/reservations/exportToICal'
+import { normalizeSettings } from '@/lib/utils/reservationSettings'
 
 const isBrowser = typeof window !== 'undefined'
 const isTestEnv = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test'
@@ -293,53 +295,27 @@ class ReservationService {
   
   private async loadSettingsFromFirestore(): Promise<void> {
     try {
-      if (typeof settingsService?.getSettings !== 'function') {
-        this.isSettingsLoaded = true
-        return
+      let firestoreSettings: ReservationSettings | null = null
+
+      // サーバー側はAdmin SDK優先（Firestoreルールの影響を受けない）
+      if (typeof window === 'undefined') {
+        const db = getAdminDb()
+        if (db) {
+          const snap = await db.collection('settings').doc('reservation-settings').get()
+          if (snap.exists) {
+            firestoreSettings = normalizeSettings((snap.data() as Partial<ReservationSettings>) ?? null)
+          }
+        }
       }
 
-      const firestoreSettings = await settingsService.getSettings()
+      // フォールバック（旧実装）：クライアントSDKから取得
+      if (!firestoreSettings && typeof settingsService?.getSettings === 'function') {
+        const raw = await settingsService.getSettings()
+        firestoreSettings = raw ? normalizeSettings(raw) : null
+      }
+
       if (firestoreSettings) {
-        let normalizedSettings = firestoreSettings
-
-        if (isLegacyBusinessHours(firestoreSettings.businessHours)) {
-          normalizedSettings = {
-            ...firestoreSettings,
-            businessHours: DEFAULT_BUSINESS_HOURS.map((hours) => ({ ...hours })),
-            slotDuration: firestoreSettings.slotDuration || 120,
-            maxCapacityPerSlot: firestoreSettings.maxCapacityPerSlot || 1,
-          }
-
-          try {
-            await settingsService.saveSettings(normalizedSettings)
-          } catch (error) {
-            logger.warn('Failed to migrate legacy business hours', {
-              error: getErrorMessage(error),
-            })
-          }
-        }
-
-        const businessHours = normalizedSettings.businessHours.map((hours) => {
-          const defaultHours = DEFAULT_BUSINESS_HOURS.find((h) => h.dayOfWeek === hours.dayOfWeek)
-
-          return {
-            ...hours,
-            allowMultipleSlots: hours.allowMultipleSlots ?? defaultHours?.allowMultipleSlots ?? false,
-            slotInterval: hours.slotInterval ?? defaultHours?.slotInterval,
-            maxCapacityPerDay: hours.maxCapacityPerDay ?? defaultHours?.maxCapacityPerDay ?? 1,
-          }
-        })
-
-        this.settings = {
-          ...normalizedSettings,
-          businessHours,
-          slotDuration: normalizedSettings.slotDuration || 60,
-          maxCapacityPerSlot: normalizedSettings.maxCapacityPerSlot || 1,
-          cancellationDeadlineHours: normalizedSettings.cancellationDeadlineHours ?? 24,
-          cancellationPolicy:
-            normalizedSettings.cancellationPolicy ||
-            '予約日の24時間前までキャンセルが可能です。それ以降のキャンセルはお電話にてご連絡ください。',
-        }
+        this.settings = firestoreSettings
 
         if (typeof window !== 'undefined') {
           localStorage.setItem('reservationSettings', JSON.stringify(this.settings))
@@ -379,6 +355,62 @@ class ReservationService {
     }
   }
 
+  private mapReservationDocToReservation(
+    id: string,
+    data: Record<string, unknown>,
+  ): Reservation {
+    const toDateValue = (value: unknown): Date | undefined => {
+      if (!value) return undefined
+      if (value instanceof Date) return value
+      if (typeof value === 'string') {
+        const parsed = new Date(value)
+        return Number.isNaN(parsed.getTime()) ? undefined : parsed
+      }
+      if (typeof value === 'object' && typeof (value as any).toDate === 'function') {
+        try {
+          const parsed = (value as any).toDate()
+          return parsed instanceof Date && !Number.isNaN(parsed.getTime()) ? parsed : undefined
+        } catch {
+          return undefined
+        }
+      }
+      return undefined
+    }
+
+    return {
+      ...(data as any),
+      id,
+      createdAt: toDateValue(data.createdAt) ?? new Date(),
+      updatedAt: toDateValue(data.updatedAt),
+      cancelledAt: toDateValue(data.cancelledAt) ?? null,
+      completedAt: toDateValue(data.completedAt) ?? null,
+    } as Reservation
+  }
+
+  private async fetchReservationsByDate(dateStr: string, dateObj: Date): Promise<Reservation[]> {
+    // サーバー側はAdmin SDK優先（Firestoreルールの影響を受けない）
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        const snapshot = await db.collection('reservations').where('date', '==', dateStr).get()
+        return snapshot.docs
+          .map((doc) => this.mapReservationDocToReservation(doc.id, doc.data() as any))
+          .filter((reservation) => reservation.status !== 'cancelled')
+      }
+    }
+
+    // フォールバック（旧実装）
+    try {
+      return await firebaseReservationService.getReservationsByDate(dateObj)
+    } catch (error) {
+      logger.error('Failed to fetch reservations by date (fallback)', {
+        date: dateStr,
+        error: getErrorMessage(error),
+      })
+      return []
+    }
+  }
+
   async saveSettings(settings: ReservationSettings): Promise<void> {
     this.settings = settings
     this.isSettingsLoaded = true
@@ -415,7 +447,37 @@ class ReservationService {
         ? { ...reservation, createdBy }
         : reservation
 
-    const newReservation = await firebaseReservationService.createReservation(reservationData)
+    // サーバー側はAdmin SDK優先（Firestoreルールの影響を受けない）
+    let newReservation: Reservation
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (!db) {
+        newReservation = await firebaseReservationService.createReservation(reservationData)
+      } else {
+        const reservationRef = db.collection('reservations').doc()
+        const now = new Date()
+
+        await reservationRef.set(
+          {
+            ...reservationData,
+            id: reservationRef.id,
+            createdAt: admin.firestore.FieldValue.serverTimestamp(),
+            updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+          },
+          { merge: false },
+        )
+
+        newReservation = {
+          ...(reservationData as any),
+          id: reservationRef.id,
+          createdAt: now,
+          updatedAt: now,
+          status: (reservationData as any).status ?? 'pending',
+        } as Reservation
+      }
+    } else {
+      newReservation = await firebaseReservationService.createReservation(reservationData)
+    }
     
     // メール送信処理（エラーが発生してもリザベーションは成功させる）
     try {
@@ -477,53 +539,93 @@ class ReservationService {
       await pointService.addReservationPoints(reservation.customerId, reservation.price)
     }
 
-    // メール通知を送信
-    try {
-      // ユーザーへの確認メール
-      if (reservation.customerEmail) {
-        await emailService.sendReservationConfirmation(newReservation, reservation.customerEmail)
-      }
-      // 管理者への通知メール
-      await emailService.sendReservationNotificationToAdmin(newReservation)
-    } catch (error) {
-      logger.error('メール送信エラー', {
-        error: getErrorMessage(error),
-      })
-      // メール送信に失敗しても予約自体は成功とする
-    }
-
     return newReservation
   }
 
   // 予約取得
   async getReservation(id: string): Promise<Reservation | null> {
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        const doc = await db.collection('reservations').doc(id).get()
+        if (!doc.exists) return null
+        return this.mapReservationDocToReservation(doc.id, doc.data() as any)
+      }
+    }
+
     return firebaseReservationService.getReservation(id)
   }
 
   // ユーザーの予約一覧取得
   async getUserReservations(userId: string): Promise<Reservation[]> {
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        const snapshot = await db
+          .collection('reservations')
+          .where('customerId', '==', userId)
+          .orderBy('date', 'desc')
+          .get()
+
+        return snapshot.docs.map((doc) => this.mapReservationDocToReservation(doc.id, doc.data() as any))
+      }
+    }
+
     return firebaseReservationService.getUserReservations(userId)
   }
 
   // 全予約取得（管理者用）
   async getAllReservations(): Promise<Reservation[]> {
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        const snapshot = await db.collection('reservations').orderBy('date', 'desc').get()
+        return snapshot.docs.map((doc) => this.mapReservationDocToReservation(doc.id, doc.data() as any))
+      }
+    }
+
     return firebaseReservationService.getAllReservations()
   }
 
   // 予約確定
   async confirmReservation(id: string): Promise<void> {
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        await db.collection('reservations').doc(id).update({
+          status: 'confirmed',
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        })
+        return
+      }
+    }
+
     await firebaseReservationService.updateReservationStatus(id, 'confirmed')
   }
 
   // 予約キャンセル
   async cancelReservation(id: string, reason?: string): Promise<void> {
-    const reservation = await firebaseReservationService.getReservation(id)
+    const reservation = await this.getReservation(id)
     if (!reservation) {
       throw new Error('予約が見つかりません')
     }
 
     // キャンセル処理
-    await firebaseReservationService.cancelReservation(id, reason)
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        await db.collection('reservations').doc(id).update({
+          status: 'cancelled',
+          cancelReason: reason || '',
+          cancelledAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        })
+      } else {
+        await firebaseReservationService.cancelReservation(id, reason)
+      }
+    } else {
+      await firebaseReservationService.cancelReservation(id, reason)
+    }
 
     // ポイント返却（ポイント制度は廃止のため無効）
     if (
@@ -560,12 +662,25 @@ class ReservationService {
 
   // 予約完了処理
   async completeReservation(id: string, _completedBy?: string): Promise<void> {
-    const reservation = await firebaseReservationService.getReservation(id)
+    const reservation = await this.getReservation(id)
     if (!reservation) {
       throw new Error('予約が見つかりません')
     }
 
-    await firebaseReservationService.updateReservationStatus(id, 'completed')
+    if (typeof window === 'undefined') {
+      const db = getAdminDb()
+      if (db) {
+        await db.collection('reservations').doc(id).update({
+          status: 'completed',
+          completedAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        })
+      } else {
+        await firebaseReservationService.updateReservationStatus(id, 'completed')
+      }
+    } else {
+      await firebaseReservationService.updateReservationStatus(id, 'completed')
+    }
 
     // 累計利用金額を更新
     if (
@@ -646,7 +761,7 @@ class ReservationService {
     if (this.preloadedReservationsByDate.has(date)) {
       reservations = this.preloadedReservationsByDate.get(date) ?? []
     } else {
-      reservations = await firebaseReservationService.getReservationsByDate(dateObj)
+      reservations = await this.fetchReservationsByDate(date, dateObj)
       if (!isBrowser) {
         this.preloadedReservationsByDate.set(date, reservations)
       }

@@ -183,7 +183,12 @@ export default function ReservationCreateModal({
 
     setSlotsLoading(true)
     try {
-      const response = await fetch(`/api/reservations/by-date?date=${encodeURIComponent(date)}`)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const response = await fetch(`/api/reservations/by-date?date=${encodeURIComponent(date)}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
       if (!response.ok) {
         throw new Error('時間枠の取得に失敗しました')
       }

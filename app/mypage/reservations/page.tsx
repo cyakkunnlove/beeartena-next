@@ -20,7 +20,6 @@ export default function ReservationsPage() {
     try {
       // APIから予約データを取得
       const token = localStorage.getItem('auth_token')
-      console.log('Loading reservations with token:', token ? 'exists' : 'missing')
 
       const response = await fetch('/api/reservations', {
         headers: {
@@ -29,8 +28,6 @@ export default function ReservationsPage() {
         },
       })
 
-      console.log('Response status:', response.status)
-
       if (!response.ok) {
         const errorText = await response.text()
         console.error('API Error:', errorText)
@@ -38,7 +35,6 @@ export default function ReservationsPage() {
       }
 
       const data = await response.json()
-      console.log('Fetched reservations:', data)
 
       // data.reservationsが存在し、配列であることを確認
       if (data.reservations && Array.isArray(data.reservations)) {

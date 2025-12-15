@@ -30,7 +30,12 @@ export default function ReservationEditModal({
 
     // Get available slots for the new date
     try {
-      const response = await fetch(`/api/reservations/by-date?date=${date}`)
+      const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
+      const response = await fetch(`/api/reservations/by-date?date=${date}`, {
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         const slots: TimeSlot[] = data.timeSlots || []
