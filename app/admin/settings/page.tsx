@@ -104,9 +104,9 @@ export default function AdminSettingsPage() {
     blockedDates: boolean
     dateOverrides: boolean
   }>({
-    basic: true,
+    basic: false,
     cancellation: false,
-    businessHours: true,
+    businessHours: false,
     blockedDates: false,
     dateOverrides: false,
   })

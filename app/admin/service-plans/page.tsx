@@ -363,6 +363,12 @@ export default function ServicePlansAdminPage() {
   const [formSubmitting, setFormSubmitting] = useState(false)
   const [busyAction, setBusyAction] = useState<string | null>(null)
 
+  const closeForm = () => {
+    if (formSubmitting) return
+    setShowForm(false)
+    setEditingPlan(null)
+  }
+
   const showFeedback = (type: 'success' | 'error', message: string) => {
     setFeedback({ type, message })
     window.setTimeout(() => {
@@ -395,6 +401,26 @@ export default function ServicePlansAdminPage() {
     }
     fetchPlans()
   }, [authLoading, user, router, fetchPlans])
+
+  useEffect(() => {
+    if (!showForm) return
+    const originalOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        closeForm()
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    return () => {
+      document.body.style.overflow = originalOverflow
+      document.removeEventListener('keydown', handleKeyDown)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showForm, formSubmitting])
+
   const handleCreateClick = () => {
     setEditingPlan(null)
     setShowForm(true)
@@ -483,7 +509,7 @@ export default function ServicePlansAdminPage() {
         await fetchPlans()
         showFeedback('success', 'プランを追加しました')
       }
-      setShowForm(false)
+      closeForm()
     } catch (error) {
       console.error('Failed to save service plan', error)
       showFeedback('error', 'プランの保存に失敗しました')
@@ -545,31 +571,45 @@ export default function ServicePlansAdminPage() {
           </button>
         </div>
       </div>
-      {feedback && (
-        <div
-          className={`rounded-md px-4 py-3 text-sm ${
-            feedback.type === 'success'
-              ? 'bg-green-50 text-green-700 border border-green-200'
-              : 'bg-red-50 text-red-700 border border-red-200'
-          }`}
-        >
-          {feedback.message}
-        </div>
-      )}
-      {showForm && (
-        <ServicePlanForm
-          mode={editingPlan ? 'edit' : 'create'}
-          plan={editingPlan ?? undefined}
-          defaults={editingPlan ? undefined : createDefaults}
-          onSubmit={handleFormSubmit}
-          onCancel={() => setShowForm(false)}
-          submitting={formSubmitting}
-        />
-      )}
-      <div className="bg-white shadow-md rounded-lg overflow-hidden">
-        {sortedPlans.length === 0 ? (
-          <div className="p-6 text-center text-sm text-gray-600">
-            まだサービスプランが登録されていません。「新規プランを追加」をクリックして登録してください。
+	      {feedback && (
+	        <div
+	          className={`rounded-md px-4 py-3 text-sm ${
+	            feedback.type === 'success'
+	              ? 'bg-green-50 text-green-700 border border-green-200'
+	              : 'bg-red-50 text-red-700 border border-red-200'
+	          }`}
+	        >
+	          {feedback.message}
+	        </div>
+	      )}
+	      {showForm && (
+	        <div
+	          className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 px-4 py-10"
+	          role="dialog"
+	          aria-modal="true"
+	          aria-label={editingPlan ? 'サービスプランを編集' : 'サービスプランを追加'}
+	          onMouseDown={(event) => {
+	            if (event.target === event.currentTarget) {
+	              closeForm()
+	            }
+	          }}
+	        >
+	          <div className="w-full max-w-4xl">
+	            <ServicePlanForm
+	              mode={editingPlan ? 'edit' : 'create'}
+	              plan={editingPlan ?? undefined}
+	              defaults={editingPlan ? undefined : createDefaults}
+	              onSubmit={handleFormSubmit}
+	              onCancel={closeForm}
+	              submitting={formSubmitting}
+	            />
+	          </div>
+	        </div>
+	      )}
+	      <div className="bg-white shadow-md rounded-lg overflow-hidden">
+	        {sortedPlans.length === 0 ? (
+	          <div className="p-6 text-center text-sm text-gray-600">
+	            まだサービスプランが登録されていません。「新規プランを追加」をクリックして登録してください。
           </div>
         ) : (
           <div className="overflow-x-auto">
