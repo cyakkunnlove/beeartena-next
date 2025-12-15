@@ -139,18 +139,53 @@ export default function AdminLinePage() {
     if (!q) return conversations
 
     return conversations.filter((c) => {
-      const name = (c.displayName ?? '').toLowerCase()
+      const name = ((c.customerName ?? c.displayName) ?? '').toLowerCase()
       const last = (c.lastMessageText ?? '').toLowerCase()
       const id = (c.userId ?? '').toLowerCase()
       return name.includes(q) || last.includes(q) || id.includes(q)
     })
   }, [conversations, search])
 
-  const selectedTitle = selectedConversation?.displayName?.trim()
-    ? selectedConversation.displayName
-    : selectedUserId
-      ? `ユーザー: ${selectedUserId}`
-      : '会話を選択してください'
+  const selectedTitle = (() => {
+    const customerName = selectedConversation?.customerName?.trim()
+    if (customerName) return customerName
+    const displayName = selectedConversation?.displayName?.trim()
+    if (displayName) return displayName
+    return selectedUserId ? `ユーザー: ${selectedUserId}` : '会話を選択してください'
+  })()
+
+  const renderMessageBody = (m: LineMessage, outbound: boolean) => {
+    const fallback = m.text ?? (m.type ? `[${m.type}]` : '')
+    const linkClass = outbound ? 'text-white underline underline-offset-2' : 'text-primary underline underline-offset-2'
+
+    if (m.type === 'image' && m.mediaUrl) {
+      return (
+        <div className="space-y-2">
+          <a href={m.mediaUrl} target="_blank" rel="noreferrer" className={linkClass}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={m.mediaUrl} alt={m.mediaFileName ?? 'LINE画像'} className="max-w-full rounded-lg" />
+          </a>
+          {m.text ? <div className="whitespace-pre-wrap break-words">{m.text}</div> : null}
+        </div>
+      )
+    }
+
+    if (m.type === 'video' && m.mediaUrl) {
+      return (
+        <div className="space-y-2">
+          <video controls preload="metadata" className="w-full rounded-lg">
+            <source src={m.mediaUrl} type={m.mediaContentType ?? 'video/mp4'} />
+          </video>
+          <a href={m.mediaUrl} target="_blank" rel="noreferrer" className={linkClass}>
+            {m.mediaFileName ?? '動画を開く'}
+          </a>
+          {m.text ? <div className="whitespace-pre-wrap break-words">{m.text}</div> : null}
+        </div>
+      )
+    }
+
+    return <div className="whitespace-pre-wrap break-words">{fallback}</div>
+  }
 
   const handleSelect = (userId: string) => {
     setSelectedUserId(userId)
@@ -288,7 +323,10 @@ export default function AdminLinePage() {
     setLinking(true)
     setErrorMessage(null)
     try {
-      await apiClient.linkAdminLineConversationCustomer(selectedUserId, customerId)
+      const response = await apiClient.linkAdminLineConversationCustomer(selectedUserId, customerId)
+      if (!response.success) {
+        throw new Error('顧客の紐付けに失敗しました')
+      }
       await loadConversation(selectedUserId)
       await loadConversations()
       setCustomerQuery('')
@@ -305,7 +343,34 @@ export default function AdminLinePage() {
     setLinking(true)
     setErrorMessage(null)
     try {
-      await apiClient.unlinkAdminLineConversationCustomer(selectedUserId)
+      const response = await apiClient.unlinkAdminLineConversationCustomer(selectedUserId)
+      if (!response.success) {
+        throw new Error('顧客の紐付け解除に失敗しました')
+      }
+      setSelectedConversation((prev) =>
+        prev
+          ? {
+              ...prev,
+              customerId: undefined,
+              customerName: undefined,
+              customerEmail: undefined,
+              customerPhone: undefined,
+            }
+          : prev,
+      )
+      setConversations((prev) =>
+        prev.map((c) =>
+          c.userId === selectedUserId
+            ? {
+                ...c,
+                customerId: undefined,
+                customerName: undefined,
+                customerEmail: undefined,
+                customerPhone: undefined,
+              }
+            : c,
+        ),
+      )
       await loadConversation(selectedUserId)
       await loadConversations()
     } catch (error) {
@@ -377,6 +442,7 @@ export default function AdminLinePage() {
                   {filteredConversations.map((c) => {
                     const active = selectedUserId === c.userId
                     const unread = typeof c.unreadCount === 'number' ? c.unreadCount : 0
+                    const displayTitle = c.customerName?.trim() ? c.customerName : c.displayName?.trim() ? c.displayName : c.userId
                     return (
                       <li key={c.userId}>
                         <button
@@ -396,7 +462,7 @@ export default function AdminLinePage() {
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center justify-between gap-2">
                                 <p className="font-medium truncate">
-                                  {c.displayName?.trim() ? c.displayName : c.userId}
+                                  {displayTitle}
                                   {c.customerId ? <span className="ml-1 text-xs text-gray-400">🔗</span> : null}
                                   {c.adminNote ? <span className="ml-1 text-xs text-gray-400">📝</span> : null}
                                 </p>
@@ -432,10 +498,10 @@ export default function AdminLinePage() {
                     <p className="text-xs text-gray-500 mt-1 truncate">userId: {selectedConversation.userId}</p>
                   )}
                 </div>
-              {selectedConversation?.statusMessage && (
-                <p className="text-xs text-gray-500 max-w-[50%] line-clamp-2">{selectedConversation.statusMessage}</p>
-              )}
-            </div>
+                {selectedConversation?.statusMessage && (
+                  <p className="text-xs text-gray-500 max-w-[50%] line-clamp-2">{selectedConversation.statusMessage}</p>
+                )}
+              </div>
 
             <div className="mt-3 rounded-lg border bg-gray-50 p-3">
               <div className="flex items-center justify-between gap-3">
@@ -558,26 +624,26 @@ export default function AdminLinePage() {
               <div className="mt-4 rounded-lg border bg-gray-50 p-3">
                 <div className="flex items-center justify-between gap-3">
                   <p className="text-sm font-medium text-gray-900">顧客紐付け</p>
-                    {selectedConversation?.customerId && (
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => router.push(`/admin/customers/${selectedConversation.customerId}`)}
-                          className="text-xs text-primary hover:text-dark-gold"
-                        >
-                          顧客詳細
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleUnlinkCustomer}
-                          disabled={linking}
-                          className="text-xs text-gray-600 hover:text-gray-900 disabled:opacity-60"
-                        >
-                          {linking ? '解除中…' : '解除'}
-                        </button>
-                      </div>
-                    )}
-                  </div>
+                  {selectedConversation?.customerId && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/admin/customers/${selectedConversation.customerId}`)}
+                        className="text-xs text-primary hover:text-dark-gold"
+                      >
+                        顧客詳細
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void handleUnlinkCustomer()}
+                        disabled={linking}
+                        className="text-xs text-gray-600 hover:text-gray-900 disabled:opacity-60"
+                      >
+                        {linking ? '解除中…' : '解除'}
+                      </button>
+                    </div>
+                  )}
+                </div>
 
                   {selectedConversation?.customerId ? (
                     <div className="mt-2 text-sm text-gray-700">
@@ -657,7 +723,7 @@ export default function AdminLinePage() {
                           isOutbound ? 'bg-primary text-white' : 'bg-white text-gray-900'
                         }`}
                       >
-                        <div className="whitespace-pre-wrap break-words">{m.text ?? `[${m.type}]`}</div>
+                        {renderMessageBody(m, isOutbound)}
                         <div className={`mt-1 text-[11px] ${isOutbound ? 'text-white/80' : 'text-gray-400'}`}>
                           {formatTime(m.timestamp)}
                         </div>

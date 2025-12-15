@@ -10,6 +10,11 @@ if (!adminApp) {
   const envProjectId = (process.env.FIREBASE_ADMIN_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '').trim()
   const envClientEmail = process.env.FIREBASE_ADMIN_CLIENT_EMAIL?.trim()
   const envPrivateKey = process.env.FIREBASE_ADMIN_PRIVATE_KEY?.replace(/\\n/g, '\n').trim()
+  const envStorageBucket = (
+    process.env.FIREBASE_ADMIN_STORAGE_BUCKET ||
+    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ||
+    ''
+  ).trim()
 
   let serviceAccount: ServiceAccount | null = null
 
@@ -36,6 +41,7 @@ if (!adminApp) {
       adminApp = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
         projectId: serviceAccount.projectId,
+        ...(envStorageBucket ? { storageBucket: envStorageBucket } : {}),
       })
     } else if (envProjectId && envClientEmail && envPrivateKey) {
       adminApp = admin.initializeApp({
@@ -45,9 +51,10 @@ if (!adminApp) {
           privateKey: envPrivateKey,
         }),
         projectId: envProjectId,
+        ...(envStorageBucket ? { storageBucket: envStorageBucket } : {}),
       })
     } else if (envProjectId) {
-      adminApp = admin.initializeApp({ projectId: envProjectId })
+      adminApp = admin.initializeApp({ projectId: envProjectId, ...(envStorageBucket ? { storageBucket: envStorageBucket } : {}) })
       logger.warn('Firebase admin initialised without explicit credentials; ensure ADC is configured for production use')
     } else {
       logger.warn('Firebase admin credentials not provided; admin features will be disabled')

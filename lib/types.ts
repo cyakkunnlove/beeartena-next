@@ -211,6 +211,10 @@ export interface LineMessage {
   direction: LineMessageDirection
   type: LineMessageType
   text?: string
+  mediaUrl?: string
+  mediaContentType?: string
+  mediaSize?: number
+  mediaFileName?: string
   timestamp: string
   raw?: Record<string, unknown>
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { requireAdmin, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
-import { getAdminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin'
 import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
 import { buildAuditDiff } from '@/lib/utils/auditDiff'
 
@@ -30,6 +30,10 @@ type RawMessage = {
   direction?: unknown
   type?: unknown
   text?: unknown
+  mediaPath?: unknown
+  mediaContentType?: unknown
+  mediaSize?: unknown
+  mediaFileName?: unknown
   timestamp?: unknown
   createdAt?: unknown
 }
@@ -107,6 +111,10 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
       ? data.direction
       : 'in'
   const type = typeof data.type === 'string' ? data.type : 'unknown'
+  const mediaPath = typeof data.mediaPath === 'string' ? data.mediaPath : undefined
+  const mediaContentType = typeof data.mediaContentType === 'string' ? data.mediaContentType : undefined
+  const mediaSize = toNumber(data.mediaSize) ?? undefined
+  const mediaFileName = typeof data.mediaFileName === 'string' ? data.mediaFileName : undefined
 
   return {
     id: doc.id,
@@ -114,6 +122,10 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
     direction,
     type,
     text: typeof data.text === 'string' ? data.text : undefined,
+    ...(mediaPath ? { mediaPath } : {}),
+    ...(mediaContentType ? { mediaContentType } : {}),
+    ...(typeof mediaSize === 'number' ? { mediaSize } : {}),
+    ...(mediaFileName ? { mediaFileName } : {}),
     timestamp: new Date(timestamp).toISOString(),
   }
 }
@@ -167,11 +179,32 @@ export async function GET(
     }
 
     const snapshot = await query.get()
-    const messages = snapshot.docs
+    const rawMessages = snapshot.docs
       .map((doc) => serializeMessage(doc))
       .reverse()
 
     const nextCursor = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1].id : null
+    const storage = getAdminStorage()
+    const storageBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '').trim()
+    const bucket = storage ? (storageBucket ? storage.bucket(storageBucket) : storage.bucket()) : null
+
+    const messages = await Promise.all(
+      rawMessages.map(async (m) => {
+        const { mediaPath, ...rest } = m as typeof m & { mediaPath?: string }
+        if (!mediaPath || !bucket) {
+          return rest
+        }
+        try {
+          const [signedUrl] = await bucket.file(mediaPath).getSignedUrl({
+            action: 'read',
+            expires: Date.now() + 15 * 60 * 1000,
+          })
+          return { ...rest, mediaUrl: signedUrl }
+        } catch {
+          return rest
+        }
+      }),
+    )
 
     return setCorsHeaders(
       NextResponse.json({

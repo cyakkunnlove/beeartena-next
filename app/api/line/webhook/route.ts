@@ -2,7 +2,7 @@ import { createHmac } from 'crypto'
 
 import { NextRequest, NextResponse } from 'next/server'
 
-import { getAdminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin'
 import { getErrorMessage } from '@/lib/types'
 import { logger } from '@/lib/utils/logger'
 
@@ -57,6 +57,89 @@ const fetchLineProfile = async (
     }
   } catch (error) {
     logger.warn('LINE profile fetch failed', { userId, error: getErrorMessage(error) })
+    return null
+  }
+}
+
+const fetchLineMessageContent = async (
+  messageId: string,
+  accessToken: string,
+): Promise<{ buffer: Buffer; contentType: string } | null> => {
+  try {
+    const response = await fetch(
+      `https://api-data.line.me/v2/bot/message/${encodeURIComponent(messageId)}/content`,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
+      },
+    )
+
+    if (!response.ok) {
+      logger.warn('LINE message content fetch failed', { messageId, status: response.status })
+      return null
+    }
+
+    const contentType = (response.headers.get('content-type') ?? 'application/octet-stream').trim()
+    const arrayBuffer = await response.arrayBuffer()
+    return { buffer: Buffer.from(arrayBuffer), contentType }
+  } catch (error) {
+    logger.warn('LINE message content fetch error', { messageId, error: getErrorMessage(error) })
+    return null
+  }
+}
+
+const inferExtension = (contentType: string, messageType: string): string => {
+  const normalized = contentType.toLowerCase()
+  if (messageType === 'image') {
+    if (normalized.includes('png')) return 'png'
+    if (normalized.includes('gif')) return 'gif'
+    if (normalized.includes('webp')) return 'webp'
+    if (normalized.includes('jpeg') || normalized.includes('jpg')) return 'jpg'
+    return 'jpg'
+  }
+  if (messageType === 'video') {
+    if (normalized.includes('mp4')) return 'mp4'
+    if (normalized.includes('quicktime')) return 'mov'
+    return 'mp4'
+  }
+  return 'bin'
+}
+
+const uploadLineMedia = async (params: {
+  userId: string
+  messageId: string
+  messageType: string
+  buffer: Buffer
+  contentType: string
+}): Promise<{ mediaPath: string; mediaContentType: string; mediaSize: number; mediaFileName: string } | null> => {
+  const storage = getAdminStorage()
+  if (!storage) return null
+
+  const storageBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '').trim()
+  const bucket = storageBucket ? storage.bucket(storageBucket) : storage.bucket()
+
+  const ext = inferExtension(params.contentType, params.messageType)
+  const mediaFileName = `${params.messageId}.${ext}`
+  const mediaPath = `line-media/${params.userId}/${mediaFileName}`
+
+  try {
+    await bucket.file(mediaPath).save(params.buffer, {
+      resumable: false,
+      contentType: params.contentType,
+      metadata: {
+        cacheControl: 'private, max-age=3600',
+      },
+    })
+
+    return {
+      mediaPath,
+      mediaContentType: params.contentType,
+      mediaSize: params.buffer.length,
+      mediaFileName,
+    }
+  } catch (error) {
+    logger.error('LINE media upload failed', { mediaPath, error: getErrorMessage(error) })
     return null
   }
 }
@@ -127,6 +210,33 @@ export async function POST(request: NextRequest) {
         const messageType = typeof message.type === 'string' ? message.type : 'unknown'
         const text = typeof message.text === 'string' ? message.text : undefined
 
+        let mediaFields: Record<string, unknown> = {}
+        try {
+          const existing = await messageRef.get()
+          const canFetchMedia =
+            !existing.exists &&
+            Boolean(accessToken) &&
+            (messageType === 'image' || messageType === 'video')
+
+          if (canFetchMedia) {
+            const content = await fetchLineMessageContent(messageId, accessToken)
+            if (content) {
+              const uploaded = await uploadLineMedia({
+                userId,
+                messageId,
+                messageType,
+                buffer: content.buffer,
+                contentType: content.contentType,
+              })
+              if (uploaded) {
+                mediaFields = uploaded
+              }
+            }
+          }
+        } catch (error) {
+          logger.warn('LINE media prefetch failed', { userId, messageId, error: getErrorMessage(error) })
+        }
+
         await db.runTransaction(async (tx) => {
           const existing = await tx.get(messageRef)
           const convSnap = await tx.get(conversationRef)
@@ -146,6 +256,7 @@ export async function POST(request: NextRequest) {
                 direction: 'in',
                 type: messageType,
                 ...(text ? { text } : {}),
+                ...mediaFields,
                 timestamp: eventTimestamp,
                 createdAt: Date.now(),
                 raw: event,
@@ -210,4 +321,3 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ ok: true, receivedAt: toIso(Date.now()) })
 }
-
