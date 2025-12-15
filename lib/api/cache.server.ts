@@ -11,6 +11,7 @@ const isRedisDisabled =
 
 // Redis client for caching
 let redis: Redis | null = null
+let redisDisabledByError = false
 
 type RedisError = Error & { code?: string }
 
@@ -62,12 +63,17 @@ if (!isRedisDisabled) {
 
     // Handle connection errors
     redis.on('error', (error: unknown) => {
+      if (redisDisabledByError) return
+      redisDisabledByError = true
+
+      const message = getErrorMessage(error)
       if (isRedisError(error) && error.code === 'ENOTFOUND') {
         logger.warn('Redis host not found, falling back to memory cache')
-        redis = null
       } else {
-        logger.error('Redis error encountered', { error: getErrorMessage(error) })
+        logger.warn('Redis error encountered, falling back to memory cache', { error: message })
       }
+
+      redis = null
     })
   } catch (error: unknown) {
     logger.warn('Redis initialization failed, falling back to memory cache', {

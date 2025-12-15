@@ -10,6 +10,7 @@ const isRedisDisabled =
 const KEY_PREFIX = process.env.REDIS_KEY_PREFIX || 'beeartena'
 
 let redis: Redis | null = null
+let redisDisabledByError = false
 
 if (!isRedisDisabled) {
   try {
@@ -30,10 +31,18 @@ if (!isRedisDisabled) {
     }
 
     redis?.on('error', (err: any) => {
+      if (redisDisabledByError) return
+      redisDisabledByError = true
+
       if (err?.code === 'ENOTFOUND') {
         logger.warn('Redis host not found for rate limiter, falling back to memory store')
-        redis = null
+      } else {
+        logger.warn('Redis error encountered for rate limiter, falling back to memory store', {
+          error: err?.message,
+        })
       }
+
+      redis = null
     })
   } catch (error) {
     logger.warn('Redis initialisation failed for rate limiter, using memory fallback', { error })

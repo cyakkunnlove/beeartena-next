@@ -10,6 +10,7 @@ const isRedisDisabled =
   process.env.DISABLE_REDIS === 'true' || process.env.NODE_ENV === 'test' || isBuildPhase
 
 let redis: Redis | null = null
+let redisDisabledByError = false
 
 if (!isRedisDisabled) {
   try {
@@ -28,10 +29,18 @@ if (!isRedisDisabled) {
     }
 
     redis?.on('error', (err: any) => {
+      if (redisDisabledByError) return
+      redisDisabledByError = true
+
       if (err?.code === 'ENOTFOUND') {
         logger.warn('Redis host not found for queue, using memory fallback')
-        redis = null
+      } else {
+        logger.warn('Redis error encountered for queue, using memory fallback', {
+          error: err?.message,
+        })
       }
+
+      redis = null
     })
   } catch (error) {
     logger.warn('Redis initialisation failed for queue, using memory fallback', { error })
