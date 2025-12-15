@@ -703,6 +703,7 @@ class ReservationService {
     // 設定が読み込まれるまで待つ
     await this.waitForSettings()
 
+    const bypassCache = Boolean((options as any)?.bypassCache)
     const defaultDuration = this.settings.slotDuration || 60
     const requiredDurationMinutesRaw = Number(options?.durationMinutes)
     const requiredDurationMinutes =
@@ -712,7 +713,7 @@ class ReservationService {
 
     const cacheKeySuffix = `${requiredDurationMinutes}`
 
-    if (isBrowser && !isTestEnv) {
+    if (!bypassCache && isBrowser && !isTestEnv) {
       const cachedSlots = clientTimeSlotCache?.get(`${date}|${cacheKeySuffix}`)
       if (cachedSlots) {
         return cachedSlots.map((slot) => ({ ...slot }))
@@ -720,7 +721,7 @@ class ReservationService {
     }
 
     // キャッシュから取得を試みる（サーバーサイドのみ）
-    if (typeof window === 'undefined') {
+    if (!bypassCache && typeof window === 'undefined') {
       const cacheKey = Cache.generateKey('time-slots', date, cacheKeySuffix)
       const cached = await cache.get<TimeSlot[]>(cacheKey)
       if (cached) {
@@ -842,12 +843,12 @@ class ReservationService {
       })
     }
 
-    if (isBrowser && !isTestEnv) {
+    if (!bypassCache && isBrowser && !isTestEnv) {
       clientTimeSlotCache?.set(`${date}|${cacheKeySuffix}`, slots.map((slot) => ({ ...slot })))
     }
 
     // 結果をキャッシュに保存（2分間、サーバーサイドのみ）
-    if (typeof window === 'undefined') {
+    if (!bypassCache && typeof window === 'undefined') {
       const cacheKey = Cache.generateKey('time-slots', date, cacheKeySuffix)
       await cache.set(cacheKey, slots, 120, {
         tags: ['reservations', `date-${date}`],
@@ -885,7 +886,33 @@ class ReservationService {
 
     let reservationsByDate = new Map<string, Reservation[]>()
     try {
-      reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
+      if (!isBrowser) {
+        const db = getAdminDb()
+        if (db) {
+          const startDate = `${year}-${String(month + 1).padStart(2, '0')}-01`
+          const endDate = `${year}-${String(month + 1).padStart(2, '0')}-31`
+
+          const snapshot = await db
+            .collection('reservations')
+            .where('date', '>=', startDate)
+            .where('date', '<=', endDate)
+            .get()
+
+          snapshot.docs.forEach((doc) => {
+            const reservation = this.mapReservationDocToReservation(doc.id, doc.data() as any)
+            if (reservation.status === 'cancelled') return
+            const dateStr = reservation.date
+            if (!reservationsByDate.has(dateStr)) {
+              reservationsByDate.set(dateStr, [])
+            }
+            reservationsByDate.get(dateStr)!.push(reservation)
+          })
+        } else {
+          reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
+        }
+      } else {
+        reservationsByDate = await firebaseReservationService.getReservationsByMonth(year, month)
+      }
     } catch (error) {
       logger.error('Failed to preload monthly reservations', {
         year,
@@ -937,7 +964,7 @@ class ReservationService {
       }
 
       try {
-        const slots = await this.getTimeSlotsForDate(dateStr)
+        const slots = await this.getTimeSlotsForDate(dateStr, { bypassCache: true } as any)
         availability.set(dateStr, slots.some((slot) => slot.available))
       } catch (error) {
         logger.error('Month availability computation failed', {
