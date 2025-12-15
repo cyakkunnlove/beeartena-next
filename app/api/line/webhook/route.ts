@@ -117,20 +117,51 @@ const normalizeBucketName = (raw: string) => {
   return value.trim()
 }
 
+const getBucketCandidates = (raw: string): string[] => {
+  const normalized = normalizeBucketName(raw)
+  const candidates: string[] = []
+  const push = (value: string) => {
+    const v = value.trim()
+    if (!v) return
+    if (!candidates.includes(v)) candidates.push(v)
+  }
+
+  push(normalized)
+  if (normalized.endsWith('.firebasestorage.app')) {
+    push(normalized.replace(/\.firebasestorage\.app$/, '.appspot.com'))
+  }
+  if (normalized.endsWith('.appspot.com')) {
+    push(normalized.replace(/\.appspot\.com$/, '.firebasestorage.app'))
+  }
+
+  return candidates
+}
+
+const isBucketNotFoundError = (message: string) => {
+  const normalized = message.toLowerCase()
+  return normalized.includes('bucket does not exist') || normalized.includes('the specified bucket does not exist')
+}
+
 const uploadLineMedia = async (params: {
   userId: string
   messageId: string
   messageType: string
   buffer: Buffer
   contentType: string
-}): Promise<{ mediaPath: string; mediaContentType: string; mediaSize: number; mediaFileName: string; mediaToken: string } | null> => {
+}): Promise<{
+  mediaPath: string
+  mediaContentType: string
+  mediaSize: number
+  mediaFileName: string
+  mediaToken: string
+  mediaBucket: string
+} | null> => {
   const storage = getAdminStorage()
   if (!storage) return null
 
-  const storageBucket = normalizeBucketName(
-    (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim(),
-  )
-  const bucket = storageBucket ? storage.bucket(storageBucket) : storage.bucket()
+  const storageBucketRaw = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
+  const candidates = getBucketCandidates(storageBucketRaw)
+  if (candidates.length === 0) return null
 
   const ext = inferExtension(params.contentType, params.messageType)
   const mediaFileName = `${params.messageId}.${ext}`
@@ -138,16 +169,36 @@ const uploadLineMedia = async (params: {
   const mediaToken = randomUUID()
 
   try {
-    await bucket.file(mediaPath).save(params.buffer, {
-      resumable: false,
-      contentType: params.contentType,
-      metadata: {
-        metadata: {
-          firebaseStorageDownloadTokens: mediaToken,
-        },
-        cacheControl: 'private, max-age=3600',
-      },
-    })
+    let uploadedBucket: string | null = null
+    let lastError: unknown = null
+    for (const candidate of candidates) {
+      try {
+        const bucket = storage.bucket(candidate)
+        await bucket.file(mediaPath).save(params.buffer, {
+          resumable: false,
+          contentType: params.contentType,
+          metadata: {
+            metadata: {
+              firebaseStorageDownloadTokens: mediaToken,
+            },
+            cacheControl: 'private, max-age=3600',
+          },
+        })
+        uploadedBucket = candidate
+        break
+      } catch (error) {
+        lastError = error
+        const message = getErrorMessage(error)
+        if (isBucketNotFoundError(message)) {
+          continue
+        }
+        throw error
+      }
+    }
+
+    if (!uploadedBucket) {
+      throw lastError ?? new Error('Failed to upload media to any bucket.')
+    }
 
     return {
       mediaPath,
@@ -155,6 +206,7 @@ const uploadLineMedia = async (params: {
       mediaSize: params.buffer.length,
       mediaFileName,
       mediaToken,
+      mediaBucket: uploadedBucket,
     }
   } catch (error) {
     logger.error('LINE media upload failed', { mediaPath, error: getErrorMessage(error) })

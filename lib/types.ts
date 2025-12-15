@@ -212,6 +212,7 @@ export interface LineMessage {
   type: LineMessageType
   text?: string
   mediaUrl?: string
+  mediaBucket?: string
   mediaContentType?: string
   mediaSize?: number
   mediaFileName?: string

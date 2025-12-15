@@ -31,6 +31,7 @@ type RawMessage = {
   type?: unknown
   text?: unknown
   mediaPath?: unknown
+  mediaBucket?: unknown
   mediaContentType?: unknown
   mediaSize?: unknown
   mediaFileName?: unknown
@@ -113,6 +114,7 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
       : 'in'
   const type = typeof data.type === 'string' ? data.type : 'unknown'
   const mediaPath = typeof data.mediaPath === 'string' ? data.mediaPath : undefined
+  const mediaBucket = typeof data.mediaBucket === 'string' ? data.mediaBucket : undefined
   const mediaContentType = typeof data.mediaContentType === 'string' ? data.mediaContentType : undefined
   const mediaSize = toNumber(data.mediaSize) ?? undefined
   const mediaFileName = typeof data.mediaFileName === 'string' ? data.mediaFileName : undefined
@@ -125,6 +127,7 @@ const serializeMessage = (doc: { id: string; data: () => RawMessage | undefined 
     type,
     text: typeof data.text === 'string' ? data.text : undefined,
     ...(mediaPath ? { mediaPath } : {}),
+    ...(mediaBucket ? { mediaBucket } : {}),
     ...(mediaContentType ? { mediaContentType } : {}),
     ...(typeof mediaSize === 'number' ? { mediaSize } : {}),
     ...(mediaFileName ? { mediaFileName } : {}),
@@ -203,12 +206,22 @@ export async function GET(
 
     const messages = await Promise.all(
       rawMessages.map(async (m) => {
-        const { mediaPath, mediaToken, ...rest } = m as typeof m & { mediaPath?: string; mediaToken?: string }
-        if (!mediaPath || !bucket) {
+        const { mediaPath, mediaToken, mediaBucket, ...rest } = m as typeof m & {
+          mediaPath?: string
+          mediaToken?: string
+          mediaBucket?: string
+        }
+        if (!mediaPath) {
           return rest
         }
-        if (mediaToken && normalizedBucket) {
-          return { ...rest, mediaUrl: makeDownloadUrl(normalizedBucket, mediaPath, mediaToken) }
+        const effectiveBucketName = typeof mediaBucket === 'string' && mediaBucket.trim().length > 0
+          ? mediaBucket.trim()
+          : normalizedBucket
+        if (mediaToken && effectiveBucketName) {
+          return { ...rest, mediaUrl: makeDownloadUrl(effectiveBucketName, mediaPath, mediaToken) }
+        }
+        if (!bucket) {
+          return rest
         }
         try {
           const [signedUrl] = await bucket.file(mediaPath).getSignedUrl({
