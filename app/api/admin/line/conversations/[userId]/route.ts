@@ -185,7 +185,7 @@ export async function GET(
 
     const nextCursor = snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1].id : null
     const storage = getAdminStorage()
-    const storageBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '').trim()
+    const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
     const bucket = storage ? (storageBucket ? storage.bucket(storageBucket) : storage.bucket()) : null
 
     const messages = await Promise.all(

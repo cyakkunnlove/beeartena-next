@@ -116,7 +116,7 @@ const uploadLineMedia = async (params: {
   const storage = getAdminStorage()
   if (!storage) return null
 
-  const storageBucket = (process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? '').trim()
+  const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
   const bucket = storageBucket ? storage.bucket(storageBucket) : storage.bucket()
 
   const ext = inferExtension(params.contentType, params.messageType)

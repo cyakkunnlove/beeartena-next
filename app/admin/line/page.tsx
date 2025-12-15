@@ -12,6 +12,8 @@ type LineConfigState = {
   channelSecretConfigured: boolean
   accessTokenConfigured: boolean
   firebaseAdminConfigured: boolean
+  storageBucketConfigured?: boolean
+  storageBucket?: string
   receivingEnabled: boolean
   sendingEnabled: boolean
 }
@@ -61,6 +63,7 @@ export default function AdminLinePage() {
   const [statusUpdating, setStatusUpdating] = useState(false)
   const [noteDraft, setNoteDraft] = useState('')
   const [noteSaving, setNoteSaving] = useState(false)
+  const [refetchingMessageId, setRefetchingMessageId] = useState<string | null>(null)
 
   const loadConfig = useCallback(async () => {
     setLoadingConfig(true)
@@ -190,12 +193,54 @@ export default function AdminLinePage() {
     }
 
     if ((m.type === 'image' || m.type === 'video') && !m.mediaUrl) {
+      const showRefetch = Boolean(
+        !outbound &&
+          sendingEnabled &&
+          lineConfig?.accessTokenConfigured &&
+          (lineConfig?.storageBucketConfigured ?? false) &&
+          m.id &&
+          !m.id.startsWith('out_'),
+      )
       return (
         <div className="space-y-1">
           <div className="whitespace-pre-wrap break-words">{fallback}</div>
           <div className={`text-[11px] ${outbound ? 'text-white/80' : 'text-gray-400'}`}>
-            メディアの保存/表示には `LINE_CHANNEL_ACCESS_TOKEN` と Storage 設定が必要です
+            {!lineConfig?.accessTokenConfigured
+              ? '`LINE_CHANNEL_ACCESS_TOKEN` が未設定です'
+              : !(lineConfig?.storageBucketConfigured ?? false)
+                ? 'Storage Bucket が未設定です（FIREBASE_ADMIN_STORAGE_BUCKET / NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET）'
+                : 'メディア未保存です（設定反映後に再取得できます）'}
           </div>
+          {showRefetch && (
+            <button
+              type="button"
+              className={`text-[11px] ${outbound ? 'text-white/80' : 'text-primary'} hover:text-dark-gold disabled:opacity-60`}
+              disabled={refetchingMessageId === m.id}
+              onClick={async () => {
+                if (!selectedUserId) return
+                setRefetchingMessageId(m.id)
+                setErrorMessage(null)
+                try {
+                  const res = await fetch('/api/admin/line/media/refetch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId: selectedUserId, messageId: m.id }),
+                  })
+                  const json = (await res.json().catch(() => null)) as { success?: boolean; error?: string } | null
+                  if (!res.ok || !json?.success) {
+                    throw new Error(json?.error || '再取得に失敗しました')
+                  }
+                  await loadConversation(selectedUserId)
+                } catch (error) {
+                  setErrorMessage(error instanceof Error ? error.message : '再取得に失敗しました')
+                } finally {
+                  setRefetchingMessageId(null)
+                }
+              }}
+            >
+              {refetchingMessageId === m.id ? '再取得中…' : 'この画像/動画を再取得'}
+            </button>
+          )}
         </div>
       )
     }
@@ -623,7 +668,24 @@ export default function AdminLinePage() {
                 >
                   Firebase(Admin): {lineConfig ? (lineConfig.firebaseAdminConfigured ? 'OK' : 'NG') : '未確認'}
                 </span>
+                <span
+                  className={`px-2 py-0.5 rounded-full border ${
+                    !lineConfig
+                      ? 'bg-gray-50 border-gray-200'
+                      : lineConfig.storageBucketConfigured
+                        ? 'bg-green-50 border-green-200'
+                        : 'bg-red-50 border-red-200'
+                  }`}
+                  title={lineConfig?.storageBucket ? `Bucket: ${lineConfig.storageBucket}` : undefined}
+                >
+                  Storage: {lineConfig ? (lineConfig.storageBucketConfigured ? 'OK' : 'NG') : '未確認'}
+                </span>
               </div>
+              {lineConfig?.storageBucket && (
+                <div className="mt-2 text-[11px] text-gray-500">
+                  Storage Bucket: <code className="bg-white border rounded px-1 py-0.5">{lineConfig.storageBucket}</code>
+                </div>
+              )}
               {webhookUrl && (
                 <div className="mt-2 flex items-center gap-2">
                   <span className="text-[11px] text-gray-500">Webhook URL:</span>

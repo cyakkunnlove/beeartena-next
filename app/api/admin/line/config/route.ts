@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 
 import { requireAdmin, setCorsHeaders } from '@/lib/api/middleware'
-import { getAdminDb } from '@/lib/firebase/admin'
+import { getAdminDb, getAdminStorage } from '@/lib/firebase/admin'
 
 export async function GET(request: NextRequest) {
   const adminError = await requireAdmin(request)
@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
   const channelSecretConfigured = Boolean((process.env.LINE_CHANNEL_SECRET ?? '').trim())
   const accessTokenConfigured = Boolean((process.env.LINE_CHANNEL_ACCESS_TOKEN ?? '').trim())
   const firebaseAdminConfigured = Boolean(getAdminDb())
+  const storageBucket = (process.env.FIREBASE_ADMIN_STORAGE_BUCKET || process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '').trim()
+  const storageBucketConfigured = Boolean(getAdminStorage()) && Boolean(storageBucket)
 
   const url = new URL(request.url)
   const forwardedProto = request.headers.get('x-forwarded-proto')
@@ -27,6 +29,8 @@ export async function GET(request: NextRequest) {
         channelSecretConfigured,
         accessTokenConfigured,
         firebaseAdminConfigured,
+        storageBucketConfigured,
+        storageBucket,
         receivingEnabled: channelSecretConfigured && firebaseAdminConfigured,
         sendingEnabled: accessTokenConfigured && firebaseAdminConfigured,
       },
@@ -34,4 +38,3 @@ export async function GET(request: NextRequest) {
     }),
   )
 }
-
