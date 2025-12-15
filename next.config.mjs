@@ -13,6 +13,7 @@ const SERVER_EXTERNAL_PACKAGES = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  outputFileTracingRoot: __dirname,
   // Avoid bundling firebase-admin (and its wasm/node: deps) into Next build output.
   // This prevents webpack from trying to parse wasm / node:* imports.
   serverExternalPackages: SERVER_EXTERNAL_PACKAGES,

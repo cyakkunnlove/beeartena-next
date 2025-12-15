@@ -54,6 +54,8 @@ Thumbs.db
 # Firebase
 firebase-debug.log
 .firebase/
+scripts/firebase-service-account-key.json
+temp-private-key.txt
 
 # Logs
 logs
