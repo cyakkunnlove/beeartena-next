@@ -40,12 +40,30 @@ if (!isRedisDisabled) {
   try {
     // Support both REDIS_URL and individual connection params
     if (process.env.REDIS_URL) {
-      redis = new Redis(process.env.REDIS_URL, {
+      const rawUrl = process.env.REDIS_URL
+      let effectiveUrl = rawUrl
+      try {
+        const parsed = new URL(rawUrl)
+        const hostname = parsed.hostname.toLowerCase()
+        const isUpstash = hostname.endsWith('upstash.io') || hostname.endsWith('upstash.com')
+        if (isUpstash && parsed.protocol === 'redis:') {
+          // UpstashはTLS必須のため、redissへ補正する（redis:// のままだと接続待ちで遅延しやすい）
+          effectiveUrl = rawUrl.replace(/^redis:\/\//, 'rediss://')
+          logger.warn('REDIS_URL uses redis:// for Upstash; treating as rediss:// (TLS)')
+        }
+      } catch {
+        // ignore URL parse errors
+      }
+
+      redis = new Redis(effectiveUrl, {
         retryStrategy: (times) => {
           const delay = Math.min(times * 50, 2000)
           return delay
         },
         lazyConnect: true, // Don't connect immediately
+        connectTimeout: 800,
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
       })
     } else {
       redis = new Redis({
@@ -58,6 +76,9 @@ if (!isRedisDisabled) {
           return delay
         },
         lazyConnect: true, // Don't connect immediately
+        connectTimeout: 800,
+        maxRetriesPerRequest: 1,
+        enableOfflineQueue: false,
       })
     }
 
@@ -105,7 +126,10 @@ class Cache {
       // Check Redis if available
       if (!redis) return null
 
-      const cached = await redis.get(key)
+      const cached = await Promise.race([
+        redis.get(key),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), 300)),
+      ])
       if (!cached) return null
 
       const parsed = JSON.parse(cached) as SerializedCacheRecord
@@ -164,7 +188,10 @@ class Cache {
       }
 
       if (redis) {
-        await redis.setex(key, ttl, JSON.stringify(cacheData))
+        await Promise.race([
+          redis.setex(key, ttl, JSON.stringify(cacheData)),
+          new Promise<void>((resolve) => setTimeout(() => resolve(), 300)),
+        ])
       }
 
       this.setMemoryCache(key, data, ttl)
@@ -285,7 +312,10 @@ class Cache {
       multi.expire(`tag:${tag}`, ttl)
     }
 
-    await multi.exec()
+    await Promise.race([
+      multi.exec(),
+      new Promise<void>((resolve) => setTimeout(() => resolve(), 300)),
+    ])
   }
 
   // Cache key generators
