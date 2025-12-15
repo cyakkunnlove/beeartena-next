@@ -5,7 +5,7 @@ import { useEffect, useState } from 'react'
 
 import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
-import { cloneDefaultSettings } from '@/lib/utils/reservationSettings'
+import { cloneDefaultSettings, validateReservationSettings } from '@/lib/utils/reservationSettings'
 
 import type { BusinessHours, ReservationSettings } from '@/lib/types'
 
@@ -174,6 +174,12 @@ export default function AdminSettingsPage() {
 
     setSaving(true)
     try {
+      const validation = validateReservationSettings(settings)
+      if (!validation.ok) {
+        notify('error', validation.errors.join(' / '))
+        return
+      }
+
       const response = await apiClient.updateAdminSettings(settings)
       if (!response.success) {
         notify('error', response.message ?? '設定の保存に失敗しました。')

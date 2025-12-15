@@ -4,7 +4,7 @@ import { requireAdmin, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 import { getAdminDb } from '@/lib/firebase/admin'
 import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
 import { buildAuditDiff } from '@/lib/utils/auditDiff'
-import { normalizeSettings } from '@/lib/utils/reservationSettings'
+import { normalizeSettings, validateReservationSettings } from '@/lib/utils/reservationSettings'
 
 const SETTINGS_COLLECTION = 'settings'
 const SETTINGS_DOC_ID = 'reservation-settings'
@@ -96,6 +96,18 @@ async function saveSettings(request: NextRequest) {
 
     const beforeNormalized = normalizeSettings(current as any)
     const normalized = normalizeSettings(nextSettings as any)
+    const validation = validateReservationSettings(normalized)
+    if (!validation.ok) {
+      return setCorsHeaders(
+        NextResponse.json(
+          {
+            success: false,
+            message: `設定が不正です: ${validation.errors.join(' / ')}`,
+          },
+          { status: 400 },
+        ),
+      )
+    }
     const changes = buildAuditDiff(beforeNormalized, normalized)
 
     await docRef.set({ ...normalized, updatedAt: new Date() }, { merge: true })

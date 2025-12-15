@@ -12,6 +12,13 @@ export const DEFAULT_BUSINESS_HOURS: BusinessHours[] = [
 
 const isValidTime = (value: string) => /^([01]\d|2[0-3]):[0-5]\d$/.test(value)
 
+const timeToMinutes = (value: string): number | null => {
+  if (!isValidTime(value)) return null
+  const [hour, minute] = value.split(':').map(Number)
+  if (![hour, minute].every(Number.isFinite)) return null
+  return hour * 60 + minute
+}
+
 const normalizeAllowedSlots = (value: unknown): string[] | undefined => {
   if (!value) {
     return undefined
@@ -257,4 +264,53 @@ export const sanitizeSettingsForWrite = (
       settings.cancellationPolicy?.trim() ||
       '予約日の3日前（72時間前）までキャンセルが可能です。それ以降はお電話にてご連絡ください。',
   }
+}
+
+export const validateReservationSettings = (
+  settings: ReservationSettings,
+): { ok: boolean; errors: string[] } => {
+  const errors: string[] = []
+
+  if (!Number.isFinite(settings.slotDuration) || settings.slotDuration <= 0) {
+    errors.push('予約枠の長さ（slotDuration）が不正です。')
+  }
+
+  if (!Number.isFinite(settings.maxCapacityPerSlot) || settings.maxCapacityPerSlot <= 0) {
+    errors.push('1枠あたりの最大予約数（maxCapacityPerSlot）が不正です。')
+  }
+
+  const slotDuration = Number.isFinite(settings.slotDuration) ? settings.slotDuration : 0
+
+  settings.businessHours.forEach((hours) => {
+    if (!hours.isOpen) return
+
+    const openMinutes = timeToMinutes(hours.open)
+    const closeMinutes = timeToMinutes(hours.close)
+
+    if (openMinutes === null || closeMinutes === null) {
+      errors.push(`曜日(${hours.dayOfWeek})の開始/終了時刻が不正です。`)
+      return
+    }
+
+    const totalMinutes = closeMinutes - openMinutes
+    if (totalMinutes <= 0) {
+      errors.push(`曜日(${hours.dayOfWeek})の終了時刻が開始時刻より前です。`)
+      return
+    }
+
+    if (slotDuration > 0 && totalMinutes < slotDuration) {
+      errors.push(
+        `曜日(${hours.dayOfWeek})の営業時間(${hours.open}-${hours.close})が予約枠(${slotDuration}分)より短いです。`,
+      )
+    }
+
+    if (hours.allowMultipleSlots) {
+      const interval = Number(hours.slotInterval ?? 0)
+      if (!Number.isFinite(interval) || interval <= 0) {
+        errors.push(`曜日(${hours.dayOfWeek})のスロット間隔（slotInterval）が不正です。`)
+      }
+    }
+  })
+
+  return { ok: errors.length === 0, errors }
 }
