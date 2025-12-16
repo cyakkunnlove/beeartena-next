@@ -56,6 +56,12 @@ export default function AdminLinePage() {
   const [attachmentPreview, setAttachmentPreview] = useState<File | null>(null)
   const [sendingMedia, setSendingMedia] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [lightbox, setLightbox] = useState<{
+    kind: 'image' | 'video'
+    url: string
+    contentType?: string
+    title?: string
+  } | null>(null)
 
   const [customerQuery, setCustomerQuery] = useState('')
   const [customerCandidates, setCustomerCandidates] = useState<Customer[]>([])
@@ -164,6 +170,15 @@ export default function AdminLinePage() {
 
   const sendingEnabled = Boolean(lineConfig?.sendingEnabled)
 
+  const openLightbox = (payload: {
+    kind: 'image' | 'video'
+    url: string
+    contentType?: string
+    title?: string
+  }) => {
+    setLightbox(payload)
+  }
+
   const renderMessageBody = (m: LineMessage, outbound: boolean) => {
     const fallback = m.text ?? (m.type ? `[${m.type}]` : '')
     const linkClass = outbound ? 'text-white underline underline-offset-2' : 'text-primary underline underline-offset-2'
@@ -171,9 +186,29 @@ export default function AdminLinePage() {
     if (m.type === 'image' && m.mediaUrl) {
       return (
         <div className="space-y-2">
-          <a href={m.mediaUrl} target="_blank" rel="noreferrer" className={linkClass}>
+          <button
+            type="button"
+            className="block max-w-[240px] w-full text-left"
+            onClick={() =>
+              openLightbox({
+                kind: 'image',
+                url: m.mediaUrl ?? '',
+                contentType: m.mediaContentType ?? undefined,
+                title: m.mediaFileName ?? 'LINE画像',
+              })
+            }
+            title="クリックで拡大表示"
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={m.mediaUrl} alt={m.mediaFileName ?? 'LINE画像'} className="max-w-full rounded-lg" />
+            <img
+              src={m.mediaUrl}
+              alt={m.mediaFileName ?? 'LINE画像'}
+              className="w-full max-h-[180px] object-cover rounded-lg border border-black/5 shadow-sm"
+              loading="lazy"
+            />
+          </button>
+          <a href={m.mediaUrl} target="_blank" rel="noreferrer" className={`text-[11px] ${linkClass}`}>
+            別タブで開く
           </a>
           {m.text ? <div className="whitespace-pre-wrap break-words">{m.text}</div> : null}
         </div>
@@ -183,9 +218,23 @@ export default function AdminLinePage() {
     if (m.type === 'video' && m.mediaUrl) {
       return (
         <div className="space-y-2">
-          <video controls preload="metadata" className="w-full rounded-lg">
-            <source src={m.mediaUrl} type={m.mediaContentType ?? 'video/mp4'} />
-          </video>
+          <button
+            type="button"
+            className="block w-full text-left"
+            onClick={() =>
+              openLightbox({
+                kind: 'video',
+                url: m.mediaUrl ?? '',
+                contentType: m.mediaContentType ?? 'video/mp4',
+                title: m.mediaFileName ?? 'LINE動画',
+              })
+            }
+            title="クリックで拡大表示"
+          >
+            <video controls preload="metadata" className="w-full max-h-[220px] rounded-lg border border-black/5 shadow-sm">
+              <source src={m.mediaUrl} type={m.mediaContentType ?? 'video/mp4'} />
+            </video>
+          </button>
           <a href={m.mediaUrl} target="_blank" rel="noreferrer" className={linkClass}>
             {m.mediaFileName ?? '動画を開く'}
           </a>
@@ -504,6 +553,65 @@ export default function AdminLinePage() {
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-gray-50">
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 px-4 py-8"
+          role="dialog"
+          aria-modal="true"
+          aria-label="メディア拡大表示"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              setLightbox(null)
+            }
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              setLightbox(null)
+            }
+          }}
+          tabIndex={-1}
+        >
+          <div className="w-full max-w-5xl rounded-xl bg-white shadow-2xl overflow-hidden">
+            <div className="flex items-center justify-between gap-3 border-b px-4 py-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{lightbox.title ?? 'メディア'}</p>
+                <p className="text-[11px] text-gray-500 truncate">{lightbox.url}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <a
+                  href={lightbox.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs text-primary hover:text-dark-gold"
+                >
+                  別タブで開く
+                </a>
+                <button
+                  type="button"
+                  onClick={() => setLightbox(null)}
+                  className="rounded-md border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:bg-gray-50"
+                >
+                  閉じる
+                </button>
+              </div>
+            </div>
+            <div className="bg-black">
+              {lightbox.kind === 'image' ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={lightbox.url}
+                  alt={lightbox.title ?? 'LINE画像'}
+                  className="mx-auto max-h-[80vh] w-auto object-contain"
+                />
+              ) : (
+                <video controls autoPlay className="mx-auto max-h-[80vh] w-auto">
+                  <source src={lightbox.url} type={lightbox.contentType ?? 'video/mp4'} />
+                </video>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="bg-white shadow">
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
