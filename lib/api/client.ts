@@ -539,6 +539,12 @@ const normalizeAdminInquiryRecord = (record: AdminInquiryRecord): Inquiry => {
 class ApiClient {
   private token: string | null = null
 
+  // APIエラーを識別できるようにする
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  static isApiError(error: any): error is ApiError {
+    return Boolean(error && typeof error === 'object' && error.name === 'ApiError' && typeof error.status === 'number')
+  }
+
   constructor() {
     if (typeof window !== 'undefined') {
       const storedToken = localStorage.getItem('auth_token')
@@ -618,10 +624,28 @@ class ApiClient {
       return {} as T
     }
 
-    const data = await response.json()
+    let data: any = null
+    try {
+      data = await response.json()
+    } catch {
+      // JSONでない応答（502のHTML等）
+      throw new ApiError('リクエストに失敗しました', {
+        status: response.status,
+      })
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || 'リクエストに失敗しました')
+      throw new ApiError(data?.error || 'リクエストに失敗しました', {
+        status: response.status,
+        code: typeof data?.code === 'string' ? data.code : undefined,
+        requestId: typeof data?.requestId === 'string' ? data.requestId : undefined,
+        details: typeof data?.details === 'string' ? data.details : undefined,
+        meta: typeof data === 'object' && data
+          ? {
+              retryAfterMs: typeof data.retryAfterMs === 'number' ? data.retryAfterMs : undefined,
+            }
+          : undefined,
+      })
     }
 
     return data as T
@@ -661,10 +685,27 @@ class ApiClient {
       return {} as T
     }
 
-    const data = await response.json()
+    let data: any = null
+    try {
+      data = await response.json()
+    } catch {
+      throw new ApiError('リクエストに失敗しました', {
+        status: response.status,
+      })
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || 'リクエストに失敗しました')
+      throw new ApiError(data?.error || 'リクエストに失敗しました', {
+        status: response.status,
+        code: typeof data?.code === 'string' ? data.code : undefined,
+        requestId: typeof data?.requestId === 'string' ? data.requestId : undefined,
+        details: typeof data?.details === 'string' ? data.details : undefined,
+        meta: typeof data === 'object' && data
+          ? {
+              retryAfterMs: typeof data.retryAfterMs === 'number' ? data.retryAfterMs : undefined,
+            }
+          : undefined,
+      })
     }
 
     return data as T
@@ -1460,3 +1501,26 @@ class ApiClient {
 }
 
 export const apiClient = new ApiClient()
+
+export class ApiError extends Error {
+  status: number
+  code?: string
+  requestId?: string
+  details?: string
+  meta?: Record<string, unknown>
+
+  constructor(
+    message: string,
+    meta: { status: number; code?: string; requestId?: string; details?: string; meta?: Record<string, unknown> },
+  ) {
+    super(message)
+    this.name = 'ApiError'
+    this.status = meta.status
+    this.code = meta.code
+    this.requestId = meta.requestId
+    this.details = meta.details
+    this.meta = meta.meta
+  }
+}
+
+export const isApiError = ApiClient.isApiError

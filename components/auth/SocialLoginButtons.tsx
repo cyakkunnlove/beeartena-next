@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { firebaseAuth } from '@/lib/firebase/auth'
 import { auth } from '@/lib/firebase/config'
-import { apiClient } from '@/lib/api/client'
+import { apiClient, isApiError } from '@/lib/api/client'
 import { isProfileComplete } from '@/lib/utils/profileUtils'
 
 interface SocialLoginButtonsProps {
@@ -41,7 +41,27 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       }
     } catch (error: any) {
       console.error('Googleログインエラー:', error)
-      setError(error.message || 'Googleログインに失敗しました')
+      const message = error?.message || 'Googleログインに失敗しました'
+      if (isApiError(error)) {
+        const hint = (() => {
+          switch (error.code) {
+            case 'AUTH_FIREBASE_TOKEN_INVALID':
+              return 'Googleログインをやり直してください。'
+            case 'AUTH_SERVER_MISCONFIG':
+            case 'AUTH_SERVER_ERROR':
+              return '時間をおいても改善しない場合は、管理者へお問い合わせください。'
+            case 'RATE_LIMITED':
+              return 'しばらく待ってからお試しください。'
+            default:
+              return '通信環境をご確認のうえ、再度お試しください。'
+          }
+        })()
+
+        const suffix = error.requestId ? `（id: ${error.requestId}）` : ''
+        setError(`${message}${suffix}\n${hint}`)
+      } else {
+        setError(message)
+      }
     } finally {
       setLoading(false)
     }
@@ -50,7 +70,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   return (
     <div className="space-y-3">
       {error && (
-        <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm">
+        <div className="bg-red-50 text-red-600 px-4 py-3 rounded-lg text-sm whitespace-pre-line">
           {error}
         </div>
       )}

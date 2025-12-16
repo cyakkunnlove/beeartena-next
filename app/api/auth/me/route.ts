@@ -1,16 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin, { getAdminDb } from '@/lib/firebase/admin'
-import { errorResponse, successResponse, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
+import { errorResponse, getRequestId, successResponse, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
 
 export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
 }
 
 export async function GET(request: NextRequest) {
+  const requestId = getRequestId(request)
   // 認証チェック
   const authUser = await verifyAuth(request)
   if (!authUser) {
-    return setCorsHeaders(errorResponse('認証が必要です', 401))
+    return setCorsHeaders(errorResponse('認証が必要です', 401, 'AUTH_REQUIRED', requestId ? { requestId } : {}))
   }
 
   try {
@@ -27,7 +28,7 @@ export async function GET(request: NextRequest) {
     const userDoc = await db.collection('users').doc(authUser.userId).get()
 
     if (!userDoc.exists) {
-      return setCorsHeaders(errorResponse('ユーザーが見つかりません', 404))
+      return setCorsHeaders(errorResponse('ユーザーが見つかりません', 404, 'USER_NOT_FOUND', requestId ? { requestId } : {}))
     }
 
     const userData = userDoc.data()!
@@ -40,15 +41,23 @@ export async function GET(request: NextRequest) {
     return setCorsHeaders(successResponse(user))
   } catch (error: any) {
     console.error('Auth me error:', error)
-    return setCorsHeaders(errorResponse(error.message || 'ユーザー情報の取得に失敗しました', 500))
+    return setCorsHeaders(
+      errorResponse(
+        'ユーザー情報の取得に失敗しました',
+        500,
+        'AUTH_SERVER_ERROR',
+        requestId ? { requestId } : {},
+      ),
+    )
   }
 }
 
 export async function PUT(request: NextRequest) {
+  const requestId = getRequestId(request)
   // 認証チェック
   const authUser = await verifyAuth(request)
   if (!authUser) {
-    return setCorsHeaders(errorResponse('認証が必要です', 401))
+    return setCorsHeaders(errorResponse('認証が必要です', 401, 'AUTH_REQUIRED', requestId ? { requestId } : {}))
   }
 
   try {
@@ -66,7 +75,7 @@ export async function PUT(request: NextRequest) {
 
     const db = getAdminDb()
     if (!db) {
-      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
+      return setCorsHeaders(errorResponse('Firebase admin is not configured', 503, 'AUTH_SERVER_MISCONFIG', requestId ? { requestId } : {}))
     }
 
     const updateData: Record<string, unknown> = {
@@ -101,6 +110,13 @@ export async function PUT(request: NextRequest) {
     return setCorsHeaders(successResponse(user))
   } catch (error: any) {
     console.error('User update error:', error)
-    return setCorsHeaders(errorResponse(error.message || 'ユーザー情報の更新に失敗しました', 500))
+    return setCorsHeaders(
+      errorResponse(
+        'ユーザー情報の更新に失敗しました',
+        500,
+        'AUTH_SERVER_ERROR',
+        requestId ? { requestId } : {},
+      ),
+    )
   }
 }

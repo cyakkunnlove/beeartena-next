@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import admin, { getAdminAuth, getAdminDb } from '@/lib/firebase/admin'
 import { generateToken } from '@/lib/api/jwt'
-import { errorResponse, rateLimit, setCorsHeaders, validateRequestBody } from '@/lib/api/middleware'
+import { errorResponse, getRequestId, rateLimit, setCorsHeaders, validateRequestBody } from '@/lib/api/middleware'
 
 import type { User } from '@/lib/types'
 
@@ -30,6 +30,7 @@ export async function OPTIONS() {
 
 // Firebase ID Token → アプリJWTへ交換（Googleログイン等）
 export async function POST(request: NextRequest) {
+  const requestId = getRequestId(request)
   const rateLimitResponse = rateLimit(request, 10, 60000)
   if (rateLimitResponse) return setCorsHeaders(rateLimitResponse)
 
@@ -38,13 +39,13 @@ export async function POST(request: NextRequest) {
 
   const idToken = String(data.idToken ?? '').trim()
   if (!idToken) {
-    return setCorsHeaders(errorResponse('idToken is required', 400))
+    return setCorsHeaders(errorResponse('idToken is required', 400, 'AUTH_INVALID_INPUT', requestId ? { requestId } : {}))
   }
 
   const auth = getAdminAuth()
   const db = getAdminDb()
   if (!auth || !db) {
-    return setCorsHeaders(errorResponse('Firebase admin is not configured', 503))
+    return setCorsHeaders(errorResponse('Firebase admin is not configured', 503, 'AUTH_SERVER_MISCONFIG', requestId ? { requestId } : {}))
   }
 
   try {
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
           : ''
 
     if (!uid) {
-      return setCorsHeaders(errorResponse('Invalid Firebase token', 401))
+      return setCorsHeaders(errorResponse('Invalid Firebase token', 401, 'AUTH_FIREBASE_TOKEN_INVALID', requestId ? { requestId } : {}))
     }
 
     const userRef = db.collection('users').doc(uid)
@@ -80,7 +81,7 @@ export async function POST(request: NextRequest) {
     } else {
       const existing = snap.data() ?? {}
       if (existing.deleted) {
-        return setCorsHeaders(errorResponse('このアカウントは無効化されています', 403))
+        return setCorsHeaders(errorResponse('このアカウントは無効化されています', 403, 'AUTH_ACCOUNT_DISABLED', requestId ? { requestId } : {}))
       }
       // email/nameが空で入ってくるケースの保険
       const patch: Record<string, unknown> = { updatedAt: admin.firestore.FieldValue.serverTimestamp() }
@@ -110,7 +111,13 @@ export async function POST(request: NextRequest) {
     const token = await generateToken(user)
     return setCorsHeaders(NextResponse.json({ user, token }))
   } catch (err: any) {
-    return setCorsHeaders(errorResponse(err?.message || '認証に失敗しました', 401))
+    const message = String(err?.message || '')
+    const code =
+      message.includes('JWT_SECRET') ? 'AUTH_SERVER_MISCONFIG' : 'AUTH_FIREBASE_TOKEN_INVALID'
+    const errorMessage =
+      code === 'AUTH_SERVER_MISCONFIG'
+        ? 'サーバー設定エラーのためログインできません。管理者に連絡してください。'
+        : '認証に失敗しました'
+    return setCorsHeaders(errorResponse(errorMessage, 401, code, requestId ? { requestId } : {}))
   }
 }
-

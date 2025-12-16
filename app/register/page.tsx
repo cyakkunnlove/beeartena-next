@@ -8,6 +8,7 @@ import DatePicker from '@/components/ui/DatePicker'
 import { useAuth } from '@/lib/auth/AuthContext'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
+import { isApiError } from '@/lib/api/client'
 import type { ReservationIntakeForm } from '@/lib/types'
 
 interface SavedReservation {
@@ -42,6 +43,7 @@ function RegisterContent() {
     agreeToTerms: false,
   })
   const [error, setError] = useState('')
+  const [errorMeta, setErrorMeta] = useState<{ code?: string; requestId?: string; hint?: string } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [hasReservation, setHasReservation] = useState(false)
   const [savedReservation, setSavedReservation] = useState<SavedReservation | null>(null)
@@ -84,6 +86,7 @@ function RegisterContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setErrorMeta(null)
 
     if (formData.password !== formData.confirmPassword) {
       setError('パスワードが一致しません')
@@ -128,7 +131,24 @@ function RegisterContent() {
         router.push('/mypage')
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : '登録に失敗しました。もう一度お試しください。')
+      const message = error instanceof Error ? error.message : '登録に失敗しました。もう一度お試しください。'
+      setError(message)
+      if (isApiError(error)) {
+        const hint = (() => {
+          switch (error.code) {
+            case 'AUTH_EMAIL_IN_USE':
+              return '別のメールアドレスをお試しください。'
+            case 'RATE_LIMITED':
+            case 'AUTH_RATE_LIMITED':
+              return 'しばらく待ってからお試しください。'
+            case 'AUTH_WEAK_PASSWORD':
+              return '8文字以上のパスワードを設定してください。'
+            default:
+              return '入力内容・通信環境をご確認のうえ、再度お試しください。'
+          }
+        })()
+        setErrorMeta({ code: error.code, requestId: error.requestId, hint })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -161,8 +181,16 @@ function RegisterContent() {
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
-              <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded">
-                {error}
+              <div className="bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded space-y-1">
+                <div>{error}</div>
+                {errorMeta?.hint && <div className="text-xs text-red-700/90">{errorMeta.hint}</div>}
+                {(errorMeta?.code || errorMeta?.requestId) && (
+                  <div className="text-[11px] text-red-700/80">
+                    {errorMeta.code ? <>code: {errorMeta.code}</> : null}
+                    {errorMeta.code && errorMeta.requestId ? ' / ' : null}
+                    {errorMeta.requestId ? <>id: {errorMeta.requestId}</> : null}
+                  </div>
+                )}
               </div>
             )}
 

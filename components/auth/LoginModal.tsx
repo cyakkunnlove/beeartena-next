@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { isApiError } from '@/lib/api/client'
 import type { User } from '@/lib/types'
 
 interface LoginModalProps {
@@ -30,6 +31,7 @@ export default function LoginModal({
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string>('')
+  const [errorMeta, setErrorMeta] = useState<{ code?: string; requestId?: string; hint?: string } | null>(null)
 
   useEffect(() => {
     if (open) {
@@ -53,6 +55,7 @@ export default function LoginModal({
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setErrorMeta(null)
     setIsLoading(true)
 
     try {
@@ -60,7 +63,22 @@ export default function LoginModal({
       onSuccess?.(loggedInUser)
       onClose()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ログインに失敗しました')
+      const message = err instanceof Error ? err.message : 'ログインに失敗しました'
+      setError(message)
+      if (isApiError(err)) {
+        const hint = (() => {
+          switch (err.code) {
+            case 'AUTH_INVALID_CREDENTIALS':
+              return 'メールアドレスとパスワードをご確認ください。'
+            case 'RATE_LIMITED':
+            case 'AUTH_RATE_LIMITED':
+              return 'しばらく待ってからお試しください。'
+            default:
+              return '入力内容・通信環境をご確認のうえ、再度お試しください。'
+          }
+        })()
+        setErrorMeta({ code: err.code, requestId: err.requestId, hint })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -95,7 +113,19 @@ export default function LoginModal({
         </div>
 
         <form onSubmit={handleLogin} className="mt-6 space-y-4">
-          {error && <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600">{error}</div>}
+          {error && (
+            <div className="rounded-lg bg-red-50 p-3 text-sm text-red-600 space-y-1">
+              <div>{error}</div>
+              {errorMeta?.hint && <div className="text-xs text-red-600/90">{errorMeta.hint}</div>}
+              {(errorMeta?.code || errorMeta?.requestId) && (
+                <div className="text-[11px] text-red-600/80">
+                  {errorMeta.code ? <>code: {errorMeta.code}</> : null}
+                  {errorMeta.code && errorMeta.requestId ? ' / ' : null}
+                  {errorMeta.requestId ? <>id: {errorMeta.requestId}</> : null}
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label htmlFor="modal-email" className="block text-sm font-medium text-gray-700">

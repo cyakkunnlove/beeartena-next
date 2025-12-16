@@ -3,6 +3,15 @@ import { NextRequest, NextResponse } from 'next/server'
 
 import { recordAdminAuditEvent } from '@/lib/firebase/adminAudit'
 
+export const getRequestId = (request: NextRequest): string | undefined => {
+  const id =
+    request.headers.get('x-vercel-id') ??
+    request.headers.get('x-request-id') ??
+    request.headers.get('x-amzn-trace-id') ??
+    undefined
+  return id ?? undefined
+}
+
 // JWTシークレット（環境変数から取得）
 const getJwtSecret = () => {
   const secret = process.env.JWT_SECRET
@@ -58,11 +67,11 @@ export async function requireAdmin(request: NextRequest): Promise<NextResponse |
   const user = await verifyAuth(request)
 
   if (!user) {
-    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+    return NextResponse.json({ error: '認証が必要です', code: 'AUTH_REQUIRED', requestId: getRequestId(request) }, { status: 401 })
   }
 
   if (user.role !== 'admin') {
-    return NextResponse.json({ error: '管理者権限が必要です' }, { status: 403 })
+    return NextResponse.json({ error: '管理者権限が必要です', code: 'ADMIN_REQUIRED', requestId: getRequestId(request) }, { status: 403 })
   }
 
   // 監査ログ（最小構成）：管理者がどのAPIを叩いたか
@@ -97,11 +106,11 @@ export async function requireUserOrAdmin(
   const user = await verifyAuth(request)
 
   if (!user) {
-    return NextResponse.json({ error: '認証が必要です' }, { status: 401 })
+    return NextResponse.json({ error: '認証が必要です', code: 'AUTH_REQUIRED', requestId: getRequestId(request) }, { status: 401 })
   }
 
   if (user.userId !== targetUserId && user.role !== 'admin') {
-    return NextResponse.json({ error: 'アクセス権限がありません' }, { status: 403 })
+    return NextResponse.json({ error: 'アクセス権限がありません', code: 'FORBIDDEN', requestId: getRequestId(request) }, { status: 403 })
   }
 
   return null // 権限OK
@@ -129,9 +138,16 @@ export function rateLimit(
   requestData.count++
 
   if (requestData.count > limit) {
+    const retryAfterMs = Math.max(0, requestData.resetTime - now)
+    const requestId = getRequestId(request)
     return NextResponse.json(
-      { error: 'リクエスト数が制限を超えました。しばらくしてから再度お試しください。' },
-      { status: 429 },
+      {
+        error: 'リクエスト数が制限を超えました。しばらくしてから再度お試しください。',
+        code: 'RATE_LIMITED',
+        retryAfterMs,
+        ...(requestId ? { requestId } : {}),
+      },
+      { status: 429, headers: { 'Retry-After': String(Math.ceil(retryAfterMs / 1000)) } },
     )
   }
 
@@ -139,8 +155,20 @@ export function rateLimit(
 }
 
 // エラーレスポンスのフォーマット
-export function errorResponse(message: string, status: number = 400): NextResponse {
-  return NextResponse.json({ error: message }, { status })
+export function errorResponse(
+  message: string,
+  status: number = 400,
+  code?: string,
+  meta: Record<string, unknown> = {},
+): NextResponse {
+  return NextResponse.json(
+    {
+      error: message,
+      ...(code ? { code } : {}),
+      ...meta,
+    },
+    { status },
+  )
 }
 
 // 成功レスポンスのフォーマット

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState, Suspense } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
+import { isApiError } from '@/lib/api/client'
 import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 
 function LoginContent() {
@@ -16,6 +17,12 @@ function LoginContent() {
     password: '',
   })
   const [error, setError] = useState('')
+  const [errorMeta, setErrorMeta] = useState<{
+    code?: string
+    requestId?: string
+    hint?: string
+    retryAfterSeconds?: number
+  } | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isDevelopment, setIsDevelopment] = useState(false)
 
@@ -47,6 +54,7 @@ function LoginContent() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    setErrorMeta(null)
     setIsLoading(true)
 
     try {
@@ -58,7 +66,34 @@ function LoginContent() {
         router.push(redirectTo)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'ログインに失敗しました')
+      const message = err instanceof Error ? err.message : 'ログインに失敗しました'
+      setError(message)
+
+      if (isApiError(err)) {
+        const retryAfterSeconds =
+          typeof err.meta?.retryAfterMs === 'number' ? Math.ceil(err.meta.retryAfterMs / 1000) : undefined
+        const hint = (() => {
+          switch (err.code) {
+            case 'AUTH_INVALID_CREDENTIALS':
+              return 'メールアドレスとパスワードをご確認ください。'
+            case 'RATE_LIMITED':
+            case 'AUTH_RATE_LIMITED':
+              return retryAfterSeconds ? `${retryAfterSeconds}秒ほど待ってからお試しください。` : 'しばらく待ってからお試しください。'
+            case 'AUTH_SERVER_MISCONFIG':
+            case 'AUTH_SERVER_ERROR':
+              return '時間をおいても改善しない場合は、管理者へお問い合わせください。'
+            default:
+              return '入力内容・通信環境をご確認のうえ、再度お試しください。'
+          }
+        })()
+
+        setErrorMeta({
+          code: err.code,
+          requestId: err.requestId,
+          hint,
+          retryAfterSeconds,
+        })
+      }
     } finally {
       setIsLoading(false)
     }
@@ -78,7 +113,19 @@ function LoginContent() {
         </div>
 
         <form className="mt-8 space-y-6 bg-white p-8 rounded-xl shadow-lg" onSubmit={handleSubmit}>
-          {error && <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm">{error}</div>}
+          {error && (
+            <div className="bg-red-50 text-red-700 p-4 rounded-lg text-sm space-y-1">
+              <div>{error}</div>
+              {errorMeta?.hint && <div className="text-xs text-red-600">{errorMeta.hint}</div>}
+              {(errorMeta?.code || errorMeta?.requestId) && (
+                <div className="text-[11px] text-red-600/80">
+                  {errorMeta.code ? <>code: {errorMeta.code}</> : null}
+                  {errorMeta.code && errorMeta.requestId ? ' / ' : null}
+                  {errorMeta.requestId ? <>id: {errorMeta.requestId}</> : null}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-4">
             <div className="input-group">
