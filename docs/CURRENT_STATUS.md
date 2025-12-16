@@ -2,11 +2,37 @@
 
 最終更新: 2025-12-16  
 対象ブランチ: `main`  
-最終コミット: `0aacdfd`（docs: add current status overview）
+最終コミット: `git log -1 --oneline` を参照
 
 ## 0. 運用チェックリスト（担当/期限）
 このセクションは「今日やること」「デプロイ後に見るところ」を最短で回せるようにした運用用チェックです。  
 `担当:` と `期限:` は運用に合わせて埋めてください。
+
+### 0.0 運用担当メモ（URL/権限/連絡先）
+※ この欄には「リンク」「担当」「どこを見れば良いか」だけを書き、**パスワードや秘密鍵は絶対に書かない**でください。
+
+**主要URL**
+- 本番: `https://www.beeartena.com/`
+- 管理画面: `https://www.beeartena.com/admin`
+- LINE Webhook: `https://www.beeartena.com/api/line/webhook`
+- GitHub: `https://github.com/cyakkunnlove/beeartena-next`
+
+**管理コンソール（リンクを埋める）**
+- Vercel Project（環境変数/ログ）: （URLを貼る）`担当:`
+- Firebase Console（Firestore/Auth/Storage）: （URLを貼る）`担当:`
+- LINE Developers（Messaging API）: （URLを貼る）`担当:`
+- Upstash（Redis）: （URLを貼る）`担当:`
+- Resend（メール）: （URLを貼る）`担当:`
+
+**権限（誰が触れるか）**
+- GitHub Admin: `担当:`  
+- Vercel Admin: `担当:`  
+- Firebase Owner: `担当:`  
+- LINE公式アカウント管理者: `担当:`  
+- Upstash Owner: `担当:`  
+
+**障害/問い合わせ時の合言葉**
+- 画面に `code` と `id`（requestId）が出たら、そのまま貼ってもらう（ログ/監査で追跡しやすい）
 
 ### 0.1 デプロイ直後（10分）
 - [ ] 予約ページが開く（`/reservation`）`担当:`  `期限:`
@@ -29,6 +55,23 @@
 - [ ] どの画面（`/login` or `/register` or Googleログイン） `担当:`  `期限:`
 - [ ] 表示された `code` と `id`（requestId） `担当:`  `期限:`
 - [ ] 発生時刻（だいたいでOK） `担当:`  `期限:`
+
+### 0.4 定期点検（毎日/週次/月次）
+**毎日（3分）**
+- [ ] 予約ページ（`/reservation`）で読み込みが極端に遅くない `担当:`  `期限:`
+- [ ] 管理画面（`/admin`）にログインできる `担当:`  `期限:`
+- [ ] `/admin/line` に会話が増えている/取り込みが止まっていない `担当:`  `期限:`
+
+**週次（10分）**
+- [ ] 監査ログ（`/admin/audit`）で不審な操作がない `担当:`  `期限:`
+- [ ] 予約設定（`/admin/settings`）が意図通り（営業時間/枠/ブロック日）`担当:`  `期限:`
+- [ ] Redis関連の警告（host not found など）が増えていない `担当:`  `期限:`
+
+**月次（30分）**
+- [ ] Firebase（Firestore/Storage）の使用量・課金が想定内 `担当:`  `期限:`
+- [ ] LINEメディア（Storage）の容量増加が想定内（必要なら整理方針を決める）`担当:`  `期限:`
+- [ ] 重要な環境変数（LINE/Redis/Firebase Admin）の「Production」適用を棚卸し `担当:`  `期限:`
+- [ ] 依存関係のセキュリティ警告（Vercel/`npm audit`）を確認 `担当:`  `期限:`
 
 ## 1. 目的
 - 「今どこまでできていて、何が前提で、次に何をすればいいか」をすぐ把握するためのメモです。
