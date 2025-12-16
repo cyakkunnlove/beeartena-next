@@ -10,6 +10,7 @@ import type {
   Inquiry,
   LineConversation,
   LineMessage,
+  User,
 } from '@/lib/types'
 import type { AdminAnalyticsPayload } from '@/lib/utils/analytics'
 
@@ -569,6 +570,7 @@ class ApiClient {
       } else {
         localStorage.removeItem('auth_token')
       }
+      window.dispatchEvent(new CustomEvent('beeartena:auth-token-changed', { detail: { token: sanitized } }))
     }
   }
 
@@ -576,6 +578,7 @@ class ApiClient {
     this.token = null
     if (typeof window !== 'undefined') {
       localStorage.removeItem('auth_token')
+      window.dispatchEvent(new CustomEvent('beeartena:auth-token-changed', { detail: { token: null } }))
     }
   }
 
@@ -673,6 +676,17 @@ class ApiClient {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     })
+
+    this.setToken(response.token)
+    return response.user
+  }
+
+  // Firebase ID Token → アプリJWT交換（Googleログイン用）
+  async loginWithFirebaseIdToken(idToken: string) {
+    const response = await this.request<{ user: User; token: string }>('/auth/firebase', {
+      method: 'POST',
+      body: JSON.stringify({ idToken }),
+    }, false)
 
     this.setToken(response.token)
     return response.user

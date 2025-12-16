@@ -4,6 +4,8 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { firebaseAuth } from '@/lib/firebase/auth'
+import { auth } from '@/lib/firebase/config'
+import { apiClient } from '@/lib/api/client'
 import { isProfileComplete } from '@/lib/utils/profileUtils'
 
 interface SocialLoginButtonsProps {
@@ -20,7 +22,14 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       setLoading(true)
       setError('')
 
-      const user = await firebaseAuth.signInWithGoogle()
+      await firebaseAuth.signInWithGoogle()
+      const firebaseUser = auth.currentUser
+      if (!firebaseUser) {
+        throw new Error('Googleログインに失敗しました（ユーザー情報が取得できません）')
+      }
+
+      const idToken = await firebaseUser.getIdToken()
+      const user = await apiClient.loginWithFirebaseIdToken(idToken)
 
       // プロフィールが未完成の場合は補完ページへ
       if (!isProfileComplete(user)) {

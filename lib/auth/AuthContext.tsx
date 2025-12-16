@@ -1,6 +1,6 @@
 'use client'
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import React, { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react'
 
 import { POINTS_PROGRAM_ENABLED } from '@/lib/constants/featureFlags'
 import { apiClient } from '@/lib/api/client'
@@ -11,6 +11,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
+  const checkingRef = useRef(false)
 
   const normalizeUserResponse = (data: Record<string, unknown>): User => {
     const createdAtValue = data.createdAt ?? data.created_at
@@ -41,26 +42,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Check for existing session
     const checkAuth = async () => {
+      if (checkingRef.current) return
+      checkingRef.current = true
       try {
-        const token = localStorage.getItem('auth_token')
+        const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null
         if (token) {
           const currentUser = await apiClient.getCurrentUser()
           if (currentUser && typeof currentUser === 'object') {
             setUser(normalizeUserResponse(currentUser))
+          } else {
+            setUser(null)
           }
+        } else {
+          setUser(null)
         }
       } catch (error) {
         console.error('Auth check failed:', error)
         // トークンが無効な場合はクリア
         apiClient.clearToken()
+        setUser(null)
       } finally {
         setLoading(false)
+        checkingRef.current = false
       }
     }
 
-    checkAuth()
+    const onTokenChanged = () => {
+      void checkAuth()
+    }
+
+    window.addEventListener('beeartena:auth-token-changed', onTokenChanged)
+    void checkAuth()
+
+    return () => {
+      window.removeEventListener('beeartena:auth-token-changed', onTokenChanged)
+    }
   }, [])
 
   const login = async (email: string, password: string): Promise<User> => {
