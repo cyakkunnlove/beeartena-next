@@ -2,7 +2,33 @@
 
 最終更新: 2025-12-16  
 対象ブランチ: `main`  
-最終コミット: `7bff343`（fix(auth): show error cause and request id）
+最終コミット: `0aacdfd`（docs: add current status overview）
+
+## 0. 運用チェックリスト（担当/期限）
+このセクションは「今日やること」「デプロイ後に見るところ」を最短で回せるようにした運用用チェックです。  
+`担当:` と `期限:` は運用に合わせて埋めてください。
+
+### 0.1 デプロイ直後（10分）
+- [ ] 予約ページが開く（`/reservation`）`担当:`  `期限:`
+- [ ] 月カレンダーが表示され、読み込みが重くない（availabilityが504にならない）`担当:`  `期限:`
+- [ ] 日付選択→時間枠取得がtimeoutしない（`/api/reservations/slots`）`担当:`  `期限:`
+- [ ] ログイン（`/login`）が成功する `担当:`  `期限:`
+- [ ] ログイン失敗時に「原因ヒント + code/id」が表示される `担当:`  `期限:`
+- [ ] 管理画面ログイン→`/admin/settings` が表示・保存できる `担当:`  `期限:`
+- [ ] `/admin/line` が表示できる（会話一覧/詳細が開く）`担当:`  `期限:`
+- [ ] 監査ログが表示できる（`/admin/audit`）`担当:`  `期限:`
+
+### 0.2 LINE動作確認（15分）
+- [ ] Webhook URL が設定済み（`https://www.beeartena.com/api/line/webhook`）`担当:`  `期限:`
+- [ ] 公式LINEに「1通送る」→会話が `lineConversations` に保存される `担当:`  `期限:`
+- [ ] `/admin/line` で送信できる（テキスト）`担当:`  `期限:`
+- [ ] 画像/動画が `[image]` にならず表示される（必要なら「再取得」）`担当:`  `期限:`
+
+### 0.3 問い合わせ対応テンプレ（貼るだけ）
+ユーザー/管理者から「ログインできない/登録できない」と連絡が来たら、まずこの3点を聞く：
+- [ ] どの画面（`/login` or `/register` or Googleログイン） `担当:`  `期限:`
+- [ ] 表示された `code` と `id`（requestId） `担当:`  `期限:`
+- [ ] 発生時刻（だいたいでOK） `担当:`  `期限:`
 
 ## 1. 目的
 - 「今どこまでできていて、何が前提で、次に何をすればいいか」をすぐ把握するためのメモです。
@@ -96,13 +122,14 @@
 
 ## 8. 環境変数チェックリスト（本番/Vercel）
 ### 8.1 Firebase（Client）
-- `NEXT_PUBLIC_FIREBASE_*` 一式（特に `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`）
+- [ ] `NEXT_PUBLIC_FIREBASE_*` 一式が Production に入っている `担当:`  `期限:`
+- [ ] `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` が正しい（画像/動画保存に影響）`担当:`  `期限:`
 
 ### 8.2 Firebase（Admin SDK）
-- `FIREBASE_ADMIN_PROJECT_ID`
-- `FIREBASE_ADMIN_CLIENT_EMAIL`
-- `FIREBASE_ADMIN_PRIVATE_KEY`
-- （必要に応じて）`FIREBASE_ADMIN_STORAGE_BUCKET`
+- [ ] `FIREBASE_ADMIN_PROJECT_ID` `担当:`  `期限:`
+- [ ] `FIREBASE_ADMIN_CLIENT_EMAIL` `担当:`  `期限:`
+- [ ] `FIREBASE_ADMIN_PRIVATE_KEY` `担当:`  `期限:`
+- [ ] （必要に応じて）`FIREBASE_ADMIN_STORAGE_BUCKET` `担当:`  `期限:`
 
 #### `FIREBASE_ADMIN_PRIVATE_KEY` の貼り付け形式
 - Firebase Console → プロジェクト設定 → サービスアカウント → 「新しい秘密鍵を生成」
@@ -112,11 +139,11 @@
   - `\n` を含む1行の形で貼り付け（VercelのUIで扱いやすい）
 
 ### 8.3 LINE
-- `LINE_CHANNEL_SECRET`（Webhook受信保存に必須）
-- `LINE_CHANNEL_ACCESS_TOKEN`（送信/メディア再取得に必須）
+- [ ] `LINE_CHANNEL_SECRET`（Webhook受信保存に必須）`担当:`  `期限:`
+- [ ] `LINE_CHANNEL_ACCESS_TOKEN`（送信/メディア再取得に必須）`担当:`  `期限:`
 
 ### 8.4 Redis（任意だが推奨）
-- `REDIS_URL`（Upstashの接続URL）
+- [ ] `REDIS_URL`（Upstashの接続URL）を Production に設定 `担当:`  `期限:`
   - 未設定の場合はメモリfallbackになるため、本番では設定推奨です（性能/安定性のため）。
 
 ## 9. Vercel Toolbar について
@@ -138,5 +165,6 @@ git push -u origin feat/something
 ```
 
 ## 11. 未完了/要確認（運用しながら詰める）
-- ポイント関連の文言/導線が残っていないかの最終棚卸し（トップページ等）
-- 管理画面のUX改善（セクション折りたたみ、保存通知の出し方、Service Plan編集のモーダル化など）
+- [ ] ポイント関連の文言/導線の最終棚卸し（トップページ等）`担当:`  `期限:`
+- [ ] 管理画面設定のUX改善（カテゴリ折りたたみ/保存トーストの位置）`担当:`  `期限:`
+- [ ] Service Plan 編集UIの改善（モーダル化等）`担当:`  `期限:`
