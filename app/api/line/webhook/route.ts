@@ -34,6 +34,53 @@ const verifyLineSignature = (rawBody: string, signature: string, channelSecret: 
   return signature === expected
 }
 
+const shouldForwardLegacyNotification = (events: LineWebhookEvent[]): boolean => {
+  return events.some((event) => {
+    if (event?.type !== 'message' || !event.message) return false
+    const message = event.message as LineWebhookMessage
+    return typeof message.type === 'string' && message.type === 'text'
+  })
+}
+
+const signForwardPayload = (rawBody: string, secret: string): string => {
+  return createHmac('sha256', secret).update(rawBody).digest('hex')
+}
+
+const forwardToLegacyWebhook = async (rawBody: string) => {
+  const url = (process.env.LINE_WEBHOOK_FORWARD_URL ?? '').trim()
+  if (!url) return
+
+  const secret = (process.env.LINE_WEBHOOK_FORWARD_SECRET ?? '').trim()
+  const controller = new AbortController()
+  const timeoutMs = 2500
+  const timer = setTimeout(() => controller.abort(), timeoutMs)
+
+  try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'beeartena-next/line-webhook-forward',
+    }
+    if (secret) {
+      headers['x-beeartena-forward-signature'] = signForwardPayload(rawBody, secret)
+    }
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: rawBody,
+      signal: controller.signal,
+    })
+
+    if (!response.ok) {
+      logger.warn('LINE webhook forward failed', { status: response.status })
+    }
+  } catch (error) {
+    logger.warn('LINE webhook forward error', { error: getErrorMessage(error) })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 const fetchLineProfile = async (
   userId: string,
   accessToken: string,
@@ -252,6 +299,7 @@ export async function POST(request: NextRequest) {
   if (events.length === 0) {
     return NextResponse.json({ ok: true })
   }
+  const shouldForwardLegacy = shouldForwardLegacyNotification(events)
 
   const db = getAdminDb()
   if (!db) {
@@ -387,6 +435,10 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+  }
+
+  if (shouldForwardLegacy) {
+    await forwardToLegacyWebhook(rawBody)
   }
 
   return NextResponse.json({ ok: true, receivedAt: toIso(Date.now()) })

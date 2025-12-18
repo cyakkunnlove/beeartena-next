@@ -16,6 +16,19 @@ LINE_CHANNEL_ACCESS_TOKEN=xxxxx
 
 ※ `LINE_CHANNEL_ACCESS_TOKEN` は「管理画面から送信」機能にも使用します。
 
+## （任意）既存GAS/Discord通知へ転送する
+
+既存のGAS（Discord通知・自動返信）を継続利用しつつ、Webhook受信を本プロジェクトで行う場合は、
+以下を設定すると本Webhookが **受信した内容をそのまま別Webhookへ転送**します。
+
+```env
+LINE_WEBHOOK_FORWARD_URL=https://script.google.com/macros/s/xxxxx/exec
+LINE_WEBHOOK_FORWARD_SECRET=xxxxx
+```
+
+- 転送は「テキストメッセージ」を含むリクエストのみ対象です。
+- `LINE_WEBHOOK_FORWARD_SECRET` は任意ですが、公開Webhookを保護するため設定を推奨します（受信側で同じHMAC検証を実装してください）。
+
 ## Webhook設定（LINE Developers）
 
 Messaging API のWebhook URLを以下に設定します。
