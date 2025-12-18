@@ -52,7 +52,7 @@ const forwardToLegacyWebhook = async (rawBody: string) => {
 
   const secret = (process.env.LINE_WEBHOOK_FORWARD_SECRET ?? '').trim()
   const controller = new AbortController()
-  const timeoutMs = 2500
+  const timeoutMs = 8000
   const timer = setTimeout(() => controller.abort(), timeoutMs)
 
   try {
@@ -69,7 +69,22 @@ const forwardToLegacyWebhook = async (rawBody: string) => {
       headers,
       body: rawBody,
       signal: controller.signal,
+      redirect: 'manual',
     })
+
+    if (response.status >= 300 && response.status < 400) {
+      logger.warn('LINE webhook forward got redirect response', {
+        status: response.status,
+        location: response.headers.get('location') ?? undefined,
+      })
+      return
+    }
+
+    const contentType = (response.headers.get('content-type') ?? '').toLowerCase()
+    if (contentType.includes('text/html')) {
+      logger.warn('LINE webhook forward returned HTML (likely auth / wrong URL)', { status: response.status })
+      return
+    }
 
     if (!response.ok) {
       logger.warn('LINE webhook forward failed', { status: response.status })

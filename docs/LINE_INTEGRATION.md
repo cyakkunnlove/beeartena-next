@@ -28,6 +28,8 @@ LINE_WEBHOOK_FORWARD_SECRET=xxxxx
 
 - 転送は「テキストメッセージ」を含むリクエストのみ対象です。
 - `LINE_WEBHOOK_FORWARD_SECRET` は任意ですが、公開Webhookを保護するため設定を推奨します（受信側で同じHMAC検証を実装してください）。
+- `LINE_WEBHOOK_FORWARD_URL` は必ず **`/exec` のURL** を指定してください（`/dev` や権限が必要なURLだとGASが実行されません）。
+- GAS側は「デプロイ（ウェブアプリ）」で、アクセス権が「全員（匿名ユーザーを含む）」になっている必要があります。
 
 ## Webhook設定（LINE Developers）
 
