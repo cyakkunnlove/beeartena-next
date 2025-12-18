@@ -8,6 +8,11 @@ export function middleware(request: NextRequest) {
   // デバッグ用: ビルド時の値を出力
   console.log('[Middleware Debug] IS_MAINTENANCE_MODE (build-time):', IS_MAINTENANCE_MODE)
 
+  // APIルートはメンテナンスモードでもブロックしない（Webhook等が止まるため）
+  if (request.nextUrl.pathname.startsWith('/api/')) {
+    return NextResponse.next()
+  }
+
   // システムメンテナンスページ自体へのアクセスは許可
   if (request.nextUrl.pathname === '/system-maintenance') {
     return NextResponse.next()
