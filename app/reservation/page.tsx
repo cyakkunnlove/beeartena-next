@@ -2,7 +2,7 @@
 
 import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useEffect, useMemo, useState, Suspense } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, Suspense } from 'react'
 
 import BusinessHoursInfo from '@/components/reservation/BusinessHoursInfo'
 import Calendar from '@/components/reservation/Calendar'
@@ -55,6 +55,7 @@ function ReservationContent() {
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState<PendingReservation | null>(null)
+  const hasRestoredRef = useRef(false)
   const totalSteps = 6
 
   useEffect(() => {
@@ -99,20 +100,34 @@ function ReservationContent() {
     [],
   )
 
+  const restoreFromStorage = useCallback(() => {
+    if (hasRestoredRef.current) return
+    const savedReservation = reservationStorage.get()
+    if (!savedReservation) return
+
+    restoreReservation(savedReservation)
+    if (savedReservation.isReadyToSubmit) {
+      setPendingAutoSubmit(savedReservation)
+    } else {
+      setPendingAutoSubmit(null)
+    }
+    reservationStorage.clear()
+    hasRestoredRef.current = true
+  }, [restoreReservation])
+
   // 会員登録から戻ってきた場合、保存した予約情報を復元
   useEffect(() => {
     const from = searchParams.get('from')
     if (from === 'register' || from === 'login') {
-      const savedReservation = reservationStorage.get()
-      if (savedReservation) {
-        restoreReservation(savedReservation)
-        if (savedReservation.isReadyToSubmit) {
-          setPendingAutoSubmit(savedReservation)
-        }
-        reservationStorage.clear()
-      }
+      restoreFromStorage()
     }
-  }, [restoreReservation, searchParams])
+  }, [restoreFromStorage, searchParams])
+
+  // fromパラメータが無い場合でも、保存済み予約があれば復元
+  useEffect(() => {
+    if (searchParams.get('from')) return
+    restoreFromStorage()
+  }, [restoreFromStorage, searchParams])
 
   useEffect(() => {
     if (servicePlansLoading) return
@@ -134,23 +149,12 @@ function ReservationContent() {
       return
     }
 
-    const saved = reservationStorage.get()
-    if (saved) {
-      restoreReservation(saved)
-      if (saved.isReadyToSubmit) {
-        setPendingAutoSubmit(saved)
-      } else {
-        setPendingAutoSubmit(null)
-      }
-      reservationStorage.clear()
-    } else {
-      setPendingAutoSubmit(null)
-    }
+    restoreFromStorage()
 
     if (showLoginModal) {
       setShowLoginModal(false)
     }
-  }, [restoreReservation, router, showLoginModal, user])
+  }, [restoreFromStorage, router, showLoginModal, user])
 
   // ログインユーザーの情報をフォームに自動入力
   useEffect(() => {
