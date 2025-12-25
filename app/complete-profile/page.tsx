@@ -60,7 +60,7 @@ function CompleteProfileContent() {
 
   const needsEmail = !user?.email || user.email.trim() === ''
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
