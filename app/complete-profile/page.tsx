@@ -14,6 +14,7 @@ function CompleteProfileContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
   const [formData, setFormData] = useState({
+    email: '',
     name: '',
     phone: '',
     birthday: '',
@@ -36,11 +37,14 @@ function CompleteProfileContent() {
 
     // 既存のユーザー情報をフォームに反映
     setFormData({
+      email: user.email || '',
       name: user.name || '',
       phone: user.phone || '',
       birthday: user.birthDate || user.birthday || '',
     })
   }, [user, router, redirectTo])
+
+  const needsEmail = !user?.email || user.email.trim() === ''
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target
@@ -72,6 +76,19 @@ function CompleteProfileContent() {
       return
     }
 
+    if (needsEmail) {
+      const emailValue = formData.email.trim()
+      if (!emailValue) {
+        setError('メールアドレスを入力してください')
+        return
+      }
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+      if (!emailRegex.test(emailValue)) {
+        setError('正しいメールアドレスを入力してください')
+        return
+      }
+    }
+
     // 電話番号の簡易バリデーション
     const phoneRegex = /^[0-9-]+$/
     if (!phoneRegex.test(formData.phone)) {
@@ -83,6 +100,7 @@ function CompleteProfileContent() {
 
     try {
       await updateProfile({
+        ...(needsEmail ? { email: formData.email.trim() } : {}),
         name: formData.name,
         phone: formData.phone,
         birthDate: formData.birthday || undefined,
@@ -103,6 +121,10 @@ function CompleteProfileContent() {
     // スキップする場合（ただし、予約からの場合はスキップ不可）
     if (fromReservation) {
       setError('予約を完了するには、電話番号の入力が必要です')
+      return
+    }
+    if (needsEmail) {
+      setError('メールアドレスの入力が必要です')
       return
     }
     router.push(redirectTo)
@@ -140,18 +162,40 @@ function CompleteProfileContent() {
               </div>
             )}
 
-            {/* メールアドレス（表示のみ） */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
-                メールアドレス
-              </label>
-              <div className="mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
-                {user.email}
+            {/* メールアドレス */}
+            {needsEmail ? (
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                  メールアドレス <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="example@email.com"
+                  autoComplete="email"
+                />
+                <p className="mt-1 text-xs text-gray-500">
+                  予約確認のご連絡に使用します
+                </p>
               </div>
-              <p className="mt-1 text-xs text-gray-500">
-                Googleアカウントから取得されました
-              </p>
-            </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  メールアドレス
+                </label>
+                <div className="mt-1 px-3 py-2 bg-gray-50 border border-gray-300 rounded-md">
+                  {user.email}
+                </div>
+                <p className="mt-1 text-xs text-gray-500">
+                  ログイン方法から取得されました
+                </p>
+              </div>
+            )}
 
             {/* お名前 */}
             <div>
@@ -170,7 +214,7 @@ function CompleteProfileContent() {
               />
               {formData.name && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Googleアカウントから取得されました
+                  ログイン方法から取得されました
                 </p>
               )}
             </div>

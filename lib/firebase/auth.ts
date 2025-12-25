@@ -11,6 +11,7 @@ import {
   sendEmailVerification,
   applyActionCode,
   GoogleAuthProvider,
+  OAuthProvider,
   signInWithPopup,
   sendPasswordResetEmail,
 } from 'firebase/auth'
@@ -346,6 +347,61 @@ export const firebaseAuth = {
       }
 
       throw new Error(getErrorMessage(error) || 'Googleログインに失敗しました')
+    }
+  },
+
+  // LINEログイン（OIDC）
+  async signInWithLine(): Promise<AppUser> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('LINEログインは現在利用できません')
+    }
+
+    const providerId = (process.env.NEXT_PUBLIC_LINE_OIDC_PROVIDER_ID || 'oidc.line').trim()
+    if (!providerId) {
+      throw new Error('LINEログインが設定されていません')
+    }
+
+    const provider = new OAuthProvider(providerId)
+    provider.addScope('profile')
+    provider.addScope('email')
+    provider.setCustomParameters({ prompt: 'consent' })
+
+    try {
+      const result = await signInWithPopup(auth, provider)
+      const user = result.user
+
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+
+      if (userDoc.exists()) {
+        return userDoc.data() as AppUser
+      }
+
+      const userData: AppUser = {
+        id: user.uid,
+        email: user.email || '',
+        name: user.displayName || '',
+        phone: '',
+        role: 'customer',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userData)
+      return userData
+    } catch (error: any) {
+      logger.warn('LINE login error', {
+        code: error?.code,
+        message: error?.message,
+      })
+
+      if (error.code === 'auth/popup-closed-by-user') {
+        throw new Error('ログインがキャンセルされました')
+      }
+      if (error.code === 'auth/popup-blocked') {
+        throw new Error('ポップアップがブロックされました。ブラウザの設定を確認してください')
+      }
+
+      throw new Error(getErrorMessage(error) || 'LINEログインに失敗しました')
     }
   },
 

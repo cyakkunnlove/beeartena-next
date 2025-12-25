@@ -63,6 +63,7 @@ export async function PUT(request: NextRequest) {
   try {
     const body = await request.json()
     const {
+      email,
       name,
       phone,
       birthDate,
@@ -78,11 +79,31 @@ export async function PUT(request: NextRequest) {
       return setCorsHeaders(errorResponse('Firebase admin is not configured', 503, 'AUTH_SERVER_MISCONFIG', requestId ? { requestId } : {}))
     }
 
+    const userRef = db.collection('users').doc(authUser.userId)
+    const userSnap = await userRef.get()
+    if (!userSnap.exists) {
+      return setCorsHeaders(errorResponse('ユーザーが見つかりません', 404, 'USER_NOT_FOUND', requestId ? { requestId } : {}))
+    }
+    const existingUser = userSnap.data() ?? {}
+
     const updateData: Record<string, unknown> = {
       updatedAt: admin.firestore.FieldValue.serverTimestamp(),
     }
 
     // 各フィールドが提供されている場合のみ更新
+    if (email !== undefined) {
+      const normalizedEmail = String(email ?? '').trim().toLowerCase()
+      if (!normalizedEmail) {
+        return setCorsHeaders(errorResponse('メールアドレスを入力してください', 400, 'AUTH_INVALID_INPUT', requestId ? { requestId } : {}))
+      }
+      const existingEmail =
+        typeof existingUser.email === 'string' ? existingUser.email.trim().toLowerCase() : ''
+      if (existingEmail && existingEmail !== normalizedEmail) {
+        return setCorsHeaders(errorResponse('メールアドレスの変更は現在できません', 400, 'AUTH_INVALID_INPUT', requestId ? { requestId } : {}))
+      }
+      updateData.email = normalizedEmail
+      updateData.emailLower = normalizedEmail
+    }
     if (name !== undefined) updateData.name = name
     if (phone !== undefined) updateData.phone = phone
     if (birthDate !== undefined) {
@@ -95,10 +116,10 @@ export async function PUT(request: NextRequest) {
     if (city !== undefined) updateData.city = city
     if (address !== undefined) updateData.address = address
 
-    await db.collection('users').doc(authUser.userId).update(updateData)
+    await userRef.update(updateData)
 
     // 更新後のユーザー情報を取得
-    const userDoc = await db.collection('users').doc(authUser.userId).get()
+    const userDoc = await userRef.get()
     const userData = userDoc.data()!
     const user = {
       id: authUser.userId,

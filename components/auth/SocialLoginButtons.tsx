@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
+import { SiLine } from 'react-icons/si'
 import { firebaseAuth } from '@/lib/firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { apiClient, isApiError } from '@/lib/api/client'
@@ -14,18 +15,24 @@ interface SocialLoginButtonsProps {
 
 export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLoginButtonsProps) {
   const router = useRouter()
-  const [loading, setLoading] = useState(false)
+  const [loadingProvider, setLoadingProvider] = useState<'google' | 'line' | null>(null)
   const [error, setError] = useState('')
 
-  const handleGoogleLogin = async () => {
+  const handleSocialLogin = async (provider: 'google' | 'line') => {
     try {
-      setLoading(true)
+      setLoadingProvider(provider)
       setError('')
 
-      await firebaseAuth.signInWithGoogle()
+      if (provider === 'google') {
+        await firebaseAuth.signInWithGoogle()
+      } else {
+        await firebaseAuth.signInWithLine()
+      }
+
       const firebaseUser = auth.currentUser
       if (!firebaseUser) {
-        throw new Error('Googleログインに失敗しました（ユーザー情報が取得できません）')
+        const label = provider === 'google' ? 'Google' : 'LINE'
+        throw new Error(`${label}ログインに失敗しました（ユーザー情報が取得できません）`)
       }
 
       const idToken = await firebaseUser.getIdToken()
@@ -40,13 +47,14 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         router.push(redirectTo)
       }
     } catch (error: any) {
-      console.error('Googleログインエラー:', error)
-      const message = error?.message || 'Googleログインに失敗しました'
+      const label = provider === 'google' ? 'Google' : 'LINE'
+      console.error(`${label}ログインエラー:`, error)
+      const message = error?.message || `${label}ログインに失敗しました`
       if (isApiError(error)) {
         const hint = (() => {
           switch (error.code) {
             case 'AUTH_FIREBASE_TOKEN_INVALID':
-              return 'Googleログインをやり直してください。'
+              return `${label}ログインをやり直してください。`
             case 'AUTH_SERVER_MISCONFIG':
             case 'AUTH_SERVER_ERROR':
               return '時間をおいても改善しない場合は、管理者へお問い合わせください。'
@@ -63,9 +71,14 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         setError(message)
       }
     } finally {
-      setLoading(false)
+      setLoadingProvider(null)
     }
   }
+
+  const handleGoogleLogin = () => handleSocialLogin('google')
+  const handleLineLogin = () => handleSocialLogin('line')
+
+  const isLoading = loadingProvider !== null
 
   return (
     <div className="space-y-3">
@@ -85,12 +98,21 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       </div>
 
       <button
+        onClick={handleLineLogin}
+        disabled={isLoading}
+        className="w-full flex items-center justify-center gap-3 px-4 py-3 rounded-lg bg-[#06C755] text-white hover:bg-[#05B84D] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <SiLine className="text-xl" />
+        <span>{loadingProvider === 'line' ? 'LINEログイン中...' : 'LINEでログイン'}</span>
+      </button>
+
+      <button
         onClick={handleGoogleLogin}
-        disabled={loading}
+        disabled={isLoading}
         className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         <FcGoogle className="text-xl" />
-        <span>{loading ? 'ログイン中...' : 'Googleでログイン'}</span>
+        <span>{loadingProvider === 'google' ? 'ログイン中...' : 'Googleでログイン'}</span>
       </button>
     </div>
   )

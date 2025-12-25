@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 import { isApiError } from '@/lib/api/client'
+import SocialLoginButtons from '@/components/auth/SocialLoginButtons'
 import type { User } from '@/lib/types'
 
 interface LoginModalProps {
@@ -27,6 +28,7 @@ export default function LoginModal({
 }: LoginModalProps) {
   const router = useRouter()
   const { login } = useAuth()
+  const redirectTo = '/reservation?from=login'
   const [email, setEmail] = useState(defaultEmail)
   const [password, setPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -167,6 +169,10 @@ export default function LoginModal({
             {isLoading ? loadingMessage : 'ログインする'}
           </button>
         </form>
+
+        <div className="mt-4">
+          <SocialLoginButtons redirectTo={redirectTo} />
+        </div>
 
         <div className="mt-4 space-y-2 text-center text-xs text-gray-500">
           <button
