@@ -356,6 +356,17 @@ function ReservationContent() {
     ],
   )
 
+  useEffect(() => {
+    if (!selectedPlan) return
+    const existing = reservationStorage.get()
+    const preserveReady = existing?.isReadyToSubmit ?? false
+    savePendingReservation(formData, { isReadyToSubmit: preserveReady })
+  }, [
+    formData,
+    savePendingReservation,
+    selectedPlan,
+  ])
+
   const handleLoginModalRegister = useCallback(() => {
     const saved = reservationStorage.get()
     if (saved) {
