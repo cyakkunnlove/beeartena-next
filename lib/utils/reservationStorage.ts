@@ -7,6 +7,28 @@ import { createDefaultIntakeForm, normalizeIntakeForm } from '@/lib/utils/intake
 
 const STORAGE_KEY = 'pending_reservation'
 
+const readStorage = (storage: Storage | undefined): string | null => {
+  if (!storage) return null
+  try {
+    return storage.getItem(STORAGE_KEY)
+  } catch {
+    return null
+  }
+}
+
+const writeStorage = (storage: Storage | undefined, value: string | null) => {
+  if (!storage) return
+  try {
+    if (value === null) {
+      storage.removeItem(STORAGE_KEY)
+    } else {
+      storage.setItem(STORAGE_KEY, value)
+    }
+  } catch {
+    // no-op
+  }
+}
+
 export interface PendingReservation {
   serviceId: string
   serviceType?: '2D' | '3D' | '4D' | 'wax' | string
@@ -46,7 +68,9 @@ export const reservationStorage = {
       timestamp: Date.now(),
     }
 
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(pendingReservation))
+    const serialized = JSON.stringify(pendingReservation)
+    writeStorage(window.sessionStorage, serialized)
+    writeStorage(window.localStorage, serialized)
   },
 
   /**
@@ -55,7 +79,9 @@ export const reservationStorage = {
   get(): PendingReservation | null {
     if (typeof window === 'undefined') return null
 
-    const stored = sessionStorage.getItem(STORAGE_KEY)
+    const stored =
+      readStorage(window.sessionStorage) ??
+      readStorage(window.localStorage)
     if (!stored) return null
 
     try {
@@ -77,13 +103,16 @@ export const reservationStorage = {
         isMonitorSelected: false,
       }
 
-      return {
+      const normalized = {
         ...data,
         formData: {
           ...baseFormData,
           intakeForm: normalizeIntakeForm(baseFormData.intakeForm),
         },
       }
+      // sessionStorageへ復元しておく（別タブ/リダイレクト対策）
+      writeStorage(window.sessionStorage, JSON.stringify(normalized))
+      return normalized
     } catch {
       return null
     }
@@ -94,7 +123,8 @@ export const reservationStorage = {
    */
   clear(): void {
     if (typeof window === 'undefined') return
-    sessionStorage.removeItem(STORAGE_KEY)
+    writeStorage(window.sessionStorage, null)
+    writeStorage(window.localStorage, null)
   },
 
   /**

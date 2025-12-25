@@ -101,7 +101,8 @@ function ReservationContent() {
 
   // 会員登録から戻ってきた場合、保存した予約情報を復元
   useEffect(() => {
-    if (searchParams.get('from') === 'register') {
+    const from = searchParams.get('from')
+    if (from === 'register' || from === 'login') {
       const savedReservation = reservationStorage.get()
       if (savedReservation) {
         restoreReservation(savedReservation)

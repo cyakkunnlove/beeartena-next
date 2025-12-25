@@ -18,6 +18,11 @@ function CompleteProfileContent() {
     name: '',
     phone: '',
     birthday: '',
+    gender: '',
+    postalCode: '',
+    prefecture: '',
+    city: '',
+    street: '',
     agreeToTerms: false,
   })
 
@@ -37,11 +42,18 @@ function CompleteProfileContent() {
     }
 
     // 既存のユーザー情報をフォームに反映
+    const address = typeof user.address === 'string' ? { street: user.address } : (user.address ?? {})
+
     setFormData({
       email: user.email || '',
       name: user.name || '',
       phone: user.phone || '',
       birthday: user.birthDate || user.birthday || '',
+      gender: user.gender || '',
+      postalCode: user.postalCode || (address as any).postalCode || '',
+      prefecture: user.prefecture || (address as any).prefecture || '',
+      city: user.city || (address as any).city || '',
+      street: user.street || (address as any).street || '',
       agreeToTerms: Boolean(user.termsAcceptedAt),
     })
   }, [user, router, redirectTo])
@@ -75,6 +87,28 @@ function CompleteProfileContent() {
 
     if (!formData.phone.trim()) {
       setError('電話番号を入力してください')
+      return
+    }
+
+    if (!formData.gender) {
+      setError('性別を選択してください')
+      return
+    }
+
+    if (!formData.postalCode.trim()) {
+      setError('郵便番号を入力してください')
+      return
+    }
+    if (!formData.prefecture.trim()) {
+      setError('都道府県を入力してください')
+      return
+    }
+    if (!formData.city.trim()) {
+      setError('市区町村を入力してください')
+      return
+    }
+    if (!formData.street.trim()) {
+      setError('番地・建物名を入力してください')
       return
     }
 
@@ -112,6 +146,16 @@ function CompleteProfileContent() {
         phone: formData.phone,
         birthDate: formData.birthday || undefined,
         birthday: formData.birthday || undefined,
+        gender: formData.gender,
+        postalCode: formData.postalCode.trim(),
+        prefecture: formData.prefecture.trim(),
+        city: formData.city.trim(),
+        address: {
+          postalCode: formData.postalCode.trim(),
+          prefecture: formData.prefecture.trim(),
+          city: formData.city.trim(),
+          street: formData.street.trim(),
+        },
         termsAccepted: true,
       })
 
@@ -249,6 +293,90 @@ function CompleteProfileContent() {
               <p className="mt-1 text-xs text-gray-500">
                 予約確認のご連絡に使用します
               </p>
+            </div>
+
+            {/* 性別 */}
+            <div>
+              <label htmlFor="gender" className="block text-sm font-medium text-gray-700">
+                性別 <span className="text-red-500">*</span>
+              </label>
+              <select
+                id="gender"
+                name="gender"
+                required
+                value={formData.gender}
+                onChange={handleChange}
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+              >
+                <option value="">選択してください</option>
+                <option value="female">女性</option>
+                <option value="male">男性</option>
+                <option value="other">その他</option>
+              </select>
+            </div>
+
+            {/* 住所 */}
+            <div className="space-y-4">
+              <div>
+                <label htmlFor="postalCode" className="block text-sm font-medium text-gray-700">
+                  郵便番号 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="postalCode"
+                  name="postalCode"
+                  type="text"
+                  required
+                  value={formData.postalCode}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="123-4567"
+                />
+              </div>
+              <div>
+                <label htmlFor="prefecture" className="block text-sm font-medium text-gray-700">
+                  都道府県 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="prefecture"
+                  name="prefecture"
+                  type="text"
+                  required
+                  value={formData.prefecture}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="岐阜県"
+                />
+              </div>
+              <div>
+                <label htmlFor="city" className="block text-sm font-medium text-gray-700">
+                  市区町村 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="city"
+                  name="city"
+                  type="text"
+                  required
+                  value={formData.city}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="恵那市"
+                />
+              </div>
+              <div>
+                <label htmlFor="street" className="block text-sm font-medium text-gray-700">
+                  番地・建物名 <span className="text-red-500">*</span>
+                </label>
+                <input
+                  id="street"
+                  name="street"
+                  type="text"
+                  required
+                  value={formData.street}
+                  onChange={handleChange}
+                  className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary"
+                  placeholder="長島町正家1-1-1"
+                />
+              </div>
             </div>
 
             {/* 生年月日 */}

@@ -6,13 +6,48 @@ import { User } from '@/lib/types'
 export function isProfileComplete(user: User | null): boolean {
   if (!user) return false
 
+  const address =
+    typeof user.address === 'string'
+      ? { street: user.address }
+      : user.address ?? {}
+
+  const postalCode =
+    typeof user.postalCode === 'string'
+      ? user.postalCode
+      : typeof (address as { postalCode?: unknown }).postalCode === 'string'
+        ? String((address as { postalCode?: unknown }).postalCode)
+        : ''
+  const prefecture =
+    typeof user.prefecture === 'string'
+      ? user.prefecture
+      : typeof (address as { prefecture?: unknown }).prefecture === 'string'
+        ? String((address as { prefecture?: unknown }).prefecture)
+        : ''
+  const city =
+    typeof user.city === 'string'
+      ? user.city
+      : typeof (address as { city?: unknown }).city === 'string'
+        ? String((address as { city?: unknown }).city)
+        : ''
+  const street =
+    typeof user.street === 'string'
+      ? user.street
+      : typeof (address as { street?: unknown }).street === 'string'
+        ? String((address as { street?: unknown }).street)
+        : ''
+
   // 必須項目のチェック
   return !!(
     user.name &&
     user.email &&
     user.phone &&
     user.phone.trim() !== '' && // 電話番号が空文字でないことを確認
-    user.termsAcceptedAt // 利用規約の同意が必要
+    user.termsAcceptedAt && // 利用規約の同意が必要
+    user.gender &&
+    postalCode.trim() !== '' &&
+    prefecture.trim() !== '' &&
+    city.trim() !== '' &&
+    street.trim() !== ''
   )
 }
 

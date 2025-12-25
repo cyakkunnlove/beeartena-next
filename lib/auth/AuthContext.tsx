@@ -29,6 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
 
     const roleValue = data.role === 'admin' ? 'admin' : 'customer'
+    const addressValue = data.address
 
     return {
       id: String(data.id ?? data.userId ?? ''),
@@ -42,6 +43,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       updatedAt: toDate(updatedAtValue),
       termsAcceptedAt: termsAcceptedAtValue ? toDate(termsAcceptedAtValue) : undefined,
       privacyAcceptedAt: privacyAcceptedAtValue ? toDate(privacyAcceptedAtValue) : undefined,
+      gender: typeof data.gender === 'string' ? data.gender : undefined,
+      postalCode: typeof data.postalCode === 'string' ? data.postalCode : undefined,
+      prefecture: typeof data.prefecture === 'string' ? data.prefecture : undefined,
+      city: typeof data.city === 'string' ? data.city : undefined,
+      street: typeof data.street === 'string' ? data.street : undefined,
+      address: typeof addressValue === 'string' || typeof addressValue === 'object' ? addressValue as any : undefined,
     }
   }
 

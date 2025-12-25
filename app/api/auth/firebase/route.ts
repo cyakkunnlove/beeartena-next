@@ -108,6 +108,12 @@ export async function POST(request: NextRequest) {
       updatedAt: toDate(raw.updatedAt),
       termsAcceptedAt: raw.termsAcceptedAt ? toDate(raw.termsAcceptedAt) : undefined,
       privacyAcceptedAt: raw.privacyAcceptedAt ? toDate(raw.privacyAcceptedAt) : undefined,
+      gender: typeof raw.gender === 'string' ? raw.gender : undefined,
+      postalCode: typeof raw.postalCode === 'string' ? raw.postalCode : undefined,
+      prefecture: typeof raw.prefecture === 'string' ? raw.prefecture : undefined,
+      city: typeof raw.city === 'string' ? raw.city : undefined,
+      street: typeof raw.street === 'string' ? raw.street : undefined,
+      address: typeof raw.address === 'string' || typeof raw.address === 'object' ? raw.address : undefined,
     }
 
     const token = await generateToken(user)
