@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { SiLine } from 'react-icons/si'
@@ -17,6 +17,53 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   const router = useRouter()
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'line' | null>(null)
   const [error, setError] = useState('')
+  const redirectStorageKey = 'social_login_redirect_to'
+
+  const resolveRedirectTarget = () => {
+    if (typeof window === 'undefined') return redirectTo
+    const stored = sessionStorage.getItem(redirectStorageKey)
+    if (stored) {
+      sessionStorage.removeItem(redirectStorageKey)
+      return stored
+    }
+    return redirectTo
+  }
+
+  const completeLogin = async (target: string) => {
+    const firebaseUser = auth.currentUser
+    if (!firebaseUser) {
+      throw new Error('ログインに失敗しました（ユーザー情報が取得できません）')
+    }
+
+    const idToken = await firebaseUser.getIdToken()
+    const user = await apiClient.loginWithFirebaseIdToken(idToken)
+
+    if (!isProfileComplete(user)) {
+      const needsReservationFlag = target.startsWith('/reservation')
+      const reservationParam = needsReservationFlag ? '&reservation=true' : ''
+      router.push(`/complete-profile?redirect=${encodeURIComponent(target)}${reservationParam}`)
+    } else {
+      router.push(target)
+    }
+  }
+
+  useEffect(() => {
+    const handleRedirect = async () => {
+      try {
+        const handled = await firebaseAuth.handleRedirectResult()
+        if (!handled) return
+        const target = resolveRedirectTarget()
+        await completeLogin(target)
+      } catch (error: any) {
+        console.error('リダイレクトログインエラー:', error)
+        setError(error?.message || 'リダイレクトログインに失敗しました')
+      } finally {
+        setLoadingProvider(null)
+      }
+    }
+
+    void handleRedirect()
+  }, [redirectTo])
 
   const handleSocialLogin = async (provider: 'google' | 'line') => {
     try {
@@ -26,28 +73,24 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       if (provider === 'google') {
         await firebaseAuth.signInWithGoogle()
       } else {
+        const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
+        const isLineInApp = ua.includes('line')
+        const isMobile = /iphone|ipad|ipod|android/.test(ua)
+        const useRedirect = isLineInApp || isMobile
+
+        if (useRedirect) {
+          if (typeof window !== 'undefined') {
+            sessionStorage.setItem(redirectStorageKey, redirectTo)
+          }
+          await firebaseAuth.signInWithLineRedirect()
+          return
+        }
+
         await firebaseAuth.signInWithLine()
       }
 
-      const firebaseUser = auth.currentUser
-      if (!firebaseUser) {
-        const label = provider === 'google' ? 'Google' : 'LINE'
-        throw new Error(`${label}ログインに失敗しました（ユーザー情報が取得できません）`)
-      }
-
-      const idToken = await firebaseUser.getIdToken()
-      const user = await apiClient.loginWithFirebaseIdToken(idToken)
-
-      // プロフィールが未完成の場合は補完ページへ
-      if (!isProfileComplete(user)) {
-        const needsReservationFlag = redirectTo.startsWith('/reservation')
-        const reservationParam = needsReservationFlag ? '&reservation=true' : ''
-        // 元のリダイレクト先を保持して補完ページへ
-        router.push(`/complete-profile?redirect=${encodeURIComponent(redirectTo)}${reservationParam}`)
-      } else {
-        // プロフィールが完成している場合は通常のリダイレクト
-        router.push(redirectTo)
-      }
+      const target = resolveRedirectTarget()
+      await completeLogin(target)
     } catch (error: any) {
       const label = provider === 'google' ? 'Google' : 'LINE'
       console.error(`${label}ログインエラー:`, error)

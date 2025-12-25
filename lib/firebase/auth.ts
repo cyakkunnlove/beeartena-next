@@ -13,6 +13,8 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail,
 } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
@@ -402,6 +404,63 @@ export const firebaseAuth = {
       }
 
       throw new Error(getErrorMessage(error) || 'LINEログインに失敗しました')
+    }
+  },
+
+  // LINEログイン（リダイレクト方式）
+  async signInWithLineRedirect(): Promise<void> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('LINEログインは現在利用できません')
+    }
+
+    const providerId = (process.env.NEXT_PUBLIC_LINE_OIDC_PROVIDER_ID || 'oidc.line').trim()
+    if (!providerId) {
+      throw new Error('LINEログインが設定されていません')
+    }
+
+    const provider = new OAuthProvider(providerId)
+    provider.addScope('profile')
+    provider.addScope('email')
+    provider.setCustomParameters({ prompt: 'consent' })
+
+    await signInWithRedirect(auth, provider)
+  },
+
+  // リダイレクト結果を処理
+  async handleRedirectResult(): Promise<boolean> {
+    if (!isFirebaseConfigured()) {
+      return false
+    }
+
+    try {
+      const result = await getRedirectResult(auth)
+      if (!result) return false
+
+      const user = result.user
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+
+      if (!userDoc.exists()) {
+        const userData: AppUser = {
+          id: user.uid,
+          email: user.email || '',
+          name: user.displayName || '',
+          phone: '',
+          role: 'customer',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        }
+
+        await setDoc(doc(db, 'users', user.uid), userData)
+      }
+
+      return true
+    } catch (error: any) {
+      logger.warn('Redirect login error', {
+        code: error?.code,
+        message: error?.message,
+      })
+
+      throw new Error(getErrorMessage(error) || 'リダイレクトログインに失敗しました')
     }
   },
 
