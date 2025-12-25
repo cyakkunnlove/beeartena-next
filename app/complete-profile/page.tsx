@@ -61,10 +61,13 @@ function CompleteProfileContent() {
   const needsEmail = !user?.email || user.email.trim() === ''
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const { name, value, type, checked } = e.target
+    const target = e.target
+    const { name, value } = target
+    const isCheckbox = target instanceof HTMLInputElement && target.type === 'checkbox'
+    const nextValue = isCheckbox ? target.checked : value
     setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: nextValue,
     }))
   }
 
