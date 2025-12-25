@@ -72,6 +72,7 @@ export async function PUT(request: NextRequest) {
       prefecture,
       city,
       address,
+      termsAccepted,
     } = body
 
     const db = getAdminDb()
@@ -115,6 +116,10 @@ export async function PUT(request: NextRequest) {
     if (prefecture !== undefined) updateData.prefecture = prefecture
     if (city !== undefined) updateData.city = city
     if (address !== undefined) updateData.address = address
+    if (termsAccepted === true) {
+      updateData.termsAcceptedAt = admin.firestore.FieldValue.serverTimestamp()
+      updateData.privacyAcceptedAt = admin.firestore.FieldValue.serverTimestamp()
+    }
 
     await userRef.update(updateData)
 

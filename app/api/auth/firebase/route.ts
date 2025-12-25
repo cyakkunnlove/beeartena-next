@@ -106,6 +106,8 @@ export async function POST(request: NextRequest) {
       birthDate: typeof raw.birthDate === 'string' ? raw.birthDate : undefined,
       createdAt: toDate(raw.createdAt),
       updatedAt: toDate(raw.updatedAt),
+      termsAcceptedAt: raw.termsAcceptedAt ? toDate(raw.termsAcceptedAt) : undefined,
+      privacyAcceptedAt: raw.privacyAcceptedAt ? toDate(raw.privacyAcceptedAt) : undefined,
     }
 
     const token = await generateToken(user)

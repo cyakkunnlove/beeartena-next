@@ -11,7 +11,8 @@ export function isProfileComplete(user: User | null): boolean {
     user.name &&
     user.email &&
     user.phone &&
-    user.phone.trim() !== '' // 電話番号が空文字でないことを確認
+    user.phone.trim() !== '' && // 電話番号が空文字でないことを確認
+    user.termsAcceptedAt // 利用規約の同意が必要
   )
 }
 

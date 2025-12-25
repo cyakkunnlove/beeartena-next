@@ -52,6 +52,8 @@ export interface User {
   lastBirthdayPointsYear?: number
   createdAt: Date
   updatedAt: Date
+  termsAcceptedAt?: Date | string
+  privacyAcceptedAt?: Date | string
   // Search optimization fields
   nameLower?: string // lowercase name for case-insensitive search
   emailLower?: string // lowercase email for case-insensitive search

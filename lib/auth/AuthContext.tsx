@@ -16,6 +16,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const normalizeUserResponse = (data: Record<string, unknown>): User => {
     const createdAtValue = data.createdAt ?? data.created_at
     const updatedAtValue = data.updatedAt ?? data.updated_at
+    const termsAcceptedAtValue = data.termsAcceptedAt ?? data.terms_accepted_at
+    const privacyAcceptedAtValue = data.privacyAcceptedAt ?? data.privacy_accepted_at
 
     const toDate = (value: unknown): Date => {
       if (value instanceof Date) return value
@@ -38,6 +40,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       birthday: typeof data.birthday === 'string' ? data.birthday : undefined,
       createdAt: toDate(createdAtValue),
       updatedAt: toDate(updatedAtValue),
+      termsAcceptedAt: termsAcceptedAtValue ? toDate(termsAcceptedAtValue) : undefined,
+      privacyAcceptedAt: privacyAcceptedAtValue ? toDate(privacyAcceptedAtValue) : undefined,
     }
   }
 

@@ -40,8 +40,10 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
 
       // プロフィールが未完成の場合は補完ページへ
       if (!isProfileComplete(user)) {
+        const needsReservationFlag = redirectTo.startsWith('/reservation')
+        const reservationParam = needsReservationFlag ? '&reservation=true' : ''
         // 元のリダイレクト先を保持して補完ページへ
-        router.push(`/complete-profile?redirect=${encodeURIComponent(redirectTo)}`)
+        router.push(`/complete-profile?redirect=${encodeURIComponent(redirectTo)}${reservationParam}`)
       } else {
         // プロフィールが完成している場合は通常のリダイレクト
         router.push(redirectTo)

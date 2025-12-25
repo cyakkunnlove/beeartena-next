@@ -18,6 +18,7 @@ function CompleteProfileContent() {
     name: '',
     phone: '',
     birthday: '',
+    agreeToTerms: false,
   })
 
   const redirectTo = searchParams.get('redirect') || '/mypage'
@@ -41,16 +42,17 @@ function CompleteProfileContent() {
       name: user.name || '',
       phone: user.phone || '',
       birthday: user.birthDate || user.birthday || '',
+      agreeToTerms: Boolean(user.termsAcceptedAt),
     })
   }, [user, router, redirectTo])
 
   const needsEmail = !user?.email || user.email.trim() === ''
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
+    const { name, value, type, checked } = e.target
     setFormData((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: type === 'checkbox' ? checked : value,
     }))
   }
 
@@ -73,6 +75,11 @@ function CompleteProfileContent() {
 
     if (!formData.phone.trim()) {
       setError('電話番号を入力してください')
+      return
+    }
+
+    if (!formData.agreeToTerms) {
+      setError('利用規約とプライバシーポリシーに同意してください')
       return
     }
 
@@ -105,6 +112,7 @@ function CompleteProfileContent() {
         phone: formData.phone,
         birthDate: formData.birthday || undefined,
         birthday: formData.birthday || undefined,
+        termsAccepted: true,
       })
 
       // リダイレクト
@@ -125,6 +133,10 @@ function CompleteProfileContent() {
     }
     if (needsEmail) {
       setError('メールアドレスの入力が必要です')
+      return
+    }
+    if (!formData.agreeToTerms) {
+      setError('利用規約とプライバシーポリシーに同意してください')
       return
     }
     router.push(redirectTo)
@@ -255,6 +267,28 @@ function CompleteProfileContent() {
 
             {/* ボタン */}
             <div className="space-y-3">
+              <div className="flex items-start gap-2 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-sm">
+                <input
+                  id="agreeToTerms"
+                  name="agreeToTerms"
+                  type="checkbox"
+                  checked={formData.agreeToTerms}
+                  onChange={handleChange}
+                  className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                  required
+                />
+                <label htmlFor="agreeToTerms" className="text-gray-700">
+                  <Link href="/terms" className="text-primary hover:text-primary/80" target="_blank">
+                    利用規約
+                  </Link>
+                  と
+                  <Link href="/privacy" className="text-primary hover:text-primary/80" target="_blank">
+                    プライバシーポリシー
+                  </Link>
+                  に同意します
+                </label>
+              </div>
+
               <button
                 type="submit"
                 disabled={isLoading}
