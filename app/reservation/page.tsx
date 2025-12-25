@@ -17,7 +17,8 @@ import { getServicePlans } from '@/lib/firebase/servicePlans'
 import { reservationStorage } from '@/lib/utils/reservationStorage'
 import type { PendingReservation } from '@/lib/utils/reservationStorage'
 import type { ReservationIntakeForm, ServicePlan, User } from '@/lib/types'
-import { createDefaultIntakeForm } from '@/lib/utils/intakeFormDefaults'
+import { createDefaultIntakeForm, normalizeIntakeForm } from '@/lib/utils/intakeFormDefaults'
+import { apiClient } from '@/lib/api/client'
 
 type ReservationFormData = {
   name: string
@@ -36,6 +37,12 @@ const createInitialFormData = (): ReservationFormData => ({
   intakeForm: createDefaultIntakeForm(),
   isMonitorSelected: false,
 })
+
+const isDefaultIntakeForm = (form: ReservationIntakeForm) => {
+  const defaults = createDefaultIntakeForm()
+  const normalized = normalizeIntakeForm(form)
+  return JSON.stringify(normalized) === JSON.stringify(defaults)
+}
 
 function ReservationContent() {
   const router = useRouter()
@@ -56,6 +63,7 @@ function ReservationContent() {
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState<PendingReservation | null>(null)
   const hasRestoredRef = useRef(false)
+  const hasPrefilledIntakeRef = useRef(false)
   const totalSteps = 6
 
   useEffect(() => {
@@ -170,6 +178,41 @@ function ReservationContent() {
       }))
     }
   }, [user, step])
+
+  useEffect(() => {
+    if (!user) return
+    if (step !== 5) return
+    if (hasPrefilledIntakeRef.current) return
+    if (!isDefaultIntakeForm(formData.intakeForm)) {
+      hasPrefilledIntakeRef.current = true
+      return
+    }
+
+    const fetchLatestIntake = async () => {
+      try {
+        const response = await apiClient.getReservations()
+        const reservations = Array.isArray(response)
+          ? response
+          : response.reservations ?? []
+        const latestWithIntake = reservations.find((reservation) => reservation?.intakeForm)
+        if (!latestWithIntake?.intakeForm) {
+          return
+        }
+
+        const normalized = normalizeIntakeForm(latestWithIntake.intakeForm)
+        setFormData((prev) => ({
+          ...prev,
+          intakeForm: normalized,
+        }))
+      } catch (error) {
+        console.error('Failed to fetch intake form history', error)
+      } finally {
+        hasPrefilledIntakeRef.current = true
+      }
+    }
+
+    void fetchLatestIntake()
+  }, [formData.intakeForm, step, user])
 
   const selectedPlan = useMemo(
     () => servicePlans.find((plan) => plan.id === selectedService),
