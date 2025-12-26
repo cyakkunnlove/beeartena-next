@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
-import { onAuthStateChanged } from 'firebase/auth'
+import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { SiLine } from 'react-icons/si'
@@ -18,22 +17,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   const router = useRouter()
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'line' | null>(null)
   const [error, setError] = useState('')
-  const handledRedirectRef = useRef(false)
-  const redirectStorageKey = 'social_login_redirect_to'
-
-  const resolveRedirectTarget = () => {
-    if (typeof window === 'undefined') return redirectTo
-    try {
-      const stored = sessionStorage.getItem(redirectStorageKey)
-      if (stored) {
-        sessionStorage.removeItem(redirectStorageKey)
-        return stored
-      }
-    } catch {
-      // sessionStorageが使えない環境ではそのまま
-    }
-    return redirectTo
-  }
 
   const completeLogin = async (target: string, firebaseUserOverride?: typeof auth.currentUser) => {
     const firebaseUser = firebaseUserOverride ?? auth.currentUser
@@ -52,54 +35,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       router.push(target)
     }
   }
-
-  useEffect(() => {
-    let unsubscribe: (() => void) | null = null
-    const handleRedirect = async () => {
-      try {
-        const handled = await firebaseAuth.handleRedirectResult()
-        if (handled) {
-          handledRedirectRef.current = true
-          const target = resolveRedirectTarget()
-          await completeLogin(target)
-          return
-        }
-
-        // リダイレクト結果が取れない場合でも、Firebase認証だけ先に完了しているケースがある
-        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          if (!firebaseUser || handledRedirectRef.current) return
-          handledRedirectRef.current = true
-          const target = resolveRedirectTarget()
-          try {
-            await completeLogin(target, firebaseUser)
-          } catch (err: any) {
-            console.error('リダイレクト復帰ログインエラー:', err)
-            const message = err?.message || 'ログインに失敗しました'
-            setError(message)
-          }
-        })
-      } catch (error: any) {
-        console.error('リダイレクトログインエラー:', error)
-        const message = error?.message || 'リダイレクトログインに失敗しました'
-        if (typeof message === 'string' && message.includes('missing initial state')) {
-          try {
-            sessionStorage.removeItem(redirectStorageKey)
-          } catch {
-            // noop
-          }
-          return
-        }
-        setError(message)
-      } finally {
-        setLoadingProvider(null)
-      }
-    }
-
-    void handleRedirect()
-    return () => {
-      if (unsubscribe) unsubscribe()
-    }
-  }, [redirectTo])
 
   const handleSocialLogin = async (provider: 'google' | 'line') => {
     try {
@@ -122,17 +57,10 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           throw new Error('LINEアプリ内ログインに必要な設定が未完了です（LIFF ID未設定）')
         }
 
-        try {
-          sessionStorage.setItem(redirectStorageKey, redirectTo)
-        } catch {
-          throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
-        }
-        await firebaseAuth.signInWithLineRedirect()
-        return
+        await firebaseAuth.signInWithLine()
       }
 
-      const target = resolveRedirectTarget()
-      await completeLogin(target)
+      await completeLogin(redirectTo)
     } catch (error: any) {
       const label = provider === 'google' ? 'Google' : 'LINE'
       console.error(`${label}ログインエラー:`, error)
