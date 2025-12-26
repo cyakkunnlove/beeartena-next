@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { onAuthStateChanged } from 'firebase/auth'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { SiLine } from 'react-icons/si'
@@ -64,9 +65,9 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           return
         }
 
-        // リダイレクト結果が取れない場合でも、既にFirebaseでログイン済みなら復帰する
-        unsubscribe = firebaseAuth.onAuthStateChange(async (user) => {
-          if (!user || handledRedirectRef.current) return
+        // リダイレクト結果が取れない場合でも、Firebase認証だけ先に完了しているケースがある
+        unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          if (!firebaseUser || handledRedirectRef.current) return
           handledRedirectRef.current = true
           const target = resolveRedirectTarget()
           await completeLogin(target)
