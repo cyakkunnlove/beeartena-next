@@ -109,26 +109,17 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           throw new Error('LINEアプリ内ログインに必要な設定が未完了です（LIFF ID未設定）')
         }
 
-        try {
-          await firebaseAuth.signInWithLine()
-        } catch (err: any) {
-          // モバイルでポップアップが閉じられる/ブロックされる場合はリダイレクトにフォールバック
-          const message = typeof err?.message === 'string' ? err.message : ''
-          const isPopupError =
-            message.includes('ポップアップ') ||
-            message.includes('キャンセル') ||
-            message.includes('popup')
-          if (isMobile && isPopupError) {
-            try {
-              sessionStorage.setItem(redirectStorageKey, redirectTo)
-            } catch {
-              throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
-            }
-            await firebaseAuth.signInWithLineRedirect()
-            return
+        if (isMobile) {
+          try {
+            sessionStorage.setItem(redirectStorageKey, redirectTo)
+          } catch {
+            throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
           }
-          throw err
+          await firebaseAuth.signInWithLineRedirect()
+          return
         }
+
+        await firebaseAuth.signInWithLine()
       }
 
       const target = resolveRedirectTarget()
