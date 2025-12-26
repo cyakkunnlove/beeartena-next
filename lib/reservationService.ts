@@ -868,7 +868,7 @@ class ReservationService {
     for (const startMinutes of startCandidates) {
       const hour = Math.floor(startMinutes / 60)
       const minute = startMinutes % 60
-      const timeStr = `${hour}:${minute.toString().padStart(2, '0')}`
+      const timeStr = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
       const candidateEndMinutes = startMinutes + effectiveDurationMinutes
 
       const overlappingCount = reservationsWithDuration.filter(({ startMinutes, endMinutes }) => {
