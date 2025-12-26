@@ -19,18 +19,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   const [error, setError] = useState('')
   const redirectStorageKey = 'social_login_redirect_to'
 
-  const canUseSessionStorage = () => {
-    if (typeof window === 'undefined') return false
-    try {
-      const key = '__auth_redirect__'
-      sessionStorage.setItem(key, '1')
-      sessionStorage.removeItem(key)
-      return true
-    } catch {
-      return false
-    }
-  }
-
   const resolveRedirectTarget = () => {
     if (typeof window === 'undefined') return redirectTo
     try {
@@ -65,9 +53,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
 
   useEffect(() => {
     const handleRedirect = async () => {
-      const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
-      const isLineInApp = ua.includes('line')
-      const isMobile = /iphone|ipad|ipod|android/.test(ua)
       const hasRedirectState = (() => {
         if (typeof window === 'undefined') return false
         try {
@@ -76,16 +61,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           return false
         }
       })()
-      if (isLineInApp || isMobile || !canUseSessionStorage() || !hasRedirectState) {
-        if (typeof window !== 'undefined') {
-          try {
-            sessionStorage.removeItem(redirectStorageKey)
-          } catch {
-            // noop
-          }
-        }
-        return
-      }
+      if (!hasRedirectState) return
       try {
         const handled = await firebaseAuth.handleRedirectResult()
         if (!handled) return
@@ -121,9 +97,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       } else {
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
         const isLineInApp = ua.includes('line')
-        const isMobile = /iphone|ipad|ipod|android/.test(ua)
         const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
-        const useRedirect = !isLineInApp && !isMobile
 
         if (isLineInApp) {
           if (liffId) {
@@ -132,21 +106,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
             return
           }
           throw new Error('LINEアプリ内ログインに必要な設定が未完了です（LIFF ID未設定）')
-        }
-
-        if (useRedirect) {
-          if (typeof window !== 'undefined') {
-            if (!canUseSessionStorage()) {
-              throw new Error('このブラウザではLINEログインができません。LINEアプリ内で開くか別ブラウザでお試しください。')
-            }
-            try {
-              sessionStorage.setItem(redirectStorageKey, redirectTo)
-            } catch {
-              // sessionStorageが使えない環境ではスキップ
-            }
-          }
-          await firebaseAuth.signInWithLineRedirect()
-          return
         }
 
         await firebaseAuth.signInWithLine()
