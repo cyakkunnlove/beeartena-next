@@ -123,7 +123,9 @@ export async function GET(request: NextRequest) {
     if (mode === 'full') {
       try {
         const availabilityMap = await Promise.race([
-          reservationService.getMonthAvailability(year, monthIndex),
+          reservationService.getMonthAvailability(year, monthIndex, {
+            durationMinutes,
+          }),
           new Promise<Map<string, boolean>>((_, reject) =>
             setTimeout(() => reject(new Error('availability timeout')), 2500),
           ),

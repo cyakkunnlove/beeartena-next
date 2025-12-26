@@ -525,10 +525,11 @@ class ReservationService {
       const reservationDate = new Date(newReservation.date)
       const year = reservationDate.getFullYear()
       const month = reservationDate.getMonth()
+      const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
       
       // 関連するキャッシュを削除
       await Promise.all([
-        cache.invalidateByTag(`month-${year}-${month}`),
+        cache.invalidateByTag(`month-${monthPrefix}`),
         cache.invalidateByTag(`date-${newReservation.date}`),
         cache.delete(Cache.generateKey('month-availability', year, month)),
       ])
@@ -913,15 +914,27 @@ class ReservationService {
   }
 
   // 月の予約状況サマリーを取得（最適化版）
-  async getMonthAvailability(year: number, month: number): Promise<Map<string, boolean>> {
+  async getMonthAvailability(
+    year: number,
+    month: number,
+    options?: { durationMinutes?: number },
+  ): Promise<Map<string, boolean>> {
     await this.waitForSettings()
 
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}`
     const daysInMonth = new Date(year, month + 1, 0).getDate()
-    const serverCacheKey = Cache.generateKey('month-availability', year, month)
+    const defaultDuration = this.settings.slotDuration || 60
+    const durationMinutesRaw = Number(options?.durationMinutes)
+    const requiredDurationMinutes =
+      Number.isFinite(durationMinutesRaw) && durationMinutesRaw > 0
+        ? durationMinutesRaw
+        : defaultDuration
+    const cacheKeySuffix = requiredDurationMinutes || defaultDuration
+    const clientCacheKey = `${monthPrefix}|${cacheKeySuffix}`
+    const serverCacheKey = Cache.generateKey('month-availability', year, month, cacheKeySuffix)
 
     if (isBrowser && !isTestEnv) {
-      const cached = clientMonthAvailabilityCache?.get(monthPrefix)
+      const cached = clientMonthAvailabilityCache?.get(clientCacheKey)
       if (cached) {
         return new Map(cached)
       }
@@ -1012,7 +1025,10 @@ class ReservationService {
       }
 
       try {
-        const slots = await this.getTimeSlotsForDate(dateStr, { bypassCache: true })
+        const slots = await this.getTimeSlotsForDate(dateStr, {
+          bypassCache: true,
+          durationMinutes: requiredDurationMinutes,
+        })
         availability.set(dateStr, slots.some((slot) => slot.available))
       } catch (error) {
         logger.error('Month availability computation failed', {
@@ -1024,7 +1040,7 @@ class ReservationService {
     }
 
     if (isBrowser && !isTestEnv && clientMonthAvailabilityCache) {
-      clientMonthAvailabilityCache.set(monthPrefix, new Map(availability))
+      clientMonthAvailabilityCache.set(clientCacheKey, new Map(availability))
     }
 
     if (typeof window === 'undefined') {

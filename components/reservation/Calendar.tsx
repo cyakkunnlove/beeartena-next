@@ -24,7 +24,7 @@ export default function Calendar({ onSelect, selected, durationMinutes }: Calend
         const params = new URLSearchParams({
           year: String(year),
           month: String(month),
-          mode: 'fast',
+          mode: 'full',
         })
         if (
           typeof durationMinutes === 'number' &&
