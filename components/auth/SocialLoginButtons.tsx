@@ -107,9 +107,8 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
         const isLineInApp = ua.includes('line')
         const isMobile = /iphone|ipad|ipod|android/.test(ua)
-        const isIOS = /iphone|ipad|ipod/.test(ua)
         const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
-        const useRedirect = !isLineInApp && isMobile && !isIOS
+        const useRedirect = !isLineInApp && !isMobile
 
         if (isLineInApp) {
           if (liffId) {
