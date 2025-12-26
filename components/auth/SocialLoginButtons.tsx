@@ -67,7 +67,15 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
     const handleRedirect = async () => {
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
       const isLineInApp = ua.includes('line')
-      if (isLineInApp || !canUseSessionStorage()) return
+      const hasRedirectState = (() => {
+        if (typeof window === 'undefined') return false
+        try {
+          return Boolean(sessionStorage.getItem(redirectStorageKey))
+        } catch {
+          return false
+        }
+      })()
+      if (isLineInApp || !canUseSessionStorage() || !hasRedirectState) return
       try {
         const handled = await firebaseAuth.handleRedirectResult()
         if (!handled) return
@@ -99,8 +107,9 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
         const isLineInApp = ua.includes('line')
         const isMobile = /iphone|ipad|ipod|android/.test(ua)
+        const isIOS = /iphone|ipad|ipod/.test(ua)
         const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
-        const useRedirect = isLineInApp || isMobile
+        const useRedirect = !isLineInApp && isMobile && !isIOS
 
         if (isLineInApp) {
           if (liffId) {
