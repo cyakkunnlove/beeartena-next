@@ -67,6 +67,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
     const handleRedirect = async () => {
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
       const isLineInApp = ua.includes('line')
+      const isMobile = /iphone|ipad|ipod|android/.test(ua)
       const hasRedirectState = (() => {
         if (typeof window === 'undefined') return false
         try {
@@ -75,7 +76,16 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           return false
         }
       })()
-      if (isLineInApp || !canUseSessionStorage() || !hasRedirectState) return
+      if (isLineInApp || isMobile || !canUseSessionStorage() || !hasRedirectState) {
+        if (typeof window !== 'undefined') {
+          try {
+            sessionStorage.removeItem(redirectStorageKey)
+          } catch {
+            // noop
+          }
+        }
+        return
+      }
       try {
         const handled = await firebaseAuth.handleRedirectResult()
         if (!handled) return
@@ -85,6 +95,11 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         console.error('リダイレクトログインエラー:', error)
         const message = error?.message || 'リダイレクトログインに失敗しました'
         if (typeof message === 'string' && message.includes('missing initial state')) {
+          try {
+            sessionStorage.removeItem(redirectStorageKey)
+          } catch {
+            // noop
+          }
           return
         }
         setError(message)
