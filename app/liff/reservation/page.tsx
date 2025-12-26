@@ -49,8 +49,8 @@ function LiffReservationContent() {
       try {
         await apiClient.updateProfile({ lineUserId: lineUserId.trim() })
       } catch (err: any) {
-        const message = err?.message || 'LINEアカウントの紐付けに失敗しました'
-        throw new Error(message)
+        // 紐付け失敗でもログイン自体は継続する（管理側で後から紐付け可能）
+        console.warn('LINE link failed:', err)
       }
     }
 

@@ -214,11 +214,13 @@ export async function PUT(request: NextRequest) {
     return setCorsHeaders(successResponse(user))
   } catch (error: any) {
     console.error('User update error:', error)
+    const message = error instanceof Error ? error.message : 'ユーザー情報の更新に失敗しました'
+    const isLineLinkError = typeof message === 'string' && message.includes('LINE')
     return setCorsHeaders(
       errorResponse(
-        'ユーザー情報の更新に失敗しました',
-        500,
-        'AUTH_SERVER_ERROR',
+        message,
+        isLineLinkError ? 409 : 500,
+        isLineLinkError ? 'LINE_LINK_FAILED' : 'AUTH_SERVER_ERROR',
         requestId ? { requestId } : {},
       ),
     )
