@@ -119,7 +119,23 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           return
         }
 
-        await firebaseAuth.signInWithLine()
+        try {
+          await firebaseAuth.signInWithLine()
+        } catch (err: any) {
+          const message = typeof err?.message === 'string' ? err.message : ''
+          const isPopupError =
+            message.includes('popup') || message.includes('ポップアップ') || message.includes('キャンセル')
+          if (isPopupError) {
+            try {
+              sessionStorage.setItem(redirectStorageKey, redirectTo)
+            } catch {
+              throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
+            }
+            await firebaseAuth.signInWithLineRedirect()
+            return
+          }
+          throw err
+        }
       }
 
       const target = resolveRedirectTarget()
