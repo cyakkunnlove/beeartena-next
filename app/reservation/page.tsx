@@ -237,6 +237,16 @@ function ReservationContent() {
       setIsSubmitting(true)
 
       try {
+        if (!selectedDate || !selectedTime) {
+          alert('予約日時が未選択です。日付と時間を選択してください。')
+          return
+        }
+        const reservationDateTime = new Date(`${selectedDate}T${selectedTime}:00`)
+        if (Number.isNaN(reservationDateTime.getTime())) {
+          alert('予約日時の形式が不正です。日付と時間を選び直してください。')
+          return
+        }
+
         const basePrice = baseServicePrice
         const totalPrice = basePrice + maintenancePrice
         const finalPrice = totalPrice
