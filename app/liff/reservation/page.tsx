@@ -1,7 +1,7 @@
 'use client'
 
 import Script from 'next/script'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { Suspense, useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 import { firebaseAuth } from '@/lib/firebase/auth'
@@ -22,7 +22,7 @@ declare global {
 
 const LIFF_SDK_URL = 'https://static.line-scdn.net/liff/edge/2/sdk.js'
 
-export default function LiffReservationPage() {
+function LiffReservationContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const startedRef = useRef(false)
@@ -113,5 +113,21 @@ export default function LiffReservationPage() {
         )}
       </div>
     </div>
+  )
+}
+
+export default function LiffReservationPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen bg-light-accent flex items-center justify-center px-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-md">
+            <p className="text-sm text-gray-600">LINEログインを準備しています…</p>
+          </div>
+        </div>
+      }
+    >
+      <LiffReservationContent />
+    </Suspense>
   )
 }
