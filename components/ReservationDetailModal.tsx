@@ -208,7 +208,7 @@ export default function ReservationDetailModal({
           )}
 
           {/* アクションボタン */}
-          {reservation.status === 'confirmed' && new Date(reservation.date) > new Date() && (
+          {['pending', 'confirmed'].includes(reservation.status) && new Date(reservation.date) > new Date() && (
             <div className="border-t pt-4 flex gap-3 justify-end">
               <button
                 className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"

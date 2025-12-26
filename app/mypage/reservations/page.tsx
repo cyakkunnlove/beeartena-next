@@ -252,7 +252,7 @@ export default function ReservationsPage() {
                   </div>
                 )}
 
-                {reservation.status === 'confirmed' && new Date(reservation.date) > new Date() && (
+                {['pending', 'confirmed'].includes(reservation.status) && new Date(reservation.date) > new Date() && (
                   <div className="mt-3 pt-3 border-t">
                     <p className="text-xs text-gray-500">
                       クリックして詳細を表示・キャンセル可能
