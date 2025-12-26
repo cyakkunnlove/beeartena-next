@@ -279,12 +279,16 @@ function ReservationContent() {
         console.log('Reservation created:', result.reservationId)
         reservationStorage.clear()
         router.push('/reservation/complete')
-      } catch (error) {
-        console.error('Failed to create reservation:', error)
-        alert('予約の作成に失敗しました。もう一度お試しください。')
-      } finally {
-        setIsSubmitting(false)
-      }
+    } catch (error) {
+      console.error('Failed to create reservation:', error)
+      const message =
+        error instanceof Error
+          ? error.message
+          : '予約の作成に失敗しました。もう一度お試しください。'
+      alert(message)
+    } finally {
+      setIsSubmitting(false)
+    }
     },
     [
       baseServicePrice,
