@@ -81,7 +81,7 @@ export default function ReservationCompletePage() {
             <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-8">
               <h3 className="font-semibold text-yellow-800 mb-2">ご来店前のお願い</h3>
               <ul className="text-sm text-yellow-700 space-y-1 text-left">
-                <li>• 施術当日は、眉毛周りのメイクはお控えください</li>
+                <li>• 施術当日は、通常通りメイクをしてお越しください</li>
                 <li>• 予約時間の5分前にはお越しください</li>
                 <li>• キャンセルの場合はご予約の3日前（72時間前）までにご連絡ください</li>
               </ul>

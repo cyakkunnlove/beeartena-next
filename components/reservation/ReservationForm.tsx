@@ -219,7 +219,7 @@ export default function ReservationForm({
         <ul className="space-y-2 text-sm text-gray-600">
           <li className="flex items-start gap-2">
             <span className="text-primary">•</span>
-            <span>施術当日は、眉毛周りのメイクはお控えください</span>
+            <span>施術当日は、通常通りメイクをしてお越しください</span>
           </li>
           <li className="flex items-start gap-2">
             <span className="text-primary">•</span>
