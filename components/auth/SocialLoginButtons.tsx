@@ -21,10 +21,14 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
 
   const resolveRedirectTarget = () => {
     if (typeof window === 'undefined') return redirectTo
-    const stored = sessionStorage.getItem(redirectStorageKey)
-    if (stored) {
-      sessionStorage.removeItem(redirectStorageKey)
-      return stored
+    try {
+      const stored = sessionStorage.getItem(redirectStorageKey)
+      if (stored) {
+        sessionStorage.removeItem(redirectStorageKey)
+        return stored
+      }
+    } catch {
+      // sessionStorageが使えない環境ではそのまま
     }
     return redirectTo
   }
@@ -49,6 +53,9 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
 
   useEffect(() => {
     const handleRedirect = async () => {
+      const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
+      const isLineInApp = ua.includes('line')
+      if (isLineInApp) return
       try {
         const handled = await firebaseAuth.handleRedirectResult()
         if (!handled) return
@@ -56,7 +63,11 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         await completeLogin(target)
       } catch (error: any) {
         console.error('リダイレクトログインエラー:', error)
-        setError(error?.message || 'リダイレクトログインに失敗しました')
+        const message = error?.message || 'リダイレクトログインに失敗しました'
+        if (typeof message === 'string' && message.includes('missing initial state')) {
+          return
+        }
+        setError(message)
       } finally {
         setLoadingProvider(null)
       }
@@ -86,7 +97,11 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
               window.location.href = liffUrl
               return
             }
-            sessionStorage.setItem(redirectStorageKey, redirectTo)
+            try {
+              sessionStorage.setItem(redirectStorageKey, redirectTo)
+            } catch {
+              // sessionStorageが使えない環境ではスキップ
+            }
           }
           await firebaseAuth.signInWithLineRedirect()
           return
