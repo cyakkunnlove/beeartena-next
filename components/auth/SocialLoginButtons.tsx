@@ -76,10 +76,16 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
         const isLineInApp = ua.includes('line')
         const isMobile = /iphone|ipad|ipod|android/.test(ua)
+        const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
         const useRedirect = isLineInApp || isMobile
 
         if (useRedirect) {
           if (typeof window !== 'undefined') {
+            if (isLineInApp && liffId) {
+              const liffUrl = `https://liff.line.me/${liffId}?redirect=${encodeURIComponent(redirectTo)}`
+              window.location.href = liffUrl
+              return
+            }
             sessionStorage.setItem(redirectStorageKey, redirectTo)
           }
           await firebaseAuth.signInWithLineRedirect()

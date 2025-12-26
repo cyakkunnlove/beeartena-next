@@ -13,6 +13,7 @@ import {
   GoogleAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInWithCredential,
   signInWithRedirect,
   getRedirectResult,
   sendPasswordResetEmail,
@@ -402,6 +403,54 @@ export const firebaseAuth = {
       if (error.code === 'auth/popup-blocked') {
         throw new Error('ポップアップがブロックされました。ブラウザの設定を確認してください')
       }
+
+      throw new Error(getErrorMessage(error) || 'LINEログインに失敗しました')
+    }
+  },
+
+  // LINEログイン（LIFFのidTokenを利用）
+  async signInWithLineIdToken(idToken: string): Promise<AppUser> {
+    if (!isFirebaseConfigured()) {
+      throw new Error('LINEログインは現在利用できません')
+    }
+
+    const providerId = (process.env.NEXT_PUBLIC_LINE_OIDC_PROVIDER_ID || 'oidc.line').trim()
+    if (!providerId) {
+      throw new Error('LINEログインが設定されていません')
+    }
+
+    const provider = new OAuthProvider(providerId)
+    provider.addScope('profile')
+    provider.addScope('email')
+
+    try {
+      const credential = provider.credential({ idToken })
+      const result = await signInWithCredential(auth, credential)
+      const user = result.user
+
+      const userDoc = await getDoc(doc(db, 'users', user.uid))
+
+      if (userDoc.exists()) {
+        return userDoc.data() as AppUser
+      }
+
+      const userData: AppUser = {
+        id: user.uid,
+        email: user.email || '',
+        name: user.displayName || '',
+        phone: '',
+        role: 'customer',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      }
+
+      await setDoc(doc(db, 'users', user.uid), userData)
+      return userData
+    } catch (error: any) {
+      logger.warn('LINE idToken login error', {
+        code: error?.code,
+        message: error?.message,
+      })
 
       throw new Error(getErrorMessage(error) || 'LINEログインに失敗しました')
     }
