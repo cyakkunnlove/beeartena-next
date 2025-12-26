@@ -97,7 +97,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       } else {
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
         const isLineInApp = ua.includes('line')
-        const isMobile = /iphone|ipad|ipod|android/.test(ua)
         const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
 
         if (isLineInApp) {
@@ -109,33 +108,13 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           throw new Error('LINEアプリ内ログインに必要な設定が未完了です（LIFF ID未設定）')
         }
 
-        if (isMobile) {
-          try {
-            sessionStorage.setItem(redirectStorageKey, redirectTo)
-          } catch {
-            throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
-          }
-          await firebaseAuth.signInWithLineRedirect()
-          return
-        }
-
         try {
-          await firebaseAuth.signInWithLine()
-        } catch (err: any) {
-          const message = typeof err?.message === 'string' ? err.message : ''
-          const isPopupError =
-            message.includes('popup') || message.includes('ポップアップ') || message.includes('キャンセル')
-          if (isPopupError) {
-            try {
-              sessionStorage.setItem(redirectStorageKey, redirectTo)
-            } catch {
-              throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
-            }
-            await firebaseAuth.signInWithLineRedirect()
-            return
-          }
-          throw err
+          sessionStorage.setItem(redirectStorageKey, redirectTo)
+        } catch {
+          throw new Error('このブラウザではLINEログインができません。別ブラウザでお試しください。')
         }
+        await firebaseAuth.signInWithLineRedirect()
+        return
       }
 
       const target = resolveRedirectTarget()
