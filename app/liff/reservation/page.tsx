@@ -8,6 +8,7 @@ import { firebaseAuth } from '@/lib/firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { apiClient } from '@/lib/api/client'
 import { isProfileComplete } from '@/lib/utils/profileUtils'
+import type { User } from '@/lib/types'
 
 declare global {
   interface Window {
@@ -16,6 +17,7 @@ declare global {
       isLoggedIn: () => boolean
       login: (options?: { redirectUri?: string }) => void
       getIDToken: () => string | null
+      getProfile: () => Promise<{ userId: string; displayName: string; pictureUrl?: string }>
     }
   }
 }
@@ -35,14 +37,23 @@ function LiffReservationContent() {
     return raw.startsWith('/') ? raw : '/reservation'
   }, [searchParams])
 
-  const completeLogin = async (target: string) => {
+  const completeLogin = async (target: string, lineUserId?: string | null) => {
     const firebaseUser = auth.currentUser
     if (!firebaseUser) {
       throw new Error('ログインに失敗しました（ユーザー情報が取得できません）')
     }
 
     const idToken = await firebaseUser.getIdToken()
-    const user = await apiClient.loginWithFirebaseIdToken(idToken)
+    let user = await apiClient.loginWithFirebaseIdToken(idToken)
+
+    if (lineUserId && lineUserId.trim().length > 0) {
+      try {
+        user = (await apiClient.updateProfile({ lineUserId: lineUserId.trim() })) as User
+      } catch (err: any) {
+        const message = err?.message || 'LINEアカウントの紐付けに失敗しました'
+        throw new Error(message)
+      }
+    }
 
     if (!isProfileComplete(user)) {
       const needsReservationFlag = target.startsWith('/reservation')
@@ -79,9 +90,17 @@ function LiffReservationContent() {
         return
       }
 
+      let lineUserId: string | null = null
+      try {
+        const profile = await window.liff.getProfile()
+        lineUserId = typeof profile?.userId === 'string' ? profile.userId : null
+      } catch (profileError) {
+        console.warn('LIFF profile fetch failed:', profileError)
+      }
+
       setStatus('auth')
       await firebaseAuth.signInWithLineIdToken(idToken)
-      await completeLogin(redirectTarget)
+      await completeLogin(redirectTarget, lineUserId)
       setStatus('done')
     } catch (err: any) {
       console.error('LIFF login error:', err)

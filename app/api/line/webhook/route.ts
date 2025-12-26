@@ -450,6 +450,37 @@ export async function POST(request: NextRequest) {
         }
       }
     }
+
+    try {
+      const conversationSnap = await conversationRef.get()
+      const conversationData = conversationSnap.exists ? (conversationSnap.data() ?? {}) : {}
+      const existingCustomerId =
+        typeof conversationData.customerId === 'string' ? conversationData.customerId : ''
+
+      if (!existingCustomerId) {
+        const userSnap = await db.collection('users').where('lineUserId', '==', userId).limit(1).get()
+        if (!userSnap.empty) {
+          const userDoc = userSnap.docs[0]
+          const userData = userDoc.data() ?? {}
+          const customerName = typeof userData.name === 'string' ? userData.name : ''
+          const customerEmail = typeof userData.email === 'string' ? userData.email : ''
+          const customerPhone = typeof userData.phone === 'string' ? userData.phone : ''
+
+          await conversationRef.set(
+            {
+              customerId: userDoc.id,
+              customerName,
+              customerEmail,
+              customerPhone,
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          )
+        }
+      }
+    } catch (error) {
+      logger.warn('LINE auto-link failed', { userId, error: getErrorMessage(error) })
+    }
   }
 
   if (shouldForwardLegacy) {

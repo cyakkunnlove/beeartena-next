@@ -54,6 +54,8 @@ export interface User {
   updatedAt: Date
   termsAcceptedAt?: Date | string
   privacyAcceptedAt?: Date | string
+  lineUserId?: string
+  lineLinkedAt?: Date | string
   // Search optimization fields
   nameLower?: string // lowercase name for case-insensitive search
   emailLower?: string // lowercase email for case-insensitive search

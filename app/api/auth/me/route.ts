@@ -73,6 +73,7 @@ export async function PUT(request: NextRequest) {
       city,
       address,
       termsAccepted,
+      lineUserId,
     } = body
 
     const db = getAdminDb()
@@ -121,7 +122,84 @@ export async function PUT(request: NextRequest) {
       updateData.privacyAcceptedAt = admin.firestore.FieldValue.serverTimestamp()
     }
 
-    await userRef.update(updateData)
+    const hasLineUserIdField = Object.prototype.hasOwnProperty.call(body, 'lineUserId')
+    const lineUserIdValue = typeof lineUserId === 'string' ? lineUserId.trim() : ''
+    if (hasLineUserIdField && !lineUserIdValue) {
+      return setCorsHeaders(errorResponse('LINEユーザーIDが不正です', 400, 'AUTH_INVALID_INPUT', requestId ? { requestId } : {}))
+    }
+
+    if (hasLineUserIdField) {
+      await db.runTransaction(async (tx) => {
+        const [currentUserSnap, existingLinkSnap] = await Promise.all([
+          tx.get(userRef),
+          tx.get(db.collection('users').where('lineUserId', '==', lineUserIdValue).limit(1)),
+        ])
+
+        if (!currentUserSnap.exists) {
+          throw new Error('ユーザーが見つかりません')
+        }
+
+        const currentData = currentUserSnap.data() ?? {}
+        const currentLineUserId =
+          typeof currentData.lineUserId === 'string' ? currentData.lineUserId.trim() : ''
+
+        if (currentLineUserId && currentLineUserId !== lineUserIdValue) {
+          throw new Error('既に別のLINEアカウントが紐付いています')
+        }
+
+        if (!existingLinkSnap.empty) {
+          const doc = existingLinkSnap.docs[0]
+          if (doc && doc.id !== authUser.userId) {
+            throw new Error('このLINEアカウントは既に別の顧客と紐付けされています')
+          }
+        }
+
+        const nextUpdate: Record<string, unknown> = { ...updateData }
+        if (!currentLineUserId) {
+          nextUpdate.lineUserId = lineUserIdValue
+          nextUpdate.lineLinkedAt = admin.firestore.FieldValue.serverTimestamp()
+        }
+
+        tx.update(userRef, nextUpdate)
+
+        const mergedName =
+          typeof updateData.name === 'string'
+            ? updateData.name
+            : typeof currentData.name === 'string'
+              ? currentData.name
+              : ''
+        const mergedEmail =
+          typeof updateData.email === 'string'
+            ? updateData.email
+            : typeof currentData.email === 'string'
+              ? currentData.email
+              : ''
+        const mergedPhone =
+          typeof updateData.phone === 'string'
+            ? updateData.phone
+            : typeof currentData.phone === 'string'
+              ? currentData.phone
+              : ''
+
+        const conversationRef = db.collection('lineConversations').doc(lineUserIdValue)
+        const conversationSnap = await tx.get(conversationRef)
+        if (conversationSnap.exists) {
+          tx.set(
+            conversationRef,
+            {
+              customerId: authUser.userId,
+              customerName: mergedName,
+              customerEmail: mergedEmail,
+              customerPhone: mergedPhone,
+              updatedAt: Date.now(),
+            },
+            { merge: true },
+          )
+        }
+      })
+    } else {
+      await userRef.update(updateData)
+    }
 
     // 更新後のユーザー情報を取得
     const userDoc = await userRef.get()
