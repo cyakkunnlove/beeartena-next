@@ -35,8 +35,8 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
     return redirectTo
   }
 
-  const completeLogin = async (target: string) => {
-    const firebaseUser = auth.currentUser
+  const completeLogin = async (target: string, firebaseUserOverride?: typeof auth.currentUser) => {
+    const firebaseUser = firebaseUserOverride ?? auth.currentUser
     if (!firebaseUser) {
       throw new Error('ログインに失敗しました（ユーザー情報が取得できません）')
     }
@@ -70,7 +70,13 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
           if (!firebaseUser || handledRedirectRef.current) return
           handledRedirectRef.current = true
           const target = resolveRedirectTarget()
-          await completeLogin(target)
+          try {
+            await completeLogin(target, firebaseUser)
+          } catch (err: any) {
+            console.error('リダイレクト復帰ログインエラー:', err)
+            const message = err?.message || 'ログインに失敗しました'
+            setError(message)
+          }
         })
       } catch (error: any) {
         console.error('リダイレクトログインエラー:', error)
