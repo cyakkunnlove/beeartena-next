@@ -46,6 +46,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
       } else {
         const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
         const isLineInApp = ua.includes('line')
+        const isAndroid = ua.includes('android')
         const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
 
         if (isLineInApp) {
@@ -55,6 +56,15 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
             return
           }
           throw new Error('LINEアプリ内ログインに必要な設定が未完了です（LIFF ID未設定）')
+        }
+
+        if (isAndroid) {
+          if (liffId) {
+            const liffUrl = `https://liff.line.me/${liffId}?redirect=${encodeURIComponent(redirectTo)}`
+            window.location.href = liffUrl
+            return
+          }
+          throw new Error('AndroidではLINEアプリで開いてログインしてください（LIFF ID未設定）')
         }
 
         await firebaseAuth.signInWithLine()
