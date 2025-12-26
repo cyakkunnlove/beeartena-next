@@ -8,7 +8,6 @@ import { firebaseAuth } from '@/lib/firebase/auth'
 import { auth } from '@/lib/firebase/config'
 import { apiClient } from '@/lib/api/client'
 import { isProfileComplete } from '@/lib/utils/profileUtils'
-import type { User } from '@/lib/types'
 
 declare global {
   interface Window {
@@ -44,11 +43,11 @@ function LiffReservationContent() {
     }
 
     const idToken = await firebaseUser.getIdToken()
-    let user = await apiClient.loginWithFirebaseIdToken(idToken)
+    const user = await apiClient.loginWithFirebaseIdToken(idToken)
 
     if (lineUserId && lineUserId.trim().length > 0) {
       try {
-        user = (await apiClient.updateProfile({ lineUserId: lineUserId.trim() })) as User
+        await apiClient.updateProfile({ lineUserId: lineUserId.trim() })
       } catch (err: any) {
         const message = err?.message || 'LINEアカウントの紐付けに失敗しました'
         throw new Error(message)
