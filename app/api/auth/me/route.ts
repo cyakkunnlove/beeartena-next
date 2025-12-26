@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin, { getAdminDb } from '@/lib/firebase/admin'
 import { errorResponse, getRequestId, successResponse, setCorsHeaders, verifyAuth } from '@/lib/api/middleware'
+import { getErrorMessage } from '@/lib/types'
 
 export async function OPTIONS(_request: NextRequest) {
   return setCorsHeaders(NextResponse.json(null, { status: 200 }))
@@ -214,7 +215,7 @@ export async function PUT(request: NextRequest) {
     return setCorsHeaders(successResponse(user))
   } catch (error: any) {
     console.error('User update error:', error)
-    const message = error instanceof Error ? error.message : 'ユーザー情報の更新に失敗しました'
+    const message = getErrorMessage(error) || 'ユーザー情報の更新に失敗しました'
     const isLineLinkError = typeof message === 'string' && message.includes('LINE')
     return setCorsHeaders(
       errorResponse(
