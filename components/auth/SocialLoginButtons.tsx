@@ -19,6 +19,18 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   const [error, setError] = useState('')
   const redirectStorageKey = 'social_login_redirect_to'
 
+  const canUseSessionStorage = () => {
+    if (typeof window === 'undefined') return false
+    try {
+      const key = '__auth_redirect__'
+      sessionStorage.setItem(key, '1')
+      sessionStorage.removeItem(key)
+      return true
+    } catch {
+      return false
+    }
+  }
+
   const resolveRedirectTarget = () => {
     if (typeof window === 'undefined') return redirectTo
     try {
@@ -55,7 +67,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
     const handleRedirect = async () => {
       const ua = typeof navigator !== 'undefined' ? navigator.userAgent.toLowerCase() : ''
       const isLineInApp = ua.includes('line')
-      if (isLineInApp) return
+      if (isLineInApp || !canUseSessionStorage()) return
       try {
         const handled = await firebaseAuth.handleRedirectResult()
         if (!handled) return
@@ -90,12 +102,19 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
         const liffId = (process.env.NEXT_PUBLIC_LIFF_ID || '').trim()
         const useRedirect = isLineInApp || isMobile
 
+        if (isLineInApp) {
+          if (liffId) {
+            const liffUrl = `https://liff.line.me/${liffId}?redirect=${encodeURIComponent(redirectTo)}`
+            window.location.href = liffUrl
+            return
+          }
+          throw new Error('LINEアプリ内ログインに必要な設定が未完了です（LIFF ID未設定）')
+        }
+
         if (useRedirect) {
           if (typeof window !== 'undefined') {
-            if (isLineInApp && liffId) {
-              const liffUrl = `https://liff.line.me/${liffId}?redirect=${encodeURIComponent(redirectTo)}`
-              window.location.href = liffUrl
-              return
+            if (!canUseSessionStorage()) {
+              throw new Error('このブラウザではLINEログインができません。LINEアプリ内で開くか別ブラウザでお試しください。')
             }
             try {
               sessionStorage.setItem(redirectStorageKey, redirectTo)
