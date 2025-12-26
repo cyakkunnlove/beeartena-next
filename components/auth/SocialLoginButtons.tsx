@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { FcGoogle } from 'react-icons/fc'
 import { SiLine } from 'react-icons/si'
@@ -17,6 +17,7 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   const router = useRouter()
   const [loadingProvider, setLoadingProvider] = useState<'google' | 'line' | null>(null)
   const [error, setError] = useState('')
+  const handledRedirectRef = useRef(false)
   const redirectStorageKey = 'social_login_redirect_to'
 
   const resolveRedirectTarget = () => {
@@ -52,12 +53,24 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
   }
 
   useEffect(() => {
+    let unsubscribe: (() => void) | null = null
     const handleRedirect = async () => {
       try {
         const handled = await firebaseAuth.handleRedirectResult()
-        if (!handled) return
-        const target = resolveRedirectTarget()
-        await completeLogin(target)
+        if (handled) {
+          handledRedirectRef.current = true
+          const target = resolveRedirectTarget()
+          await completeLogin(target)
+          return
+        }
+
+        // リダイレクト結果が取れない場合でも、既にFirebaseでログイン済みなら復帰する
+        unsubscribe = firebaseAuth.onAuthStateChange(async (user) => {
+          if (!user || handledRedirectRef.current) return
+          handledRedirectRef.current = true
+          const target = resolveRedirectTarget()
+          await completeLogin(target)
+        })
       } catch (error: any) {
         console.error('リダイレクトログインエラー:', error)
         const message = error?.message || 'リダイレクトログインに失敗しました'
@@ -76,6 +89,9 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
     }
 
     void handleRedirect()
+    return () => {
+      if (unsubscribe) unsubscribe()
+    }
   }, [redirectTo])
 
   const handleSocialLogin = async (provider: 'google' | 'line') => {
