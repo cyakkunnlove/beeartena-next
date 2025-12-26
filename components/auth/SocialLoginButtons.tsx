@@ -53,15 +53,6 @@ export default function SocialLoginButtons({ redirectTo = '/mypage' }: SocialLog
 
   useEffect(() => {
     const handleRedirect = async () => {
-      const hasRedirectState = (() => {
-        if (typeof window === 'undefined') return false
-        try {
-          return Boolean(sessionStorage.getItem(redirectStorageKey))
-        } catch {
-          return false
-        }
-      })()
-      if (!hasRedirectState) return
       try {
         const handled = await firebaseAuth.handleRedirectResult()
         if (!handled) return
