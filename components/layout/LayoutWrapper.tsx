@@ -24,6 +24,7 @@ export const useToastContext = () => {
 export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const isAdminPage = pathname?.startsWith('/admin')
+  const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
   const toast = useToast()
   const { updateAvailable, updateServiceWorker: _updateServiceWorker } = useServiceWorker()
   const updateToastShownRef = useRef(false)
@@ -52,6 +53,11 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
     return (
       <ToastContext.Provider value={toast}>
         <ErrorBoundary>
+          {isDemoMode && (
+            <div className="w-full bg-amber-100 text-amber-900 text-xs text-center py-2">
+              デモ環境です。入力されたデータは実運用には反映されません。
+            </div>
+          )}
           {children}
           <ToastContainer toasts={toast.toasts} onClose={toast.removeToast} />
         </ErrorBoundary>
@@ -62,6 +68,11 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
   return (
     <ToastContext.Provider value={toast}>
       <ErrorBoundary>
+        {isDemoMode && (
+          <div className="w-full bg-amber-100 text-amber-900 text-xs text-center py-2">
+            デモ環境です。入力されたデータは実運用には反映されません。
+          </div>
+        )}
         <Header />
         <main id="main-content" className="flex-grow pb-16 md:pb-0">
           {children}
