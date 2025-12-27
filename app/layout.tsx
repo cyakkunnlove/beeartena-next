@@ -10,9 +10,6 @@ import { AuthProvider } from '@/lib/auth/AuthContext'
 
 import './globals.css'
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://www.beeartena.com'
-const isDemoMode = process.env.NEXT_PUBLIC_DEMO_MODE === 'true'
-
 const disableServiceWorkerScript = `(() => {
   if (typeof window === 'undefined') {
     return;
@@ -62,7 +59,7 @@ const disableServiceWorkerScript = `(() => {
 })();`
 
 export const metadata: Metadata = {
-  metadataBase: new URL(siteUrl),
+  metadataBase: new URL('https://www.beeartena.com'),
   title: 'BEE ART ENA - 理容師による安心のタトゥーメイクサロン',
   description:
     '理容師が行う1日1名限定のプレミアムタトゥーメイク。半年以内リタッチ15,000円の安心プラン。眉・頭皮の悩みを解決します。',
@@ -77,7 +74,7 @@ export const metadata: Metadata = {
     title: 'BEE ART ENA - 理容師による安心のタトゥーメイクサロン',
     description: '理容師が行う1日1名限定のプレミアムタトゥーメイク',
     images: ['/images/topimageafter.png'],
-    url: siteUrl,
+    url: 'https://www.beeartena.com',
     siteName: 'BEE ART ENA',
     locale: 'ja_JP',
     type: 'website',
@@ -88,26 +85,17 @@ export const metadata: Metadata = {
     description: '理容師が行う1日1名限定のプレミアムタトゥーメイク',
     images: ['/images/topimageafter.png'],
   },
-  robots: isDemoMode
-    ? {
-        index: false,
-        follow: false,
-        googleBot: {
-          index: false,
-          follow: false,
-        },
-      }
-    : {
-        index: true,
-        follow: true,
-        googleBot: {
-          index: true,
-          follow: true,
-          'max-video-preview': -1,
-          'max-image-preview': 'large',
-          'max-snippet': -1,
-        },
-      },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
 }
 
 export const viewport: Viewport = {
