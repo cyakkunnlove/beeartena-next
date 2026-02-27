@@ -14,6 +14,9 @@ export default function ReservationsPage() {
   const [cancellingId, setCancellingId] = useState<string | null>(null)
   const [cancelError, setCancelError] = useState<string>('')
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null)
+
+  /** キャンセル可能な期限（予約の何時間前まで） */
+  const CANCEL_DEADLINE_HOURS = 72
   const [isModalOpen, setIsModalOpen] = useState(false)
 
   const loadReservations = useCallback(async () => {
@@ -53,7 +56,8 @@ export default function ReservationsPage() {
     } finally {
       setLoading(false)
     }
-  }, [user])
+    // user is checked before calling this function, not used directly inside
+  }, [])
 
   useEffect(() => {
     if (user) {
@@ -80,17 +84,16 @@ export default function ReservationsPage() {
       return false
     }
 
-    // 予約日時の72時間（3日）前までキャンセル可能
     const reservationDate = new Date(`${reservation.date}T${reservation.time}`)
     const now = new Date()
     const hoursUntilReservation = (reservationDate.getTime() - now.getTime()) / (1000 * 60 * 60)
 
-    return hoursUntilReservation >= 72
+    return hoursUntilReservation >= CANCEL_DEADLINE_HOURS
   }
 
   const handleCancel = async (reservation: Reservation) => {
     if (!canCancelReservation(reservation)) {
-      setCancelError('予約の72時間前を過ぎているため、オンラインでのキャンセルはできません。お電話にてご相談ください。')
+      setCancelError(`予約の${CANCEL_DEADLINE_HOURS}時間前を過ぎているため、オンラインでのキャンセルはできません。お電話にてご相談ください。`)
       setTimeout(() => setCancelError(''), 5000)
       return
     }

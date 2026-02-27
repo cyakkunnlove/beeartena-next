@@ -6,6 +6,8 @@ import { useEffect } from 'react'
 
 import { useAuth } from '@/lib/auth/AuthContext'
 
+// TODO: ポイント機能の実装（誕生日ポイント、来店ポイント等）
+// 設計ドキュメント: birthday-points-system-design.md
 export default function PointsPage() {
   const { user } = useAuth()
   const router = useRouter()

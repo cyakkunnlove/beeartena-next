@@ -20,10 +20,11 @@ export default function MypageDashboard() {
 
     try {
       const reservationsResponse = await apiClient.getReservations()
-      const fetchedReservations = Array.isArray((reservationsResponse as any)?.reservations)
-        ? (reservationsResponse as any).reservations
+      const responseObj = reservationsResponse as Record<string, unknown>
+      const fetchedReservations: unknown[] = Array.isArray(responseObj?.reservations)
+        ? (responseObj.reservations as unknown[])
         : Array.isArray(reservationsResponse)
-          ? (reservationsResponse as any)
+          ? (reservationsResponse as unknown[])
           : []
       const normalizedReservations = fetchedReservations
         .map((reservation: unknown) => normalizeReservation(reservation))
@@ -164,7 +165,7 @@ const ensureDate = (value: unknown): Date => {
     }
     if ('seconds' in value && typeof (value as { seconds: number }).seconds === 'number') {
       const seconds = (value as { seconds: number; nanoseconds?: number }).seconds
-      const nanos = 'nanoseconds' in (value as any) ? (value as { nanoseconds?: number }).nanoseconds ?? 0 : 0
+      const nanos = 'nanoseconds' in (value as Record<string, unknown>) ? (value as { nanoseconds?: number }).nanoseconds ?? 0 : 0
       return new Date(seconds * 1000 + nanos / 1_000_000)
     }
   }
