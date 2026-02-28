@@ -1,3 +1,4 @@
+import AnnouncementSection from '@/components/home/AnnouncementSection'
 import CareSection from '@/components/home/CareSection'
 import ContactSection from '@/components/home/ContactSection'
 import FAQSection from '@/components/home/FAQSection'
@@ -12,6 +13,7 @@ export default function Home() {
   return (
     <>
       <HeroSection />
+      <AnnouncementSection />
       <MenuSection />
       <PlanSection />
       <CareSection />
