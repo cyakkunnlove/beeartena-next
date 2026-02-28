@@ -76,7 +76,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'BEE ART ENA - 理容師による安心のタトゥーメイクサロン',
     description: '理容師が行う1日1名限定のプレミアムタトゥーメイク',
-    images: ['/images/topimageafter.png'],
+    images: ['/images/ogp.jpg'],
     url: 'https://www.beeartena.com',
     siteName: 'BEE ART ENA',
     locale: 'ja_JP',
@@ -86,7 +86,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'BEE ART ENA - 理容師による安心のタトゥーメイクサロン',
     description: '理容師が行う1日1名限定のプレミアムタトゥーメイク',
-    images: ['/images/topimageafter.png'],
+    images: ['/images/ogp.jpg'],
   },
   robots: {
     index: true,
