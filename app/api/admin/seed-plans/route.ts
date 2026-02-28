@@ -63,6 +63,7 @@ const NEW_PLANS = [
     otherShopPrice: null,
     duration: 75,
     durationText: '約1〜1.5時間',
+    image: '/images/smp.jpg',
     badge: null,
     isFeatured: false,
     note: '※ 複数回推奨',
