@@ -36,11 +36,11 @@ export default function Header() {
         <div className="flex items-center justify-between">
           <Link href="/" className="flex items-center">
             <Image
-              src="/images/aicon.jpg"
-              alt="BEE ART ENA"
+              src="/images/logo.jpg"
+              alt="beeartena"
               width={150}
               height={60}
-              className="h-12 w-auto"
+              className="h-12 w-auto rounded"
             />
           </Link>
 
