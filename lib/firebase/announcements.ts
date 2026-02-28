@@ -21,27 +21,52 @@ export const defaultAnnouncements: Omit<Announcement, 'createdAt' | 'updatedAt'>
 
 // お知らせ取得（公開中のみ）
 export async function getActiveAnnouncements(): Promise<Announcement[]> {
-  const now = new Date().toISOString()
+  const now = new Date()
+
+  // publishAt は Timestamp または文字列で保存されている可能性があるため、
+  // 全件取得してクライアント側でフィルタリングする（件数が少ないため問題なし）
   const q = query(
     collection(db, COLLECTION_NAME),
-    where('publishAt', '<=', now),
-    orderBy('publishAt', 'desc'),
-    orderBy('priority', 'desc')
   )
   const snapshot = await getDocs(q)
 
-  const announcements = snapshot.docs
-    .map((doc) => ({
-      ...doc.data(),
-      id: doc.id,
-      createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt,
-      updatedAt: doc.data().updatedAt?.toDate?.() || doc.data().updatedAt,
-    })) as Announcement[]
+  const resolveDate = (value: unknown): Date | null => {
+    if (!value) return null
+    if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value
+    if (typeof value === 'string') {
+      const parsed = new Date(value)
+      return Number.isNaN(parsed.getTime()) ? null : parsed
+    }
+    if (typeof value === 'object' && value !== null && 'toDate' in value) {
+      try {
+        const parsed = (value as { toDate: () => Date }).toDate()
+        return Number.isNaN(parsed.getTime()) ? null : parsed
+      } catch {
+        return null
+      }
+    }
+    return null
+  }
 
-  // 期限切れを除外
+  const announcements = snapshot.docs
+    .map((doc) => {
+      const data = doc.data()
+      return {
+        ...data,
+        id: doc.id,
+        publishAt: resolveDate(data.publishAt)?.toISOString() ?? new Date().toISOString(),
+        expiresAt: resolveDate(data.expiresAt)?.toISOString() ?? undefined,
+        createdAt: resolveDate(data.createdAt)?.toISOString() ?? new Date().toISOString(),
+        updatedAt: resolveDate(data.updatedAt)?.toISOString() ?? new Date().toISOString(),
+      }
+    }) as Announcement[]
+
+  // 公開中のみ（publishAt <= now かつ 期限内）
   return announcements.filter((ann) => {
+    const publishDate = new Date(ann.publishAt)
+    if (publishDate > now) return false
     if (!ann.expiresAt) return true
-    return new Date(ann.expiresAt) > new Date()
+    return new Date(ann.expiresAt) > now
   })
 }
 
