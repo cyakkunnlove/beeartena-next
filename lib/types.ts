@@ -240,17 +240,25 @@ export interface Service {
 // Service Plan types (Firestore-managed)
 export interface ServicePlan {
   id: string // e.g., 'plan-2d', 'plan-3d', 'plan-4d'
-  type: '2D' | '3D' | '4D' | 'wax' | string
+  type: '2D' | '3D' | '4D' | 'wax' | 'smp' | string
   name: string
   description: string
   price: number
   monitorPrice?: number
+  monitorEnabled?: boolean // モニター価格の表示ON/OFF
   otherShopPrice?: number
+  campaignPrice?: number // キャンペーン1回目価格
+  campaignReferralDiscount?: number // 紹介割引額
+  secondPrice?: number // 2回目価格
+  retouchPrice3m?: number // リタッチ3ヶ月以内
+  retouchPrice6m?: number // リタッチ6ヶ月以内
+  durationText?: string // 表示用の時間テキスト（例: "約2.5〜3時間"）
   duration: number // in minutes
   image?: string
   badge?: string
   isFeatured?: boolean
   tags?: string[]
+  note?: string // 補足（例: "※ 複数回推奨"）
   isPublished: boolean
   effectiveFrom: string // ISO date string
   effectiveUntil?: string // ISO date string
