@@ -1,177 +1,53 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
-import Image from 'next/image'
-import { useState, useEffect } from 'react'
+import { motion } from 'framer-motion'
 
 import SlideTransition from '@/components/layout/SlideTransition'
 
-// Instagram機能は実装しないため、デモギャラリーを表示
-const demoImages = [
-  { id: 1, src: '/images/2D.jpg', caption: 'パウダーブロウの施術例' },
-  { id: 2, src: '/images/3D.jpg', caption: 'フェザーブロウの施術例' },
-  { id: 3, src: '/images/4D.jpg', caption: 'パウダー&フェザーの施術例' },
-  { id: 4, src: '/images/topimageafter.png', caption: '自然な仕上がり' },
-  { id: 5, src: '/images/2D.jpg', caption: '美しい眉ライン' },
-  { id: 6, src: '/images/3D.jpg', caption: '立体的な仕上がり' },
-]
-
 export default function GallerySection() {
-  const [mounted, setMounted] = useState(false)
-  const [selectedImage, setSelectedImage] = useState<(typeof demoImages)[0] | null>(null)
-  const [touchStart, setTouchStart] = useState<number | null>(null)
-  const [touchEnd, setTouchEnd] = useState<number | null>(null)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  const minSwipeDistance = 50
-
-  const onTouchStart = (e: React.TouchEvent) => {
-    setTouchEnd(null)
-    setTouchStart(e.targetTouches[0].clientX)
-  }
-
-  const onTouchMove = (e: React.TouchEvent) => {
-    setTouchEnd(e.targetTouches[0].clientX)
-  }
-
-  const onTouchEnd = () => {
-    if (!touchStart || !touchEnd) return
-
-    const distance = touchStart - touchEnd
-    const isLeftSwipe = distance > minSwipeDistance
-    const isRightSwipe = distance < -minSwipeDistance
-
-    if (selectedImage && (isLeftSwipe || isRightSwipe)) {
-      const currentIndex = demoImages.findIndex((img) => img.id === selectedImage.id)
-      if (isLeftSwipe && currentIndex < demoImages.length - 1) {
-        setSelectedImage(demoImages[currentIndex + 1])
-      } else if (isRightSwipe && currentIndex > 0) {
-        setSelectedImage(demoImages[currentIndex - 1])
-      }
-    }
-  }
-
-  if (!mounted) return null
-
   return (
-    <section id="gallery" className="scroll-mt-24 py-20 bg-white">
+    <section id="gallery" className="scroll-mt-24 py-20 bg-gradient-to-b from-white to-gray-50">
       <div className="container mx-auto px-4">
         <SlideTransition direction="up">
           <h2 className="section-title">症例ギャラリー</h2>
-          <p className="section-subtitle">実際の施術例をご覧ください</p>
+          <p className="section-subtitle">
+            施術例はInstagramで公開しています
+          </p>
         </SlideTransition>
 
         <motion.div
-          className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-6 mb-8"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.2, staggerChildren: 0.1 }}
+          className="max-w-lg mx-auto text-center mt-8"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
         >
-          {demoImages.map((image, index) => (
-            <motion.div
-              key={image.id}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.1 }}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="relative aspect-square overflow-hidden rounded-lg shadow-lg cursor-pointer"
-              onClick={() => setSelectedImage(image)}
-            >
-              <Image
-                src={image.src}
-                alt={image.caption}
-                fill
-                sizes="(min-width: 1024px) 33vw, (min-width: 768px) 33vw, 50vw"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/50 opacity-0 hover:opacity-100 transition-opacity duration-300">
-                <p className="absolute bottom-2 left-2 right-2 text-white text-xs md:text-sm">
-                  {image.caption}
-                </p>
-              </div>
-            </motion.div>
-          ))}
-        </motion.div>
+          <div className="bg-white rounded-2xl shadow-md p-8 space-y-6">
+            <div className="text-6xl">📸</div>
+            <div className="space-y-2">
+              <p className="text-gray-700 text-base leading-relaxed">
+                ビフォーアフターや最新の施術例を
+                <br />
+                Instagramで随時更新しています。
+              </p>
+              <p className="text-sm text-gray-500">
+                実際の仕上がりをぜひご覧ください
+              </p>
+            </div>
 
-        <SlideTransition direction="up" delay={0.5}>
-          <div className="text-center">
             <a
               href="https://instagram.com/beeartena"
               target="_blank"
               rel="noopener noreferrer"
-              className="btn btn-secondary"
+              className="inline-flex items-center gap-3 px-8 py-3 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 text-white font-semibold rounded-full shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-300"
             >
-              Instagramでもっと見る
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z" />
+              </svg>
+              @beeartena をフォロー
             </a>
           </div>
-        </SlideTransition>
+        </motion.div>
       </div>
-
-      {/* Lightbox for mobile viewing */}
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black z-50 flex items-center justify-center"
-            onClick={() => setSelectedImage(null)}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onTouchEnd}
-          >
-            <button
-              className="absolute top-4 right-4 text-white text-4xl z-10"
-              onClick={() => setSelectedImage(null)}
-            >
-              ×
-            </button>
-
-            <motion.div
-              key={selectedImage.id}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              className="relative w-full h-full"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <Image
-                src={selectedImage.src}
-                alt={selectedImage.caption}
-                fill
-                sizes="100vw"
-                className="object-contain"
-                priority
-              />
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                <p className="text-white text-lg text-center">{selectedImage.caption}</p>
-                <p className="text-white/60 text-sm text-center mt-2">スワイプで次の画像へ</p>
-              </div>
-            </motion.div>
-
-            {/* Navigation dots */}
-            <div className="absolute bottom-20 left-0 right-0 flex justify-center gap-2">
-              {demoImages.map((img) => (
-                <button
-                  key={img.id}
-                  className={`w-2 h-2 rounded-full transition-all ${
-                    selectedImage.id === img.id ? 'bg-white w-6' : 'bg-white/50'
-                  }`}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedImage(img)
-                  }}
-                />
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </section>
   )
 }
