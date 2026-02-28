@@ -3,15 +3,10 @@
 import { useRouter } from 'next/navigation'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
-import {
-  createServicePlan,
-  deleteServicePlan,
-  getAllServicePlans,
-  updateServicePlan,
-} from '@/lib/firebase/servicePlans'
 import type { ServicePlan } from '@/lib/types'
-const PLAN_TYPE_OPTIONS: ServicePlan['type'][] = ['2D', '3D', '4D', 'wax', 'retouch']
+const PLAN_TYPE_OPTIONS: ServicePlan['type'][] = ['2D', '3D', '4D', 'wax', 'smp', 'retouch']
 
 type FormValues = {
   id?: string
@@ -495,8 +490,8 @@ export default function ServicePlansAdminPage() {
     if (!user || user.role !== 'admin') return
     try {
       setRefreshing(true)
-      const data = await getAllServicePlans()
-      setPlans(data)
+      const response = await apiClient.getAdminServicePlans()
+      setPlans(response.plans as ServicePlan[])
     } catch (error) {
       console.error('Failed to load service plans', error)
       showFeedback('error', 'サービスプランの取得に失敗しました')
@@ -549,7 +544,7 @@ export default function ServicePlansAdminPage() {
   const handleTogglePublish = async (plan: ServicePlan) => {
     try {
       setBusyAction(`toggle-${plan.id}`)
-      await updateServicePlan(plan.id, { isPublished: !plan.isPublished })
+      await apiClient.updateAdminServicePlan(plan.id, { isPublished: !plan.isPublished })
       setPlans((prev) =>
         prev.map((item) =>
           item.id === plan.id ? { ...item, isPublished: !plan.isPublished } : item,
@@ -568,7 +563,7 @@ export default function ServicePlansAdminPage() {
     if (!confirmed) return
     try {
       setBusyAction(`delete-${plan.id}`)
-      await deleteServicePlan(plan.id)
+      await apiClient.deleteAdminServicePlan(plan.id)
       setPlans((prev) => prev.filter((item) => item.id !== plan.id))
       showFeedback('success', 'プランを削除しました')
     } catch (error) {
@@ -630,11 +625,13 @@ export default function ServicePlansAdminPage() {
     try {
       setFormSubmitting(true)
       if (editingPlan) {
-        await updateServicePlan(editingPlan.id, updatePayload)
+        const updateRes = await apiClient.updateAdminServicePlan(editingPlan.id, updatePayload)
+        if (!updateRes?.success) throw new Error(updateRes?.message ?? '更新に失敗しました')
         await fetchPlans()
         showFeedback('success', 'プランを更新しました')
       } else {
-        await createServicePlan(createPayload)
+        const createRes = await apiClient.createAdminServicePlan(createPayload)
+        if (!createRes?.success) throw new Error(createRes?.message ?? '作成に失敗しました')
         await fetchPlans()
         showFeedback('success', 'プランを追加しました')
       }

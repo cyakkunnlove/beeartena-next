@@ -835,6 +835,41 @@ class ApiClient {
     }
   }
 
+  async getAdminServicePlans() {
+    const response = await this.request<{
+      success: boolean
+      plans?: ServicePlan[]
+      message?: string
+    }>('/admin/service-plans', { cache: 'no-store' })
+    if (!response?.success || !Array.isArray(response.plans)) {
+      throw new Error(response?.message ?? 'サービスプランの取得に失敗しました')
+    }
+    return { plans: response.plans }
+  }
+
+  async createAdminServicePlan(payload: Partial<ServicePlan>) {
+    return this.request<{ success: boolean; plan?: ServicePlan; message?: string }>(
+      '/admin/service-plans',
+      { method: 'POST', body: JSON.stringify(payload) },
+    )
+  }
+
+  async updateAdminServicePlan(id: string, payload: Partial<ServicePlan>) {
+    const params = new URLSearchParams({ id })
+    return this.request<{ success: boolean; plan?: ServicePlan; message?: string }>(
+      `/admin/service-plans?${params.toString()}`,
+      { method: 'PATCH', body: JSON.stringify(payload) },
+    )
+  }
+
+  async deleteAdminServicePlan(id: string) {
+    const params = new URLSearchParams({ id })
+    return this.request<{ success: boolean; message?: string }>(
+      `/admin/service-plans?${params.toString()}`,
+      { method: 'DELETE' },
+    )
+  }
+
   async getAdminSettings() {
     const response = await this.request<{
       success: boolean
