@@ -60,7 +60,8 @@ function ReservationContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<ReservationFormData>(createInitialFormData)
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
-  const [isSecondVisit, setIsSecondVisit] = useState(false)
+  // visitStage: 'first' | 'second' | 'retouch-3m' | 'retouch-6m'
+  const [visitStage, setVisitStage] = useState<'first' | 'second' | 'retouch-3m' | 'retouch-6m'>('first')
   const [visitAutoDetected, setVisitAutoDetected] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState<PendingReservation | null>(null)
@@ -216,7 +217,7 @@ function ReservationContent() {
     void fetchLatestIntake()
   }, [formData.intakeForm, step, user])
 
-  // 過去予約から1回目/2回目を自動推測
+  // 過去予約から1回目/2回目/リタッチを自動推測
   useEffect(() => {
     const email = formData.email?.trim()
     const phone = formData.phone?.trim()
@@ -233,14 +234,27 @@ function ReservationContent() {
         if (!data?.success || !data.history) return
         const plan = servicePlans.find((p) => p.id === selectedService)
         if (!plan) return
-        const count = data.history[plan.type] ?? 0
-        if (count > 0) {
-          setIsSecondVisit(true)
-          setVisitAutoDetected(true)
+        const entry = data.history[plan.type]
+        if (!entry || entry.count === 0) {
+          setVisitStage('first')
+        } else if (entry.count === 1) {
+          setVisitStage('second')
         } else {
-          setIsSecondVisit(false)
-          setVisitAutoDetected(true)
+          // 3回目以降 → リタッチ。最終施術日からの経過で3ヶ月/6ヶ月判定
+          if (entry.lastDate) {
+            const lastDate = new Date(entry.lastDate)
+            const now = new Date()
+            const monthsDiff = (now.getFullYear() - lastDate.getFullYear()) * 12 + (now.getMonth() - lastDate.getMonth())
+            if (monthsDiff <= 3) {
+              setVisitStage('retouch-3m')
+            } else {
+              setVisitStage('retouch-6m')
+            }
+          } else {
+            setVisitStage('retouch-6m')
+          }
         }
+        setVisitAutoDetected(true)
       })
       .catch(() => { /* ignore */ })
   }, [formData.email, formData.phone, selectedService, servicePlans])
@@ -255,16 +269,17 @@ function ReservationContent() {
     if (isMonitorPrice && selectedPlan.monitorEnabled && selectedPlan.monitorPrice) {
       return selectedPlan.monitorPrice
     }
-    // 2回目で2回目価格がある場合
-    if (isSecondVisit && selectedPlan.secondPrice != null) {
-      return selectedPlan.secondPrice
+    switch (visitStage) {
+      case 'second':
+        return selectedPlan.secondPrice ?? selectedPlan.campaignPrice ?? selectedPlan.price
+      case 'retouch-3m':
+        return selectedPlan.retouchPrice3m ?? selectedPlan.price
+      case 'retouch-6m':
+        return selectedPlan.retouchPrice6m ?? selectedPlan.price
+      default: // 'first'
+        return selectedPlan.campaignPrice ?? selectedPlan.price
     }
-    // キャンペーン価格がある場合はそちらをデフォルトに（1回目）
-    if (selectedPlan.campaignPrice != null) {
-      return selectedPlan.campaignPrice
-    }
-    return selectedPlan.price
-  }, [selectedPlan, isMonitorPrice, isSecondVisit])
+  }, [selectedPlan, isMonitorPrice, visitStage])
 
   const executeReservation = useCallback(
     async (data: ReservationFormData) => {
@@ -649,50 +664,49 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
-                  {/* 1回目/2回目 選択 */}
-                  {selectedPlan?.campaignPrice != null && selectedPlan?.secondPrice != null && (
+                  {/* 1回目/2回目/リタッチ 選択 */}
+                  {selectedPlan?.campaignPrice != null && (
                     <div className="border rounded-xl p-4 mb-6 bg-pink-50 space-y-3">
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
                         <p className="text-sm font-semibold text-gray-900">🎉 ご来店回数</p>
                         {visitAutoDetected && (
                           <span className="text-xs text-pink-600 bg-pink-100 px-2 py-0.5 rounded-full">
-                            {isSecondVisit ? '過去のご予約から2回目と判定' : '初回のお客様'}
+                            {visitStage === 'first' && '初回のお客様'}
+                            {visitStage === 'second' && '過去のご予約から2回目と判定'}
+                            {visitStage === 'retouch-3m' && '3ヶ月以内のリタッチと判定'}
+                            {visitStage === 'retouch-6m' && '6ヶ月以内のリタッチと判定'}
                           </span>
                         )}
                       </div>
-                      <div className="flex gap-3">
-                        <button
-                          type="button"
-                          onClick={() => setIsSecondVisit(false)}
-                          className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all text-center ${
-                            !isSecondVisit
-                              ? 'border-pink-500 bg-white shadow-sm'
-                              : 'border-gray-200 bg-white/50 hover:border-pink-300'
-                          }`}
-                        >
-                          <p className="text-xs text-gray-500">1回目</p>
-                          <p className={`text-lg font-bold ${!isSecondVisit ? 'text-pink-600' : 'text-gray-700'}`}>
-                            ¥{selectedPlan.campaignPrice.toLocaleString()}
-                          </p>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsSecondVisit(true)}
-                          className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all text-center ${
-                            isSecondVisit
-                              ? 'border-pink-500 bg-white shadow-sm'
-                              : 'border-gray-200 bg-white/50 hover:border-pink-300'
-                          }`}
-                        >
-                          <p className="text-xs text-gray-500">2回目</p>
-                          <p className={`text-lg font-bold ${isSecondVisit ? 'text-pink-600' : 'text-gray-700'}`}>
-                            ¥{selectedPlan.secondPrice.toLocaleString()}
-                          </p>
-                        </button>
+                      <div className="grid grid-cols-2 gap-2">
+                        {([
+                          { key: 'first' as const, label: '1回目', price: selectedPlan.campaignPrice },
+                          { key: 'second' as const, label: '2回目', price: selectedPlan.secondPrice },
+                          { key: 'retouch-3m' as const, label: 'リタッチ（3ヶ月以内）', price: selectedPlan.retouchPrice3m },
+                          { key: 'retouch-6m' as const, label: 'リタッチ（6ヶ月以内）', price: selectedPlan.retouchPrice6m },
+                        ] as const)
+                          .filter((opt) => opt.price != null)
+                          .map((opt) => (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              onClick={() => setVisitStage(opt.key)}
+                              className={`px-3 py-3 rounded-lg border-2 transition-all text-center ${
+                                visitStage === opt.key
+                                  ? 'border-pink-500 bg-white shadow-sm'
+                                  : 'border-gray-200 bg-white/50 hover:border-pink-300'
+                              }`}
+                            >
+                              <p className="text-xs text-gray-500">{opt.label}</p>
+                              <p className={`text-lg font-bold ${visitStage === opt.key ? 'text-pink-600' : 'text-gray-700'}`}>
+                                ¥{opt.price!.toLocaleString()}
+                              </p>
+                            </button>
+                          ))}
                       </div>
                       {visitAutoDetected && (
                         <p className="text-xs text-gray-500">
-                          ※ 過去のご予約情報から自動判定しています。異なる場合は手動で切り替えてください。
+                          ※ 過去のご予約情報から自動判定しています。異なる場合はタップで切り替えてください。
                         </p>
                       )}
                     </div>

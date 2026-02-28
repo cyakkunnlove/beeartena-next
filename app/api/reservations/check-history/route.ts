@@ -3,9 +3,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { setCorsHeaders } from '@/lib/api/middleware'
 import { getAdminDb } from '@/lib/firebase/admin'
 
+type TypeHistory = {
+  count: number
+  lastDate: string | null // ISO string of last completed reservation date
+}
+
 /**
  * 顧客のメールまたは電話番号で過去予約を検索し、
- * サービスタイプごとの予約回数を返す（1回目/2回目判定用）
+ * サービスタイプごとの予約回数と最終施術日を返す
+ * 
+ * 判定ロジック:
+ * - count=0 → 1回目（キャンペーン価格）
+ * - count=1 → 2回目（2回目価格）
+ * - count>=2 → リタッチ（最終施術日からの経過で3ヶ月/6ヶ月価格）
  */
 export async function GET(request: NextRequest) {
   const email = request.nextUrl.searchParams.get('email')?.trim()
@@ -25,36 +35,60 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // メールまたは電話番号で過去の確定・完了済み予約を検索
     const completedStatuses = ['confirmed', 'completed']
-    const history: Record<string, number> = {}
+    // docId → { type, date } で重複排除
+    const seen = new Map<string, { type: string; date: string | null }>()
 
     for (const status of completedStatuses) {
+      const queries: Promise<FirebaseFirestore.QuerySnapshot>[] = []
+
       if (email) {
-        const snap = await db
-          .collection('reservations')
-          .where('customerEmail', '==', email)
-          .where('status', '==', status)
-          .get()
-        for (const doc of snap.docs) {
-          const type = doc.data().serviceType as string
-          if (type) history[type] = (history[type] ?? 0) + 1
-        }
+        queries.push(
+          db.collection('reservations')
+            .where('customerEmail', '==', email)
+            .where('status', '==', status)
+            .get(),
+        )
       }
       if (phone) {
-        const snap = await db
-          .collection('reservations')
-          .where('customerPhone', '==', phone)
-          .where('status', '==', status)
-          .get()
+        queries.push(
+          db.collection('reservations')
+            .where('customerPhone', '==', phone)
+            .where('status', '==', status)
+            .get(),
+        )
+      }
+
+      const results = await Promise.all(queries)
+      for (const snap of results) {
         for (const doc of snap.docs) {
-          const type = doc.data().serviceType as string
-          if (type) {
-            // メールで既にカウント済みなら重複除外（同じdoc.id）
-            // 簡易的にカウントを加算（厳密な重複排除は不要）
-            history[type] = (history[type] ?? 0) + 1
+          if (seen.has(doc.id)) continue
+          const data = doc.data()
+          const type = data.serviceType as string
+          if (!type) continue
+
+          let dateStr: string | null = null
+          const d = data.date ?? data.reservationDate
+          if (typeof d === 'string') {
+            dateStr = d
+          } else if (d?.toDate) {
+            dateStr = d.toDate().toISOString()
           }
+
+          seen.set(doc.id, { type, date: dateStr })
         }
+      }
+    }
+
+    // サービスタイプごとに集計
+    const history: Record<string, TypeHistory> = {}
+    for (const { type, date } of seen.values()) {
+      if (!history[type]) {
+        history[type] = { count: 0, lastDate: null }
+      }
+      history[type].count += 1
+      if (date && (!history[type].lastDate || date > history[type].lastDate)) {
+        history[type].lastDate = date
       }
     }
 
