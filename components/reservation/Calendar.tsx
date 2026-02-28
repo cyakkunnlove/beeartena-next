@@ -188,6 +188,7 @@ export default function Calendar({ onSelect, selected, durationMinutes }: Calend
           const isPast = isDatePast(day)
           const isSelected = selected === dateStr
           const isSunday = day.getDay() === 0
+          const isSaturday = day.getDay() === 6
 
           return (
             <button
@@ -206,12 +207,13 @@ export default function Calendar({ onSelect, selected, durationMinutes }: Calend
                         ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
                         : ''
                 }
-                ${isSunday && !isLoading ? 'text-red-500' : ''}
+                ${!isLoading && !isSelected && isSunday ? 'text-red-500' : ''}
+                ${!isLoading && !isSelected && isSaturday ? 'text-blue-500' : ''}
               `}
-              title={!isAvailable && !isPast && !isSunday ? '満員' : ''}
+              title={!isAvailable && !isPast ? '予約不可' : ''}
             >
               {!isLoading && day.getDate()}
-              {!isLoading && !isAvailable && !isPast && !isSunday && (
+              {!isLoading && !isAvailable && !isPast && (
                 <span className="absolute top-1 right-1 text-xs text-red-500">●</span>
               )}
             </button>
