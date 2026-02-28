@@ -625,12 +625,12 @@ export default function ServicePlansAdminPage() {
     try {
       setFormSubmitting(true)
       if (editingPlan) {
-        const updateRes = await apiClient.updateAdminServicePlan(editingPlan.id, updatePayload)
+        const updateRes = await apiClient.updateAdminServicePlan(editingPlan.id, updatePayload) as any
         if (!updateRes?.success) throw new Error(updateRes?.message ?? '更新に失敗しました')
         await fetchPlans()
         showFeedback('success', 'プランを更新しました')
       } else {
-        const createRes = await apiClient.createAdminServicePlan(createPayload)
+        const createRes = await apiClient.createAdminServicePlan(createPayload) as any
         if (!createRes?.success) throw new Error(createRes?.message ?? '作成に失敗しました')
         await fetchPlans()
         showFeedback('success', 'プランを追加しました')
