@@ -1,6 +1,7 @@
 'use client'
 
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
@@ -84,6 +85,20 @@ export default function PricingPage() {
                     )}
 
                     <div className="p-8 lg:p-10">
+                      {/* 画像 */}
+                      {plan.image && (
+                        <div className="relative h-56 md:h-72 -mx-8 -mt-10 lg:-mx-10 mb-8 overflow-hidden">
+                          <Image
+                            src={plan.image}
+                            alt={plan.name}
+                            fill
+                            sizes="(min-width: 1024px) 50vw, 90vw"
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent" />
+                        </div>
+                      )}
+
                       {/* ヘッダー */}
                       <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
                         <div>

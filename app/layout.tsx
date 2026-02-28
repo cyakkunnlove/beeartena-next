@@ -65,6 +65,9 @@ export const metadata: Metadata = {
     '理容師が行う1日1名限定のプレミアムタトゥーメイク。半年以内リタッチ15,000円の安心プラン。眉・頭皮の悩みを解決します。',
   keywords: 'タトゥーメイク,眉,美容,恵那,岐阜,理容師,BEE ART ENA',
   manifest: '/manifest.json',
+  icons: {
+    icon: '/icon.svg',
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
