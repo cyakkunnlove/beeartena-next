@@ -317,9 +317,13 @@ function ReservationContent() {
           customerName: data.name,
           customerPhone: data.phone,
           customerEmail: data.email,
-          notes: isMonitorPrice
-            ? `${data.notes}\n【モニター価格適用】写真撮影にご協力いただきます`
-            : data.notes,
+          notes: [
+            data.notes,
+            isMonitorPrice ? '【モニター価格適用】写真撮影にご協力いただきます' : '',
+            visitStage === 'second' ? '【2回目料金適用】' : '',
+            visitStage === 'retouch-3m' ? '【リタッチ（3ヶ月以内）料金適用】' : '',
+            visitStage === 'retouch-6m' ? '【リタッチ（6ヶ月以内）料金適用】' : '',
+          ].filter(Boolean).join('\n'),
           status: 'pending' as const,
           isMonitor: isMonitorPrice,
           finalPrice,
