@@ -859,7 +859,7 @@ class ApiClient {
     return this.request<{ success: boolean; plan?: ServicePlan; message?: string }>(
       `/admin/service-plans?${params.toString()}`,
       { method: 'PATCH', body: JSON.stringify(payload) },
-    )
+    ) as Promise<{ success: boolean; plan?: ServicePlan; message?: string }>
   }
 
   async deleteAdminServicePlan(id: string) {
@@ -867,7 +867,7 @@ class ApiClient {
     return this.request<{ success: boolean; message?: string }>(
       `/admin/service-plans?${params.toString()}`,
       { method: 'DELETE' },
-    )
+    ) as Promise<{ success: boolean; message?: string }>
   }
 
   async getAdminSettings() {
