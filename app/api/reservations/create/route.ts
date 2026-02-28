@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import admin, { getAdminDb, isAdminInitialized } from '@/lib/firebase/admin'
 import { emailService } from '@/lib/email/emailService'
+import { rateLimit, setCorsHeaders } from '@/lib/api/middleware'
 import { normalizeIntakeForm } from '@/lib/utils/intakeFormDefaults'
 
+export async function OPTIONS(_request: NextRequest) {
+  return setCorsHeaders(NextResponse.json(null, { status: 200 }))
+}
+
 export async function POST(request: NextRequest) {
+  // レート制限: 1分間に5回まで（スパム予約防止）
+  const rateLimitResponse = rateLimit(request, 5, 60000)
+  if (rateLimitResponse) return rateLimitResponse
+
   try {
 
     const payload = await request.json()

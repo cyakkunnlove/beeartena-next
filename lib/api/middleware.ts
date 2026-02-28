@@ -21,8 +21,23 @@ const getJwtSecret = () => {
   return new TextEncoder().encode(secret)
 }
 
+// 許可するオリジン
+const ALLOWED_ORIGINS = new Set([
+  'https://beeartena.vercel.app',
+  // Vercelプレビューデプロイ用
+  ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000', 'http://localhost:3001'] : []),
+])
+
+const isAllowedOrigin = (origin: string | null): boolean => {
+  if (!origin) return false
+  if (ALLOWED_ORIGINS.has(origin)) return true
+  // Vercelプレビューデプロイ（*.vercel.app）を許可
+  if (/^https:\/\/[a-z0-9-]+-[a-z0-9-]+\.vercel\.app$/.test(origin)) return true
+  return false
+}
+
 // CORSヘッダーを設定
-export function setCorsHeaders(response: Response | NextResponse): NextResponse {
+export function setCorsHeaders(response: Response | NextResponse, request?: NextRequest): NextResponse {
   // ResponseをNextResponseに変換
   const nextResponse =
     response instanceof NextResponse
@@ -33,7 +48,15 @@ export function setCorsHeaders(response: Response | NextResponse): NextResponse 
           headers: response.headers,
         })
 
-  nextResponse.headers.set('Access-Control-Allow-Origin', '*')
+  const origin = request?.headers.get('origin') ?? null
+  if (origin && isAllowedOrigin(origin)) {
+    nextResponse.headers.set('Access-Control-Allow-Origin', origin)
+    nextResponse.headers.set('Vary', 'Origin')
+  } else if (process.env.NODE_ENV === 'development') {
+    nextResponse.headers.set('Access-Control-Allow-Origin', '*')
+  }
+  // originが許可リストにない場合はAccess-Control-Allow-Originを設定しない（ブラウザがブロックする）
+
   nextResponse.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
   nextResponse.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
   return nextResponse
@@ -116,7 +139,10 @@ export async function requireUserOrAdmin(
   return null // 権限OK
 }
 
-// レート制限（簡易版）
+// レート制限（簡易版・インメモリ）
+// 注意: Vercelサーバーレスではインスタンスごとに独立するため、
+// 厳密なレート制限には Upstash Redis 等の外部ストアが必要。
+// 現状は同一インスタンスへの連続リクエストに対する最低限の防御として機能。
 const requestCounts = new Map<string, { count: number; resetTime: number }>()
 
 export function rateLimit(

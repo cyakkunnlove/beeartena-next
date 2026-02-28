@@ -55,8 +55,12 @@ const swaggerUIHtml = `
 </html>
 `
 
-// GET /api/v1/docs - Swagger UI
+// GET /api/v1/docs - Swagger UI (development only)
 export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Not available' }, { status: 404 })
+  }
+
   const { searchParams } = new URL(request.url)
   const format = searchParams.get('format')
 
