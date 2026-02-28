@@ -106,6 +106,8 @@ export default function AdminReservations() {
   const [refreshingServices, setRefreshingServices] = useState(false)
   const [statsOverview, setStatsOverview] = useState<AdminStatsOverview | null>(null)
   const [statsWarning, setStatsWarning] = useState<string | null>(null)
+  const [businessHours, setBusinessHours] = useState<{ dayOfWeek: number; isOpen: boolean; maxCapacityPerDay?: number }[]>([])
+  const [blockedDates, setBlockedDates] = useState<string[]>([])
 
   const RESERVATION_PAGE_SIZE = 20
 
@@ -314,6 +316,31 @@ export default function AdminReservations() {
     return () => {
       mounted = false
     }
+  }, [authLoading, user])
+
+  // 予約設定（営業日・ブロック日）を取得
+  useEffect(() => {
+    if (authLoading || !user || user.role !== 'admin') return
+
+    const fetchSettings = async () => {
+      try {
+        const response = await apiClient.getAdminSettings()
+        if (response?.settings) {
+          setBusinessHours(
+            response.settings.businessHours?.map((h: any) => ({
+              dayOfWeek: h.dayOfWeek,
+              isOpen: Boolean(h.isOpen),
+              maxCapacityPerDay: h.maxCapacityPerDay ?? 1,
+            })) ?? [],
+          )
+          setBlockedDates(response.settings.blockedDates ?? [])
+        }
+      } catch (error) {
+        console.warn('Failed to load reservation settings', error)
+      }
+    }
+
+    fetchSettings()
   }, [authLoading, user])
 
   const requireLiveData = (actionLabel?: string) => {
@@ -878,6 +905,8 @@ export default function AdminReservations() {
               reservations={reservations}
               onEventClick={(reservation) => setSelectedReservation(reservation)}
               onDateClick={handleCalendarDateClick}
+              blockedDates={blockedDates}
+              businessHours={businessHours}
             />
           </div>
         )}

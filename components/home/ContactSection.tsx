@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 import FormField from '@/components/form/FormField'
 import { useToastContext } from '@/components/layout/LayoutWrapper'
@@ -9,6 +9,10 @@ import ResponsiveContainer from '@/components/layout/ResponsiveContainer'
 import Skeleton, { CardSkeleton } from '@/components/ui/Skeleton'
 import { storageService } from '@/lib/storage/storageService'
 import { ContactFormData } from '@/lib/types'
+
+const daysOfWeek = ['日', '月', '火', '水', '木', '金', '土']
+
+type BusinessHoursGroup = { days: string[]; hours: string }
 
 export default function ContactSection() {
   const [formData, setFormData] = useState<ContactFormData>({
@@ -18,6 +22,44 @@ export default function ContactSection() {
     inquiryType: '',
     message: '',
   })
+  const [hoursGroups, setHoursGroups] = useState<BusinessHoursGroup[]>([])
+  const [closedDays, setClosedDays] = useState<string[]>([])
+  const [hoursLoaded, setHoursLoaded] = useState(false)
+
+  useEffect(() => {
+    const loadHours = async () => {
+      try {
+        const response = await fetch('/api/settings')
+        if (!response.ok) return
+        const data = await response.json()
+        const bh = data?.businessHours ?? []
+
+        // 同じ open/close の曜日をグループ化
+        const groups: BusinessHoursGroup[] = []
+        const closed: string[] = []
+        for (const h of bh) {
+          if (!h.isOpen) {
+            closed.push(daysOfWeek[h.dayOfWeek])
+            continue
+          }
+          const hoursStr = `${h.open}〜${h.close}`
+          const existing = groups.find((g) => g.hours === hoursStr)
+          if (existing) {
+            existing.days.push(daysOfWeek[h.dayOfWeek])
+          } else {
+            groups.push({ days: [daysOfWeek[h.dayOfWeek]], hours: hoursStr })
+          }
+        }
+        setHoursGroups(groups)
+        setClosedDays(closed)
+      } catch {
+        // フォールバック: 何も表示しない
+      } finally {
+        setHoursLoaded(true)
+      }
+    }
+    loadHours()
+  }, [])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [_isLoading, _setIsLoading] = useState(false)
   const toast = useToastContext()
@@ -97,12 +139,27 @@ export default function ContactSection() {
             <div className="bg-gray-50 rounded-xl p-6">
               <h3 className="text-xl font-bold mb-4">営業時間</h3>
               <div className="space-y-2">
-                <div>
-                  <strong>水曜日：</strong>9:00〜17:00
-                </div>
-                <div>
-                  <strong>水曜以外：</strong>18:30〜（眉施術）/ 18:30 or 19:30〜（頭皮施術）
-                </div>
+                {!hoursLoaded ? (
+                  <div className="space-y-2 animate-pulse">
+                    <div className="h-4 bg-gray-300 rounded w-3/4"></div>
+                    <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+                  </div>
+                ) : hoursGroups.length > 0 ? (
+                  <>
+                    {hoursGroups.map((group, i) => (
+                      <div key={i}>
+                        <strong>{group.days.join('・')}曜日：</strong>{group.hours}
+                      </div>
+                    ))}
+                    {closedDays.length > 0 && (
+                      <div className="text-red-500">
+                        <strong>定休日：</strong>{closedDays.join('・')}曜日
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div>お問い合わせください</div>
+                )}
               </div>
             </div>
 

@@ -16,6 +16,7 @@ interface ReservationCalendarProps {
   onEventClick: (reservation: Reservation) => void
   onDateClick?: (date: Date) => void
   blockedDates?: string[]
+  businessHours?: { dayOfWeek: number; isOpen: boolean; maxCapacityPerDay?: number }[]
 }
 
 export default function ReservationCalendar({
@@ -23,6 +24,7 @@ export default function ReservationCalendar({
   onEventClick,
   onDateClick,
   blockedDates = [],
+  businessHours = [],
 }: ReservationCalendarProps) {
   const [view, setView] = useState<View>('month')
   const [date, setDate] = useState(new Date())
@@ -135,8 +137,9 @@ export default function ReservationCalendar({
         }
       }
 
-      // 日曜日は休業日
-      if (dayOfWeek === 0) {
+      // 設定に基づいて休業日を判定
+      const hoursConfig = businessHours.find((h) => h.dayOfWeek === dayOfWeek)
+      if (hoursConfig && !hoursConfig.isOpen) {
         return {
           style: {
             backgroundColor: '#f3f4f6',
@@ -149,8 +152,8 @@ export default function ReservationCalendar({
         (r) => r.date === dateStr && (r.status === 'confirmed' || r.status === 'pending'),
       )
 
-      // 曜日ごとの最大予約数
-      const maxCapacity = dayOfWeek === 3 ? 4 : 2 // 水曜日は4枠、その他は2枠
+      // 設定から曜日ごとの最大予約数を取得
+      const maxCapacity = hoursConfig?.maxCapacityPerDay ?? 1
 
       if (dayReservations.length >= maxCapacity) {
         return {
@@ -162,7 +165,7 @@ export default function ReservationCalendar({
 
       return {}
     },
-    [reservations, blockedDates],
+    [reservations, blockedDates, businessHours],
   )
 
   // イベントのスタイリング

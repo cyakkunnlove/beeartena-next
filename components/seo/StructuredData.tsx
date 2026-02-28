@@ -1,4 +1,40 @@
-export default function StructuredData() {
+import { getAdminDb } from '@/lib/firebase/admin'
+import { normalizeSettings } from '@/lib/utils/reservationSettings'
+
+const dayOfWeekNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+async function getOpeningHours() {
+  const db = getAdminDb()
+  if (!db) return []
+
+  try {
+    const snap = await db.collection('settings').doc('reservation-settings').get()
+    const settings = normalizeSettings(snap.exists ? (snap.data() as any) : null)
+
+    // 同じ open/close の曜日をグループ化
+    const groups = new Map<string, { days: string[]; opens: string; closes: string }>()
+    for (const h of settings.businessHours) {
+      if (!h.isOpen || !h.open || !h.close) continue
+      const key = `${h.open}-${h.close}`
+      const group = groups.get(key) ?? { days: [], opens: h.open, closes: h.close }
+      group.days.push(dayOfWeekNames[h.dayOfWeek])
+      groups.set(key, group)
+    }
+
+    return Array.from(groups.values()).map((g) => ({
+      '@type': 'OpeningHoursSpecification' as const,
+      dayOfWeek: g.days,
+      opens: g.opens,
+      closes: g.closes,
+    }))
+  } catch {
+    return []
+  }
+}
+
+export default async function StructuredData() {
+  const openingHours = await getOpeningHours()
+
   const structuredData = {
     '@context': 'https://schema.org',
     '@type': 'BeautySalon',
@@ -21,14 +57,7 @@ export default function StructuredData() {
       latitude: 35.4494,
       longitude: 137.4123,
     },
-    openingHoursSpecification: [
-      {
-        '@type': 'OpeningHoursSpecification',
-        dayOfWeek: ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-        opens: '09:00',
-        closes: '18:00',
-      },
-    ],
+    openingHoursSpecification: openingHours,
     sameAs: ['https://instagram.com/beeartena', 'https://line.me/R/ti/p/@174geemy'],
     hasOfferCatalog: {
       '@type': 'OfferCatalog',
