@@ -60,6 +60,8 @@ function ReservationContent() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [formData, setFormData] = useState<ReservationFormData>(createInitialFormData)
   const [isMonitorPrice, setIsMonitorPrice] = useState(false)
+  const [isSecondVisit, setIsSecondVisit] = useState(false)
+  const [visitAutoDetected, setVisitAutoDetected] = useState(false)
   const [showLoginModal, setShowLoginModal] = useState(false)
   const [pendingAutoSubmit, setPendingAutoSubmit] = useState<PendingReservation | null>(null)
   const hasRestoredRef = useRef(false)
@@ -214,6 +216,35 @@ function ReservationContent() {
     void fetchLatestIntake()
   }, [formData.intakeForm, step, user])
 
+  // 過去予約から1回目/2回目を自動推測
+  useEffect(() => {
+    const email = formData.email?.trim()
+    const phone = formData.phone?.trim()
+    if (!email && !phone) return
+    if (!selectedService) return
+
+    const params = new URLSearchParams()
+    if (email) params.set('email', email)
+    if (phone) params.set('phone', phone)
+
+    fetch(`/api/reservations/check-history?${params.toString()}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (!data?.success || !data.history) return
+        const plan = servicePlans.find((p) => p.id === selectedService)
+        if (!plan) return
+        const count = data.history[plan.type] ?? 0
+        if (count > 0) {
+          setIsSecondVisit(true)
+          setVisitAutoDetected(true)
+        } else {
+          setIsSecondVisit(false)
+          setVisitAutoDetected(true)
+        }
+      })
+      .catch(() => { /* ignore */ })
+  }, [formData.email, formData.phone, selectedService, servicePlans])
+
   const selectedPlan = useMemo(
     () => servicePlans.find((plan) => plan.id === selectedService),
     [servicePlans, selectedService],
@@ -224,12 +255,16 @@ function ReservationContent() {
     if (isMonitorPrice && selectedPlan.monitorEnabled && selectedPlan.monitorPrice) {
       return selectedPlan.monitorPrice
     }
-    // キャンペーン価格がある場合はそちらをデフォルトに
+    // 2回目で2回目価格がある場合
+    if (isSecondVisit && selectedPlan.secondPrice != null) {
+      return selectedPlan.secondPrice
+    }
+    // キャンペーン価格がある場合はそちらをデフォルトに（1回目）
     if (selectedPlan.campaignPrice != null) {
       return selectedPlan.campaignPrice
     }
     return selectedPlan.price
-  }, [selectedPlan, isMonitorPrice])
+  }, [selectedPlan, isMonitorPrice, isSecondVisit])
 
   const executeReservation = useCallback(
     async (data: ReservationFormData) => {
@@ -614,13 +649,62 @@ function ReservationContent() {
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                 >
+                  {/* 1回目/2回目 選択 */}
+                  {selectedPlan?.campaignPrice != null && selectedPlan?.secondPrice != null && (
+                    <div className="border rounded-xl p-4 mb-6 bg-pink-50 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-semibold text-gray-900">🎉 ご来店回数</p>
+                        {visitAutoDetected && (
+                          <span className="text-xs text-pink-600 bg-pink-100 px-2 py-0.5 rounded-full">
+                            {isSecondVisit ? '過去のご予約から2回目と判定' : '初回のお客様'}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        <button
+                          type="button"
+                          onClick={() => setIsSecondVisit(false)}
+                          className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all text-center ${
+                            !isSecondVisit
+                              ? 'border-pink-500 bg-white shadow-sm'
+                              : 'border-gray-200 bg-white/50 hover:border-pink-300'
+                          }`}
+                        >
+                          <p className="text-xs text-gray-500">1回目</p>
+                          <p className={`text-lg font-bold ${!isSecondVisit ? 'text-pink-600' : 'text-gray-700'}`}>
+                            ¥{selectedPlan.campaignPrice.toLocaleString()}
+                          </p>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsSecondVisit(true)}
+                          className={`flex-1 px-4 py-3 rounded-lg border-2 transition-all text-center ${
+                            isSecondVisit
+                              ? 'border-pink-500 bg-white shadow-sm'
+                              : 'border-gray-200 bg-white/50 hover:border-pink-300'
+                          }`}
+                        >
+                          <p className="text-xs text-gray-500">2回目</p>
+                          <p className={`text-lg font-bold ${isSecondVisit ? 'text-pink-600' : 'text-gray-700'}`}>
+                            ¥{selectedPlan.secondPrice.toLocaleString()}
+                          </p>
+                        </button>
+                      </div>
+                      {visitAutoDetected && (
+                        <p className="text-xs text-gray-500">
+                          ※ 過去のご予約情報から自動判定しています。異なる場合は手動で切り替えてください。
+                        </p>
+                      )}
+                    </div>
+                  )}
+
                   <ReservationForm
                     formData={formData}
                     onChange={handleFormFieldChange}
                     onSubmit={handleFormSubmit}
                     isLoggedIn={!!user}
-                    servicePrice={selectedPlan ? selectedPlan.price : 0}
-                    monitorPrice={selectedPlan?.monitorPrice}
+                    servicePrice={baseServicePrice}
+                    monitorPrice={selectedPlan?.monitorEnabled ? selectedPlan?.monitorPrice : undefined}
                     maintenancePrice={maintenancePrice}
                     onRequestLogin={handlePromptLogin}
                     onIntakeChange={handleIntakeChange}
