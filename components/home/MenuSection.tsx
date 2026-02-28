@@ -86,33 +86,37 @@ export default function MenuSection() {
               )}
 
               <div className="space-y-3">
-                {/* 通常価格 */}
-                <div className="flex items-baseline justify-between">
-                  <span className="text-sm text-gray-500">通常価格</span>
-                  <span className="text-2xl font-bold">{formatPrice(plan.price)}</span>
-                </div>
-
-                {/* キャンペーン価格 */}
-                {plan.campaignPrice != null && (
-                  <div className="bg-pink-50 rounded-lg p-3 space-y-1">
-                    <div className="text-xs font-semibold text-pink-600">🎉 キャンペーン</div>
+                {/* 価格表示 */}
+                {plan.campaignPrice != null ? (
+                  <>
                     <div className="flex items-baseline justify-between">
-                      <span className="text-sm text-gray-600">1回目</span>
-                      <div className="text-right">
-                        <span className="text-xl font-bold text-pink-600">{formatPrice(plan.campaignPrice)}</span>
-                        {plan.campaignReferralDiscount != null && plan.campaignReferralDiscount > 0 && (
-                          <div className="text-xs text-pink-500">
-                            紹介割引 さらに −{formatPrice(plan.campaignReferralDiscount)}
-                          </div>
-                        )}
-                      </div>
+                      <span className="text-sm text-gray-400">通常価格</span>
+                      <span className="text-lg text-gray-400 line-through">{formatPrice(plan.price)}</span>
                     </div>
-                    {plan.secondPrice != null && (
+                    <div className="bg-pink-50 rounded-lg p-3 space-y-1">
                       <div className="flex items-baseline justify-between">
-                        <span className="text-sm text-gray-600">2回目</span>
-                        <span className="text-lg font-bold text-pink-600">{formatPrice(plan.secondPrice)}</span>
+                        <span className="text-sm font-semibold text-gray-700">1回目</span>
+                        <div className="text-right">
+                          <span className="text-2xl font-bold text-pink-600">{formatPrice(plan.campaignPrice)}</span>
+                          {plan.campaignReferralDiscount != null && plan.campaignReferralDiscount > 0 && (
+                            <div className="text-xs text-pink-500">
+                              紹介割引 さらに −{formatPrice(plan.campaignReferralDiscount)}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    )}
+                      {plan.secondPrice != null && (
+                        <div className="flex items-baseline justify-between">
+                          <span className="text-sm text-gray-600">2回目</span>
+                          <span className="text-lg font-bold text-pink-600">{formatPrice(plan.secondPrice)}</span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-sm text-gray-500">料金</span>
+                    <span className="text-2xl font-bold">{formatPrice(plan.price)}</span>
                   </div>
                 )}
 

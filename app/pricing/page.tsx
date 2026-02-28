@@ -111,19 +111,26 @@ export default function PricingPage() {
                             <p className="text-sm text-amber-600 mt-1">{plan.note}</p>
                           )}
                         </div>
-                        <div className="text-right flex-shrink-0">
-                          <p className="text-sm text-gray-500">通常価格</p>
-                          <p className="text-3xl font-bold">{formatPrice(plan.price)}</p>
-                        </div>
+                        {plan.campaignPrice != null ? (
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-sm text-gray-400 line-through">{formatPrice(plan.price)}</p>
+                            <p className="text-3xl font-bold text-pink-600">{formatPrice(plan.campaignPrice)}</p>
+                            <p className="text-xs text-gray-500">1回目</p>
+                          </div>
+                        ) : (
+                          <div className="text-right flex-shrink-0">
+                            <p className="text-3xl font-bold">{formatPrice(plan.price)}</p>
+                          </div>
+                        )}
                       </div>
 
                       {/* 料金詳細 */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* キャンペーン */}
+                        {/* キャンペーン詳細 */}
                         {plan.campaignPrice != null && (
                           <div className="bg-pink-50 rounded-xl p-6 space-y-3">
                             <h3 className="font-semibold text-pink-700 flex items-center gap-2">
-                              🎉 キャンペーン価格
+                              🎉 料金
                             </h3>
                             <div className="space-y-2">
                               <div className="flex justify-between items-baseline">
