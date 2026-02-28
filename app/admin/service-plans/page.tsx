@@ -20,10 +20,18 @@ type FormValues = {
   type: ServicePlan['type']
   price: string
   monitorPrice: string
+  monitorEnabled: boolean
   otherShopPrice: string
+  campaignPrice: string
+  campaignReferralDiscount: string
+  secondPrice: string
+  retouchPrice3m: string
+  retouchPrice6m: string
+  durationText: string
   duration: string
   image: string
   badge: string
+  note: string
   effectiveFrom: string
   effectiveUntil: string
   displayOrder: string
@@ -86,10 +94,18 @@ const getInitialFormValues = (
     type: plan?.type ?? '2D',
     price: plan?.price != null ? String(plan.price) : '',
     monitorPrice: plan?.monitorPrice != null ? String(plan.monitorPrice) : '',
+    monitorEnabled: plan?.monitorEnabled ?? false,
     otherShopPrice: plan?.otherShopPrice != null ? String(plan.otherShopPrice) : '',
+    campaignPrice: plan?.campaignPrice != null ? String(plan.campaignPrice) : '',
+    campaignReferralDiscount: plan?.campaignReferralDiscount != null ? String(plan.campaignReferralDiscount) : '',
+    secondPrice: plan?.secondPrice != null ? String(plan.secondPrice) : '',
+    retouchPrice3m: plan?.retouchPrice3m != null ? String(plan.retouchPrice3m) : '',
+    retouchPrice6m: plan?.retouchPrice6m != null ? String(plan.retouchPrice6m) : '',
+    durationText: plan?.durationText ?? '',
     duration: plan?.duration != null ? String(plan.duration) : '',
     image: plan?.image ?? '',
     badge: plan?.badge ?? '',
+    note: plan?.note ?? '',
     effectiveFrom: toInputValue(plan?.effectiveFrom) || nowInput,
     effectiveUntil: toInputValue(plan?.effectiveUntil) || '',
     displayOrder: plan?.displayOrder != null ? String(plan.displayOrder) : '1',
@@ -240,6 +256,105 @@ function ServicePlanForm({
         </label>
 
         <label className="flex flex-col gap-2 text-sm">
+          <span className="font-medium">表示用時間テキスト (任意)</span>
+          <input
+            type="text"
+            value={values.durationText}
+            onChange={(event) => handleChange('durationText', event.target.value)}
+            className="border rounded-md px-3 py-2"
+            placeholder="約2.5〜3時間"
+          />
+        </label>
+
+        <div className="md:col-span-2 border-t pt-4 mt-2">
+          <h4 className="font-semibold text-sm mb-3">🎉 キャンペーン価格</h4>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium">1回目価格 (任意)</span>
+              <input
+                type="number"
+                value={values.campaignPrice}
+                onChange={(event) => handleChange('campaignPrice', event.target.value)}
+                className="border rounded-md px-3 py-2"
+                placeholder="30000"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium">紹介割引額 (任意)</span>
+              <input
+                type="number"
+                value={values.campaignReferralDiscount}
+                onChange={(event) => handleChange('campaignReferralDiscount', event.target.value)}
+                className="border rounded-md px-3 py-2"
+                placeholder="3000"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium">2回目価格 (任意)</span>
+              <input
+                type="number"
+                value={values.secondPrice}
+                onChange={(event) => handleChange('secondPrice', event.target.value)}
+                className="border rounded-md px-3 py-2"
+                placeholder="25000"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="md:col-span-2 border-t pt-4 mt-2">
+          <h4 className="font-semibold text-sm mb-3">🔄 リタッチ価格</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium">3ヶ月以内 (任意)</span>
+              <input
+                type="number"
+                value={values.retouchPrice3m}
+                onChange={(event) => handleChange('retouchPrice3m', event.target.value)}
+                className="border rounded-md px-3 py-2"
+                placeholder="11000"
+              />
+            </label>
+            <label className="flex flex-col gap-2 text-sm">
+              <span className="font-medium">6ヶ月以内 (任意)</span>
+              <input
+                type="number"
+                value={values.retouchPrice6m}
+                onChange={(event) => handleChange('retouchPrice6m', event.target.value)}
+                className="border rounded-md px-3 py-2"
+                placeholder="15000"
+              />
+            </label>
+          </div>
+        </div>
+
+        <div className="md:col-span-2 border-t pt-4 mt-2">
+          <h4 className="font-semibold text-sm mb-3">📷 モニター価格</h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex items-center gap-3 text-sm">
+              <input
+                type="checkbox"
+                checked={values.monitorEnabled}
+                onChange={(event) => handleChange('monitorEnabled', event.target.checked)}
+                className="h-4 w-4"
+              />
+              <span>モニター価格を表示する</span>
+            </label>
+          </div>
+        </div>
+
+        <label className="flex flex-col gap-2 text-sm md:col-span-2">
+          <span className="font-medium">補足テキスト (任意)</span>
+          <input
+            type="text"
+            value={values.note}
+            onChange={(event) => handleChange('note', event.target.value)}
+            className="border rounded-md px-3 py-2"
+            placeholder="※ 複数回推奨"
+          />
+        </label>
+
+        <label className="flex flex-col gap-2 text-sm">
           <span className="font-medium">表示順</span>
           <input
             type="number"
@@ -305,14 +420,15 @@ function ServicePlanForm({
         </label>
 
         <label className="flex flex-col gap-2 text-sm md:col-span-2">
-          <span className="font-medium">画像URL (任意)</span>
+          <span className="font-medium">画像パス (任意)</span>
           <input
-            type="url"
+            type="text"
             value={values.image}
             onChange={(event) => handleChange('image', event.target.value)}
             className="border rounded-md px-3 py-2"
-            placeholder="https://example.com/service.jpg"
+            placeholder="/images/4D.jpg"
           />
+          <span className="text-xs text-gray-500">サイト内パス（例: /images/4D.jpg）またはURLを入力</span>
         </label>
       </div>
 
@@ -469,16 +585,29 @@ export default function ServicePlansAdminPage() {
     const duration = Number(values.duration)
     const displayOrder = Number(values.displayOrder)
 
+    const parseOptionalNum = (val: string) => {
+      const n = Number(val)
+      return val.trim() !== '' && Number.isFinite(n) ? n : null
+    }
+
     const payload = {
       name: values.name.trim(),
       description: values.description.trim(),
       type: values.type,
       price: Number.isFinite(price) ? price : 0,
-      monitorPrice: Number.isFinite(monitorPrice ?? NaN) ? monitorPrice : undefined,
-      otherShopPrice: Number.isFinite(otherShopPrice ?? NaN) ? otherShopPrice : undefined,
+      monitorPrice: parseOptionalNum(values.monitorPrice),
+      monitorEnabled: values.monitorEnabled,
+      otherShopPrice: parseOptionalNum(values.otherShopPrice),
+      campaignPrice: parseOptionalNum(values.campaignPrice),
+      campaignReferralDiscount: parseOptionalNum(values.campaignReferralDiscount),
+      secondPrice: parseOptionalNum(values.secondPrice),
+      retouchPrice3m: parseOptionalNum(values.retouchPrice3m),
+      retouchPrice6m: parseOptionalNum(values.retouchPrice6m),
+      durationText: values.durationText.trim() || null,
       duration: Number.isFinite(duration) ? duration : 0,
       image: values.image.trim() || null,
       badge: values.badge.trim() || null,
+      note: values.note.trim() || null,
       isFeatured: values.isFeatured,
       isPublished: values.isPublished,
       effectiveFrom: toIsoString(values.effectiveFrom) || new Date().toISOString(),
