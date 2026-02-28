@@ -221,8 +221,12 @@ function ReservationContent() {
 
   const baseServicePrice = useMemo(() => {
     if (!selectedPlan) return 0
-    if (isMonitorPrice && selectedPlan.monitorPrice) {
+    if (isMonitorPrice && selectedPlan.monitorEnabled && selectedPlan.monitorPrice) {
       return selectedPlan.monitorPrice
+    }
+    // キャンペーン価格がある場合はそちらをデフォルトに
+    if (selectedPlan.campaignPrice != null) {
+      return selectedPlan.campaignPrice
     }
     return selectedPlan.price
   }, [selectedPlan, isMonitorPrice])

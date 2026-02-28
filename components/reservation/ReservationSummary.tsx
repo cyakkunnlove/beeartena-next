@@ -80,12 +80,17 @@ export default function ReservationSummary({
           <div>
             <p className="font-semibold text-gray-900">メニュー</p>
             <p className="mt-1">{selectedPlan ? selectedPlan.name : '未選択'}</p>
-            {selectedPlan?.monitorPrice ? (
+            {selectedPlan?.campaignPrice != null ? (
               <p className="text-xs text-gray-500">
-                通常価格: {formatYen(selectedPlan.price)} / モニター価格: {formatYen(selectedPlan.monitorPrice)}
+                <span className="line-through">通常: {formatYen(selectedPlan.price)}</span>
+                {' → '}1回目: {formatYen(selectedPlan.campaignPrice)}
+                {selectedPlan.secondPrice != null && ` / 2回目: ${formatYen(selectedPlan.secondPrice)}`}
               </p>
             ) : null}
-            <p className="text-xs text-gray-500 mt-1">{monitorNotes}</p>
+            {selectedPlan?.monitorEnabled && selectedPlan?.monitorPrice != null ? (
+              <p className="text-xs text-amber-600">📷 モニター: {formatYen(selectedPlan.monitorPrice)}</p>
+            ) : null}
+            {monitorNotes ? <p className="text-xs text-gray-500 mt-1">{monitorNotes}</p> : null}
           </div>
 
           <div>

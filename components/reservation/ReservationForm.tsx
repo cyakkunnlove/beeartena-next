@@ -160,15 +160,15 @@ export default function ReservationForm({
         <IntakeQuestionnaire value={formData.intakeForm} onChange={onIntakeChange} />
       </div>
 
-      {monitorPrice && (
+      {monitorPrice && monitorPrice > 0 && (
         <div className="border rounded-lg p-4 bg-amber-50 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-amber-900">料金プラン</p>
+              <p className="text-sm font-semibold text-amber-900">📷 モニター価格</p>
               <p className="text-lg font-bold text-amber-900">
                 {monitorSelected
                   ? `モニター価格: ¥${monitorPrice.toLocaleString()}`
-                  : `通常価格: ¥${servicePrice.toLocaleString()}`}
+                  : `¥${servicePrice.toLocaleString()}`}
               </p>
             </div>
             <span className={`text-xs px-2 py-1 rounded-full font-semibold ${
@@ -179,8 +179,8 @@ export default function ReservationForm({
           </div>
           <p className="text-sm text-amber-900">
             {monitorSelected
-              ? '写真撮影にご協力いただくことでモニター価格が適用されています。条件が変わる場合は下のボタンから切り替えてください。'
-              : 'モニター価格をご希望の場合は、条件をご確認のうえ下のボタンから切り替えてください。'}
+              ? '写真撮影にご協力いただくことでモニター価格が適用されています。'
+              : '施術前後の写真撮影・SNS掲載にご協力いただける方はモニター価格が適用されます。'}
           </p>
           <div className="flex flex-col sm:flex-row gap-2">
             <button

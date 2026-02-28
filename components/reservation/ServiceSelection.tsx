@@ -137,19 +137,29 @@ export default function ServiceSelection({ services, onSelect, selected }: Servi
                 {service.description}
               </p>
               <div className="mb-1 space-y-1">
-                {service.otherShopPrice && (
-                  <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
-                    他店価格: {formatYen(service.otherShopPrice)}
-                  </p>
+                {service.campaignPrice != null ? (
+                  <>
+                    <p className="text-sm text-gray-400 line-through">通常価格: {formatYen(service.price)}</p>
+                    <p className="text-xl font-bold text-pink-600">1回目: {formatYen(service.campaignPrice)}</p>
+                    {service.campaignReferralDiscount != null && service.campaignReferralDiscount > 0 && (
+                      <p className="text-xs text-pink-500">紹介割引 さらに −{formatYen(service.campaignReferralDiscount)}</p>
+                    )}
+                    {service.secondPrice != null && (
+                      <p className="text-sm font-semibold text-gray-700">2回目: {formatYen(service.secondPrice)}</p>
+                    )}
+                  </>
+                ) : (
+                  <p className="text-xl font-bold">{formatYen(service.price)}</p>
                 )}
-                <p className="text-xl font-bold">当店価格: {formatYen(service.price)}</p>
-                {service.monitorPrice && (
-                  <p className="text-lg font-bold text-primary">
-                    モニター価格: {formatYen(service.monitorPrice)}
+                {service.monitorEnabled && service.monitorPrice != null && (
+                  <p className="text-sm font-bold text-amber-600">
+                    📷 モニター: {formatYen(service.monitorPrice)}
                   </p>
                 )}
               </div>
-              <p className="text-xs text-gray-500">{formatDuration(service.duration)}</p>
+              <p className="text-xs text-gray-500">
+                {service.durationText ?? formatDuration(service.duration)}
+              </p>
 
               {selectedServiceId === service.id && (
                 <motion.div
@@ -163,13 +173,25 @@ export default function ServiceSelection({ services, onSelect, selected }: Servi
         })}
       </motion.div>
 
-      {selectedPlan?.monitorPrice && (
-        <div className="rounded-xl bg-gray-50 p-6 text-sm text-gray-700">
-          <p className="font-semibold text-gray-900">モニター価格のご案内</p>
+      {selectedPlan?.monitorEnabled && selectedPlan?.monitorPrice != null && (
+        <div className="rounded-xl bg-amber-50 p-6 text-sm text-gray-700">
+          <p className="font-semibold text-amber-900">📷 モニター価格のご案内</p>
           <p className="mt-2">
             モニター価格 ({formatYen(selectedPlan.monitorPrice)}) の適用可否は予約情報入力ステップで選択できます。
-            条件をご確認のうえご選択ください。
+            施術前後の写真撮影・SNS掲載にご協力いただける方が対象です。
           </p>
+        </div>
+      )}
+
+      {selectedPlan?.retouchPrice3m != null && (
+        <div className="rounded-xl bg-gray-50 p-6 text-sm text-gray-700">
+          <p className="font-semibold text-gray-900">🔄 リタッチ料金</p>
+          <div className="mt-2 flex gap-6">
+            <span>3ヶ月以内: <strong>{formatYen(selectedPlan.retouchPrice3m)}</strong></span>
+            {selectedPlan.retouchPrice6m != null && (
+              <span>6ヶ月以内: <strong>{formatYen(selectedPlan.retouchPrice6m)}</strong></span>
+            )}
+          </div>
         </div>
       )}
     </div>
