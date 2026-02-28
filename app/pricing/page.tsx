@@ -1,101 +1,42 @@
 'use client'
 
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 
 import PageTransition from '@/components/layout/PageTransition'
 import SlideTransition from '@/components/layout/SlideTransition'
 import MobileButton from '@/components/ui/MobileButton'
+import { getServicePlans } from '@/lib/firebase/servicePlans'
+import type { ServicePlan } from '@/lib/types'
 
-const services = [
-  {
-    id: '2D',
-    name: 'パウダーブロウ',
-    description: 'ふんわりパウダー眉。メイクしたような自然な仕上がり',
-    price: 22000,
-    monitorPrice: 20000,
-    otherShopPrice: 35000,
-    duration: '約2時間30分',
-    image: '/images/2D.jpg',
-    features: [
-      'パウダーメイクのような仕上がり',
-      'ナチュラルで優しい印象',
-      'メイク時間短縮',
-      'すっぴんでも自然な眉',
-    ],
-    process: [
-      'カウンセリング（30分）',
-      'デザイン決定（30分）',
-      '施術（60分）',
-      'アフターケア説明（10分）',
-    ],
-  },
-  {
-    id: '3D',
-    name: 'フェザーブロウ',
-    description: '立体的な毛流れ眉。1本1本丁寧に描く自然な眉',
-    price: 23000,
-    monitorPrice: 20000,
-    otherShopPrice: 35000,
-    duration: '約2時間30分',
-    image: '/images/3D.jpg',
-    features: ['毛並みを1本1本再現', '自眉のような自然さ', '立体的な仕上がり', '男性にも人気'],
-    process: [
-      'カウンセリング（30分）',
-      'デザイン決定（30分）',
-      '施術（60分）',
-      'アフターケア説明（10分）',
-    ],
-  },
-  {
-    id: '4D',
-    name: 'パウダー&フェザー',
-    description: '2D+3Dのいいとこ取り。最も自然で立体的な仕上がり',
-    price: 25000,
-    monitorPrice: 22000,
-    otherShopPrice: 40000,
-    duration: '約2時間30分',
-    image: '/images/4D.jpg',
-    featured: true,
-    features: [
-      'パウダーとフェザーの融合',
-      '最も自然な仕上がり',
-      '立体感のある美眉',
-      '幅広い年齢層に人気',
-    ],
-    process: [
-      'カウンセリング（30分）',
-      'デザイン決定（30分）',
-      '施術（60分）',
-      'アフターケア説明（10分）',
-    ],
-  },
-]
-
-const additionalServices = [
-  {
-    name: '3ヶ月以内リタッチ',
-    price: 11000,
-    description: '初回施術から2回目完了後、3ヶ月以内の再施術',
-  },
-  {
-    name: '半年以内リタッチ',
-    price: 15000,
-    description: '3ヶ月を過ぎて半年以内の再施術',
-  },
-  {
-    name: 'カラー変更',
-    price: 3000,
-    description: 'リタッチ時のカラー変更オプション',
-  },
-]
+const formatPrice = (price: number) => `¥${price.toLocaleString()}`
 
 export default function PricingPage() {
+  const [plans, setPlans] = useState<ServicePlan[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const data = await getServicePlans()
+        const published = data
+          .filter((p) => p.isPublished)
+          .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0))
+        setPlans(published)
+      } catch (error) {
+        console.error('Failed to load service plans:', error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    load()
+  }, [])
+
   return (
     <PageTransition>
       <div className="min-h-screen bg-light-accent">
-        {/* ヒーローセクション */}
+        {/* ヒーロー */}
         <section className="bg-gradient-to-br from-primary/10 to-white py-16">
           <div className="container mx-auto px-4">
             <SlideTransition direction="up">
@@ -110,170 +51,147 @@ export default function PricingPage() {
           </div>
         </section>
 
-        {/* サービス詳細 */}
+        {/* 料金表 */}
         <section className="py-16">
           <div className="container mx-auto px-4">
-            <div className="space-y-16">
-              {services.map((service, index) => (
-                <motion.div
-                  key={service.id}
-                  initial={{ opacity: 0, y: 50 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.5, delay: index * 0.1 }}
-                  viewport={{ once: true }}
-                  className={`bg-white rounded-2xl shadow-xl overflow-hidden ${
-                    service.featured ? 'ring-2 ring-primary' : ''
-                  }`}
-                >
-                  {service.featured && (
-                    <div className="bg-primary text-white text-center py-2 font-semibold">
-                      人気No.1
-                    </div>
-                  )}
-
-                  <div
-                    className={`grid grid-cols-1 lg:grid-cols-2 ${
-                      index % 2 === 1 ? 'lg:flex-row-reverse' : ''
+            {loading ? (
+              <div className="max-w-4xl mx-auto space-y-8">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="bg-white rounded-2xl p-8 shadow-lg animate-pulse">
+                    <div className="h-8 bg-gray-200 rounded w-1/3 mb-4"></div>
+                    <div className="h-4 bg-gray-200 rounded w-2/3 mb-6"></div>
+                    <div className="h-32 bg-gray-200 rounded"></div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="max-w-4xl mx-auto space-y-10">
+                {plans.map((plan, index) => (
+                  <motion.div
+                    key={plan.id}
+                    initial={{ opacity: 0, y: 40 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, delay: index * 0.1 }}
+                    viewport={{ once: true }}
+                    className={`bg-white rounded-2xl shadow-xl overflow-hidden ${
+                      plan.isFeatured ? 'ring-2 ring-primary' : ''
                     }`}
                   >
-                    {/* 画像 */}
-                    <div
-                      className={`relative h-64 lg:h-auto ${index % 2 === 1 ? 'lg:order-2' : ''}`}
-                    >
-                      <Image src={service.image} alt={service.name} fill className="object-cover" />
-                    </div>
+                    {plan.badge && (
+                      <div className="bg-primary text-white text-center py-2 font-semibold text-sm">
+                        {plan.badge}
+                      </div>
+                    )}
 
-                    {/* 内容 */}
-                    <div className="p-8 lg:p-12">
-                      <div className="flex items-start justify-between mb-6">
+                    <div className="p-8 lg:p-10">
+                      {/* ヘッダー */}
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-8">
                         <div>
-                          <h2 className="text-3xl font-bold mb-2">
-                            {service.id} {service.name}
-                          </h2>
-                          <p className="text-gray-600">{service.description}</p>
+                          <h2 className="text-2xl lg:text-3xl font-bold mb-2">{plan.name}</h2>
+                          <p className="text-gray-600">{plan.description}</p>
+                          <p className="text-sm text-gray-500 mt-1">
+                            ⏱ 所要時間：{plan.durationText ?? `${plan.duration}分`}
+                          </p>
+                          {plan.note && (
+                            <p className="text-sm text-amber-600 mt-1">{plan.note}</p>
+                          )}
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-sm text-gray-500">通常価格</p>
+                          <p className="text-3xl font-bold">{formatPrice(plan.price)}</p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                        <div>
-                          <h3 className="font-semibold mb-3">特徴</h3>
-                          <ul className="space-y-2">
-                            {service.features.map((feature, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-primary">✓</span>
-                                <span className="text-sm">{feature}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
+                      {/* 料金詳細 */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {/* キャンペーン */}
+                        {plan.campaignPrice != null && (
+                          <div className="bg-pink-50 rounded-xl p-6 space-y-3">
+                            <h3 className="font-semibold text-pink-700 flex items-center gap-2">
+                              🎉 キャンペーン価格
+                            </h3>
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-baseline">
+                                <span className="text-gray-700">1回目</span>
+                                <span className="text-2xl font-bold text-pink-600">
+                                  {formatPrice(plan.campaignPrice)}
+                                </span>
+                              </div>
+                              {plan.campaignReferralDiscount != null && plan.campaignReferralDiscount > 0 && (
+                                <div className="flex justify-between items-baseline text-sm">
+                                  <span className="text-gray-600">紹介割引</span>
+                                  <span className="font-semibold text-pink-500">
+                                    さらに −{formatPrice(plan.campaignReferralDiscount)}
+                                  </span>
+                                </div>
+                              )}
+                              {plan.secondPrice != null && (
+                                <div className="flex justify-between items-baseline border-t border-pink-200 pt-2">
+                                  <span className="text-gray-700">2回目</span>
+                                  <span className="text-xl font-bold text-pink-600">
+                                    {formatPrice(plan.secondPrice)}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                        <div>
-                          <h3 className="font-semibold mb-3">施術の流れ</h3>
-                          <ul className="space-y-2">
-                            {service.process.map((step, i) => (
-                              <li key={i} className="flex items-start gap-2">
-                                <span className="text-primary font-semibold">{i + 1}.</span>
-                                <span className="text-sm">{step}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      </div>
+                        {/* リタッチ */}
+                        {(plan.retouchPrice3m != null || plan.retouchPrice6m != null) && (
+                          <div className="bg-gray-50 rounded-xl p-6 space-y-3">
+                            <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                              🔄 リタッチ
+                            </h3>
+                            <div className="space-y-2">
+                              {plan.retouchPrice3m != null && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-gray-700">3ヶ月以内</span>
+                                  <span className="text-xl font-bold">{formatPrice(plan.retouchPrice3m)}</span>
+                                </div>
+                              )}
+                              {plan.retouchPrice6m != null && (
+                                <div className="flex justify-between items-baseline">
+                                  <span className="text-gray-700">6ヶ月以内</span>
+                                  <span className="text-xl font-bold">{formatPrice(plan.retouchPrice6m)}</span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
 
-                      <div className="border-t pt-6">
-                        <div className="flex flex-wrap items-end justify-between gap-4">
-                          <div>
-                            <p className="text-sm text-gray-400 line-through decoration-red-500 decoration-2">
-                              他店価格 ¥{service.otherShopPrice.toLocaleString()}
-                            </p>
-                            <p className="text-2xl font-bold">
-                              当店価格 ¥{service.price.toLocaleString()}
-                            </p>
-                            <p className="text-xl font-bold text-primary">
-                              モニター価格 ¥{service.monitorPrice.toLocaleString()}
-                            </p>
-                            <p className="text-sm text-gray-500 mt-1">
-                              所要時間: {service.duration}
+                        {/* モニター価格（有効な場合のみ） */}
+                        {plan.monitorEnabled && plan.monitorPrice != null && (
+                          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 md:col-span-2">
+                            <h3 className="font-semibold text-amber-700 mb-2 flex items-center gap-2">
+                              📷 モニター価格
+                            </h3>
+                            <div className="flex justify-between items-baseline">
+                              <span className="text-gray-700">モニター料金</span>
+                              <span className="text-2xl font-bold text-amber-700">
+                                {formatPrice(plan.monitorPrice)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-amber-600 mt-2">
+                              ※ 施術前後の写真撮影・SNS掲載にご協力いただける方が対象です
                             </p>
                           </div>
-                          <Link href="/reservation">
-                            <MobileButton variant="primary" fullWidth className="mt-2">
-                              このメニューで予約する
-                            </MobileButton>
-                          </Link>
-                        </div>
+                        )}
+                      </div>
+
+                      {/* 予約ボタン */}
+                      <div className="mt-8 text-center">
+                        <Link href="/reservation">
+                          <MobileButton variant="primary" fullWidth className="max-w-xs mx-auto">
+                            このメニューで予約する
+                          </MobileButton>
+                        </Link>
                       </div>
                     </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* 追加メニュー */}
-        <section className="py-16 bg-white">
-          <div className="container mx-auto px-4">
-            <h2 className="text-3xl font-bold text-center mb-12">追加メニュー</h2>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-              {additionalServices.map((service) => (
-                <div key={service.name} className="bg-gray-50 rounded-xl p-6">
-                  <h3 className="font-semibold text-lg mb-2">{service.name}</h3>
-                  <p className="text-2xl font-bold text-primary mb-3">
-                    ¥{service.price.toLocaleString()}
-                  </p>
-                  <p className="text-sm text-gray-600">{service.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        {/* モニター条件 */}
-        <section className="py-16 bg-light-accent">
-          <div className="container mx-auto px-4">
-            <div className="max-w-3xl mx-auto bg-white rounded-xl shadow-lg p-8">
-              <h2 className="text-2xl font-bold mb-6">モニター価格について</h2>
-
-              <div className="space-y-4">
-                <div>
-                  <h3 className="font-semibold mb-2">モニター条件</h3>
-                  <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>施術前後の写真撮影にご協力いただける方</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>SNSやホームページへの写真掲載を許可いただける方</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>アンケートにご協力いただける方</span>
-                    </li>
-                  </ul>
-                </div>
-
-                <div>
-                  <h3 className="font-semibold mb-2">注意事項</h3>
-                  <ul className="space-y-2 text-gray-600">
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>個人が特定されないよう配慮いたします</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>目元のみの撮影も可能です</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="text-primary">•</span>
-                      <span>詳細はカウンセリング時にご相談ください</span>
-                    </li>
-                  </ul>
-                </div>
+                  </motion.div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </section>
 
