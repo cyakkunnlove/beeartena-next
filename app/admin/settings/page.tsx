@@ -88,6 +88,8 @@ export default function AdminSettingsPage() {
   const { user, loading: authLoading } = useAuth()
   const [settings, setSettings] = useState<ReservationSettings>(cloneDefaultSettings())
   const [newBlockedDate, setNewBlockedDate] = useState('')
+  const [blockedRangeStart, setBlockedRangeStart] = useState('')
+  const [blockedRangeEnd, setBlockedRangeEnd] = useState('')
   const [message, setMessage] = useState('')
   const [messageType, setMessageType] = useState<'success' | 'error'>('success')
   const [loading, setLoading] = useState(true)
@@ -303,6 +305,46 @@ export default function AdminSettingsPage() {
       ...prev,
       blockedDates: prev.blockedDates?.filter((d) => d !== date) || [],
     }))
+  }
+
+  const handleAddBlockedDateRange = () => {
+    if (!blockedRangeStart || !blockedRangeEnd) {
+      notify('error', '開始日と終了日を両方指定してください。')
+      return
+    }
+    const start = new Date(blockedRangeStart)
+    const end = new Date(blockedRangeEnd)
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) {
+      notify('error', '日付の形式が正しくありません。')
+      return
+    }
+    if (start > end) {
+      notify('error', '開始日は終了日より前にしてください。')
+      return
+    }
+    const maxDays = 90
+    const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
+    if (diffDays > maxDays) {
+      notify('error', `一度に追加できるのは最大${maxDays}日間です。`)
+      return
+    }
+
+    setSettings((prev) => {
+      const existing = new Set(prev.blockedDates ?? [])
+      const current = new Date(start)
+      while (current <= end) {
+        const dateStr = current.toISOString().split('T')[0]
+        existing.add(dateStr)
+        current.setDate(current.getDate() + 1)
+      }
+      return {
+        ...prev,
+        blockedDates: Array.from(existing).sort(),
+      }
+    })
+    notify('success', `${diffDays}日間をブロック日に追加しました。`)
+    setBlockedRangeStart('')
+    setBlockedRangeEnd('')
   }
 
   const handleReload = () => {
@@ -880,6 +922,7 @@ export default function AdminSettingsPage() {
 
         {openSections.blockedDates && (
           <div className="px-6 pb-6">
+            <p className="mb-3 text-sm font-medium text-gray-700">1日ずつ追加</p>
             <div className="flex flex-col gap-4 md:flex-row md:items-center">
               <div className="flex flex-1 items-center gap-2">
                 <input
@@ -896,6 +939,33 @@ export default function AdminSettingsPage() {
                   追加
                 </button>
               </div>
+            </div>
+
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 p-4">
+              <p className="mb-2 text-sm font-medium text-gray-700">期間でまとめて追加</p>
+              <div className="flex flex-col gap-2 md:flex-row md:items-center">
+                <input
+                  type="date"
+                  value={blockedRangeStart}
+                  onChange={(event) => setBlockedRangeStart(event.target.value)}
+                  className="flex-1 rounded border px-3 py-2"
+                />
+                <span className="text-sm text-gray-500">〜</span>
+                <input
+                  type="date"
+                  value={blockedRangeEnd}
+                  onChange={(event) => setBlockedRangeEnd(event.target.value)}
+                  className="flex-1 rounded border px-3 py-2"
+                />
+                <button
+                  type="button"
+                  onClick={handleAddBlockedDateRange}
+                  className="rounded-md bg-gray-800 px-4 py-2 text-white hover:bg-gray-700"
+                >
+                  まとめて追加
+                </button>
+              </div>
+              <p className="mt-1 text-xs text-gray-500">最大90日間まで一括追加できます</p>
             </div>
 
             <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">

@@ -336,7 +336,14 @@ class ReservationService {
 
   // 設定が読み込まれるまで待つ
   async waitForSettings(): Promise<void> {
-    if (this.isSettingsLoaded) return
+    // サーバーサイドでは毎回Firestoreから最新設定を取得する
+    // （Vercelのサーバーレスインスタンスが古い設定をキャッシュし続ける問題を防ぐ）
+    if (this.isSettingsLoaded && typeof window !== 'undefined') return
+    // サーバーサイドは常にリロード
+    if (typeof window === 'undefined') {
+      this.isSettingsLoaded = false
+      this.settingsLoadPromise = null
+    }
 
     if (!this.settingsLoadPromise) {
       this.settingsLoadPromise = this.loadSettingsFromFirestore()
@@ -896,10 +903,11 @@ class ReservationService {
       clientTimeSlotCache?.set(`${date}|${cacheKeySuffix}`, slots.map((slot) => ({ ...slot })))
     }
 
-    // 結果をキャッシュに保存（2分間、サーバーサイドのみ）
+    // 結果をキャッシュに保存（10秒間、サーバーサイドのみ）
+    // 設定変更の即時反映を優先するため短めに設定
     if (!bypassCache && typeof window === 'undefined') {
       const cacheKey = Cache.generateKey('time-slots', date, cacheKeySuffix)
-      await cache.set(cacheKey, slots, 120, {
+      await cache.set(cacheKey, slots, 10, {
         tags: ['reservations', `date-${date}`],
       })
     }
