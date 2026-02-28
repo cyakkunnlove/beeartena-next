@@ -3,13 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react'
 
+import { apiClient } from '@/lib/api/client'
 import { useAuth } from '@/lib/auth/AuthContext'
-import {
-  createAnnouncement,
-  deleteAnnouncement,
-  getAllAnnouncements,
-  updateAnnouncement,
-} from '@/lib/firebase/announcements'
 import type { Announcement } from '@/lib/types'
 type FormValues = {
   id?: string
@@ -234,8 +229,8 @@ export default function AnnouncementsAdminPage() {
     if (!user || user.role !== 'admin') return
     try {
       setRefreshing(true)
-      const data = await getAllAnnouncements()
-      setAnnouncements(data)
+      const response = await apiClient.getAdminAnnouncements()
+      setAnnouncements(response.announcements)
     } catch (error) {
       console.error('Failed to load announcements', error)
       showFeedback('error', 'お知らせの取得に失敗しました')
@@ -268,7 +263,7 @@ export default function AnnouncementsAdminPage() {
   const handleTogglePin = async (announcement: Announcement) => {
     try {
       setBusyAction(`pin-${announcement.id}`)
-      await updateAnnouncement(announcement.id, { isPinned: !announcement.isPinned })
+      await apiClient.updateAdminAnnouncement(announcement.id, { isPinned: !announcement.isPinned })
       setAnnouncements((prev) =>
         prev.map((item) =>
           item.id === announcement.id ? { ...item, isPinned: !announcement.isPinned } : item,
@@ -287,7 +282,7 @@ export default function AnnouncementsAdminPage() {
     if (!confirmed) return
     try {
       setBusyAction(`delete-${announcement.id}`)
-      await deleteAnnouncement(announcement.id)
+      await apiClient.deleteAdminAnnouncement(announcement.id)
       setAnnouncements((prev) => prev.filter((item) => item.id !== announcement.id))
       showFeedback('success', 'お知らせを削除しました')
     } catch (error) {
@@ -311,11 +306,13 @@ export default function AnnouncementsAdminPage() {
     try {
       setFormSubmitting(true)
       if (editingAnnouncement) {
-        await updateAnnouncement(editingAnnouncement.id, payload)
+        const res = await apiClient.updateAdminAnnouncement(editingAnnouncement.id, payload)
+        if (!res?.success) throw new Error(res?.message ?? '更新に失敗しました')
         await fetchAnnouncements()
         showFeedback('success', 'お知らせを更新しました')
       } else {
-        await createAnnouncement(payload)
+        const res = await apiClient.createAdminAnnouncement(payload)
+        if (!res?.success) throw new Error(res?.message ?? '作成に失敗しました')
         await fetchAnnouncements()
         showFeedback('success', 'お知らせを追加しました')
       }
