@@ -322,7 +322,7 @@ export default function AdminSettingsPage() {
       notify('error', '開始日は終了日より前にしてください。')
       return
     }
-    const maxDays = 90
+    const maxDays = 365
     const diffDays = Math.round((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1
     if (diffDays > maxDays) {
       notify('error', `一度に追加できるのは最大${maxDays}日間です。`)
@@ -342,7 +342,7 @@ export default function AdminSettingsPage() {
         blockedDates: Array.from(existing).sort(),
       }
     })
-    notify('success', `${diffDays}日間をブロック日に追加しました。`)
+    notify('success', `${diffDays}日間をブロック日に追加しました（${blockedRangeStart} 〜 ${blockedRangeEnd}）。`)
     setBlockedRangeStart('')
     setBlockedRangeEnd('')
   }
@@ -965,7 +965,7 @@ export default function AdminSettingsPage() {
                   まとめて追加
                 </button>
               </div>
-              <p className="mt-1 text-xs text-gray-500">最大90日間まで一括追加できます</p>
+              <p className="mt-1 text-xs text-gray-500">最大365日間まで一括追加できます</p>
             </div>
 
             <div className="mt-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
@@ -994,22 +994,68 @@ export default function AdminSettingsPage() {
             </div>
 
             <ul className="mt-4 space-y-2">
-              {(settings.blockedDates || []).map((date) => (
-                <li key={date} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
-                  <span>{date}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveBlockedDate(date)}
-                    className="text-red-600 hover:underline"
-                  >
-                    削除
-                  </button>
-                </li>
-              ))}
+              {(() => {
+                const dates = [...(settings.blockedDates || [])].sort()
+                if (dates.length === 0) {
+                  return <li className="text-sm text-gray-500">現在、ブロック日は設定されていません。</li>
+                }
+                // Group consecutive dates into ranges
+                const ranges: { start: string; end: string }[] = []
+                let rangeStart = dates[0]
+                let prev = dates[0]
+                for (let i = 1; i < dates.length; i++) {
+                  const prevDate = new Date(prev)
+                  const currDate = new Date(dates[i])
+                  const diffMs = currDate.getTime() - prevDate.getTime()
+                  if (Math.round(diffMs / (1000 * 60 * 60 * 24)) === 1) {
+                    prev = dates[i]
+                  } else {
+                    ranges.push({ start: rangeStart, end: prev })
+                    rangeStart = dates[i]
+                    prev = dates[i]
+                  }
+                }
+                ranges.push({ start: rangeStart, end: prev })
 
-              {(!settings.blockedDates || settings.blockedDates.length === 0) && (
-                <li className="text-sm text-gray-500">現在、ブロック日は設定されていません。</li>
-              )}
+                return ranges.map((range) => {
+                  const isRange = range.start !== range.end
+                  const startDate = new Date(range.start)
+                  const endDate = new Date(range.end)
+                  const days = isRange
+                    ? Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24)) + 1
+                    : 1
+                  const label = isRange
+                    ? `${range.start} 〜 ${range.end}（${days}日間）`
+                    : range.start
+
+                  return (
+                    <li key={range.start} className="flex items-center justify-between rounded border px-3 py-2 text-sm">
+                      <span>{label}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (isRange) {
+                            const confirmed = window.confirm(
+                              `${range.start} 〜 ${range.end}（${days}日間）をすべて削除しますか？`,
+                            )
+                            if (!confirmed) return
+                          }
+                          setSettings((prev) => ({
+                            ...prev,
+                            blockedDates: (prev.blockedDates ?? []).filter((d) => {
+                              if (!isRange) return d !== range.start
+                              return d < range.start || d > range.end
+                            }),
+                          }))
+                        }}
+                        className="text-red-600 hover:underline"
+                      >
+                        削除
+                      </button>
+                    </li>
+                  )
+                })
+              })()}
             </ul>
           </div>
         )}
