@@ -1,3 +1,5 @@
+import Link from 'next/link'
+
 export default function CareSection() {
   const careSteps = [
     {
@@ -8,7 +10,7 @@ export default function CareSection() {
     {
       day: '1〜3日目',
       title: '保湿を忘れずに',
-      description: 'お渡しする軟膏を1日2〜3回塗布',
+      description: 'お渡しするワセリンをこまめに塗布してください',
     },
     {
       day: '4〜7日目',
@@ -16,9 +18,9 @@ export default function CareSection() {
       description: '自然に剥がれるのを待ちましょう',
     },
     {
-      day: '1ヶ月後',
-      title: '色が定着',
-      description: 'きれいな仕上がりが完成します',
+      day: '気になるとき',
+      title: 'LINEですぐ相談',
+      description: '不安な症状や気になることはLINEからご相談いただけます',
     },
   ]
 
@@ -26,6 +28,7 @@ export default function CareSection() {
     <section id="care" className="scroll-mt-24 py-20 bg-white">
       <div className="container mx-auto px-4">
         <h2 className="section-title">施術後ケアガイド</h2>
+        <p className="section-subtitle">施術後の過ごし方を、期間ごとにわかりやすくご案内しています</p>
 
         <div className="max-w-4xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -50,16 +53,21 @@ export default function CareSection() {
 
         <div className="mt-12 text-center">
           <p className="text-gray-600 mb-4">
-            アフターケアについてご不明な点がございましたら、お気軽にお問い合わせください
+            詳しいアフターケア方法や、よくあるご質問を専用ページにまとめています
           </p>
-          <a
-            href="https://line.me/R/ti/p/@174geemy"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn btn-primary"
-          >
-            LINEで相談する
-          </a>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Link href="/aftercare" className="btn btn-secondary">
+              詳しいアフターケアを見る
+            </Link>
+            <a
+              href="https://line.me/R/ti/p/@174geemy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+            >
+              LINEで相談する
+            </a>
+          </div>
         </div>
       </div>
     </section>

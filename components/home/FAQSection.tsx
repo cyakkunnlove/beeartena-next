@@ -85,10 +85,20 @@ export default function FAQSection() {
         </div>
 
         <div className="text-center mt-8">
-          <p className="text-gray-600 mb-4">その他のご質問はお気軽にお問い合わせください</p>
-          <a href="#reservation" className="btn btn-primary">
-            お問い合わせする
-          </a>
+          <p className="text-gray-600 mb-4">その他のご質問や施術後の不安な点は、アフターケアページもあわせてご確認ください</p>
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <a href="/aftercare" className="btn btn-secondary">
+              アフターケアを見る
+            </a>
+            <a
+              href="https://line.me/R/ti/p/@174geemy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-primary"
+            >
+              LINEで相談する
+            </a>
+          </div>
         </div>
       </div>
     </section>

@@ -35,6 +35,11 @@ export default function Footer({ className = '' }: FooterProps) {
                 </Link>
               </li>
               <li>
+                <Link href="/aftercare" className="hover:text-primary transition-colors">
+                  アフターケア
+                </Link>
+              </li>
+              <li>
                 <Link href="/#faq" className="hover:text-primary transition-colors">
                   FAQ
                 </Link>

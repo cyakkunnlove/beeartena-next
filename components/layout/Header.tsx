@@ -67,7 +67,7 @@ export default function Header() {
               </Link>
             </li>
             <li>
-              <Link href="/#care" className="text-gray-700 hover:text-primary transition-colors">
+              <Link href="/aftercare" className="text-gray-700 hover:text-primary transition-colors">
                 アフターケア
               </Link>
             </li>
@@ -172,7 +172,7 @@ export default function Header() {
                   { href: '/pricing', label: 'メニュー・料金' },
                   { href: '/maintenance', label: 'メンテナンス' },
                   { href: '/#plan', label: '安心プラン' },
-                  { href: '/#care', label: 'アフターケア' },
+                  { href: '/aftercare', label: 'アフターケア' },
                   { href: '/#profile', label: 'プロフィール' },
                   { href: '/#gallery', label: '症例ギャラリー' },
                   { href: '/#faq', label: 'FAQ' },
