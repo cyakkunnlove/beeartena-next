@@ -21,6 +21,7 @@ type LineWebhookEvent = {
   type: string
   timestamp: number
   source: LineWebhookSource
+  replyToken?: string
   message?: LineWebhookMessage
 }
 
@@ -278,6 +279,104 @@ const uploadLineMedia = async (params: {
 
 const toIso = (ms: number): string => new Date(ms).toISOString()
 
+// キーワード応答用のFlexメッセージ
+const createWelcomeFlexMessage = () => ({
+  type: 'flex',
+  altText: 'Bee Art Enaへようこそ',
+  contents: {
+    type: 'bubble',
+    body: {
+      type: 'box',
+      layout: 'vertical',
+      contents: [
+        {
+          type: 'text',
+          text: 'Bee Art Enaへようこそ ✨',
+          weight: 'bold',
+          size: 'lg',
+          margin: 'md',
+        },
+        {
+          type: 'text',
+          text: 'ご覧になりたい項目をお選びください',
+          size: 'sm',
+          color: '#666666',
+          margin: 'md',
+          wrap: true,
+        },
+      ],
+    },
+    footer: {
+      type: 'box',
+      layout: 'vertical',
+      spacing: 'sm',
+      contents: [
+        {
+          type: 'button',
+          style: 'primary',
+          action: {
+            type: 'uri',
+            label: '📖 アフターケアについて',
+            uri: 'https://www.beeartena.com/aftercare',
+          },
+        },
+        {
+          type: 'button',
+          style: 'secondary',
+          action: {
+            type: 'message',
+            label: '💰 料金・メニュー',
+            text: '料金表',
+          },
+        },
+        {
+          type: 'button',
+          style: 'secondary',
+          action: {
+            type: 'message',
+            label: '📅 ご予約',
+            text: 'ご予約',
+          },
+        },
+      ],
+    },
+  },
+})
+
+// LINEにreply送信
+const sendLineReply = async (replyToken: string, messages: unknown[], accessToken: string): Promise<boolean> => {
+  try {
+    const response = await fetch('https://api.line.me/v2/bot/message/reply', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${accessToken}`,
+      },
+      body: JSON.stringify({
+        replyToken,
+        messages,
+      }),
+    })
+    if (!response.ok) {
+      logger.warn('LINE reply failed', { status: response.status })
+      return false
+    }
+    return true
+  } catch (error) {
+    logger.warn('LINE reply error', { error: getErrorMessage(error) })
+    return false
+  }
+}
+
+// キーワードに対する応答を取得
+const getKeywordResponse = (text: string): unknown[] | null => {
+  const normalized = text.trim()
+  if (normalized === 'Bee Art Enaへようこそ') {
+    return [createWelcomeFlexMessage()]
+  }
+  return null
+}
+
 export async function POST(request: NextRequest) {
   const channelSecret = (process.env.LINE_CHANNEL_SECRET ?? '').trim()
   const signature = (request.headers.get('x-line-signature') ?? '').trim()
@@ -332,6 +431,7 @@ export async function POST(request: NextRequest) {
     const userId = source.userId
     const eventTimestamp = typeof event.timestamp === 'number' ? event.timestamp : Date.now()
     const isMessageEvent = event.type === 'message' && event.message && typeof event.message.id === 'string'
+    const replyToken = typeof event.replyToken === 'string' ? event.replyToken : ''
 
     const conversationRef = db.collection('lineConversations').doc(userId)
 
@@ -342,6 +442,14 @@ export async function POST(request: NextRequest) {
         const messageRef = conversationRef.collection('messages').doc(messageId)
         const messageType = typeof message.type === 'string' ? message.type : 'unknown'
         const text = typeof message.text === 'string' ? message.text : undefined
+
+        // キーワード応答（accessTokenとreplyTokenが必要）
+        if (text && accessToken && replyToken) {
+          const keywordMessages = getKeywordResponse(text)
+          if (keywordMessages) {
+            await sendLineReply(replyToken, keywordMessages, accessToken)
+          }
+        }
 
         let mediaFields: Record<string, unknown> = {}
         try {
